@@ -1,0 +1,63 @@
+import { db } from "../db";
+
+import type { Media, MediaType, WatchStatus } from "../../types";
+
+export const mediaRepository = {
+async add(media: Media): Promise<number> {
+  const id = await db.media.add(media);
+
+  if (id === undefined) {
+    throw new Error("Failed to generate media ID.");
+  }
+
+  return id;
+},
+
+  async getById(id: number): Promise<Media | undefined> {
+    return db.media.get(id);
+  },
+
+  async getByTmdbId(
+    tmdbId: number,
+    mediaType: MediaType,
+  ): Promise<Media | undefined> {
+    return db.media
+      .where("[tmdbId+mediaType]")
+      .equals([tmdbId, mediaType])
+      .first();
+  },
+
+  async getAll(): Promise<Media[]> {
+    return db.media.toArray();
+  },
+
+  async getByType(mediaType: MediaType): Promise<Media[]> {
+    return db.media.where("mediaType").equals(mediaType).toArray();
+  },
+
+  async getByStatus(userStatus: WatchStatus): Promise<Media[]> {
+    return db.media.where("userStatus").equals(userStatus).toArray();
+  },
+
+  async update(id: number, changes: Partial<Media>): Promise<number> {
+    return db.media.update(id, {
+      ...changes,
+      updatedAt: new Date(),
+    });
+  },
+
+  async remove(id: number): Promise<void> {
+    await db.transaction("rw", db.media, db.episodes, async () => {
+      await db.episodes.where("showId").equals(id).delete();
+      await db.media.delete(id);
+    });
+  },
+
+  async count(): Promise<number> {
+    return db.media.count();
+  },
+
+  async countByType(mediaType: MediaType): Promise<number> {
+    return db.media.where("mediaType").equals(mediaType).count();
+  },
+};

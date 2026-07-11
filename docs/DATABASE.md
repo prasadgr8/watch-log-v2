@@ -116,3 +116,67 @@ Project Orion will support:
 - Schema version detection
 
 Backup and restore functionality will be implemented before the stable v2.0.0 release.
+
+## Data Access Architecture
+
+Application features should not access Dexie tables directly.
+
+Database access is managed through repository modules.
+
+Current repositories include:
+
+- `mediaRepository`
+- `episodeRepository`
+- `settingsRepository`
+
+The intended data access flow is:
+
+UI and Features → Repositories → Dexie → IndexedDB
+
+This separation keeps persistence logic outside React components and provides a centralized location for database operations.
+
+## Initial Schema Verification
+
+IndexedDB schema version 1 was verified during the v2.0.0-alpha.3 development milestone.
+
+The following object stores were successfully created:
+
+- `media`
+- `episodes`
+- `settings`
+
+The media repository was verified by inserting a temporary TV show record, refreshing the browser, and confirming that the record remained available in IndexedDB.
+
+The temporary verification record and startup verification code were removed after successful validation.
+
+## Data Access Architecture
+
+Application features should not access Dexie tables directly.
+
+Database access is managed through repository modules.
+
+Current repositories include:
+
+- `mediaRepository`
+- `episodeRepository`
+- `settingsRepository`
+
+The intended data access flow is:
+
+UI and Features → Repositories → Dexie → IndexedDB
+
+This separation keeps persistence logic outside React components and provides a centralized location for database operations.
+
+## Initial Schema Verification
+
+IndexedDB schema version 1 was verified during the v2.0.0-alpha.3 development milestone.
+
+The following object stores were successfully created:
+
+- `media`
+- `episodes`
+- `settings`
+
+The media repository was verified by inserting a temporary TV show record, refreshing the browser, and confirming that the record remained available in IndexedDB.
+
+The temporary verification record and startup verification code were removed after successful validation.

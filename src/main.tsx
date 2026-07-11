@@ -1,4 +1,9 @@
 import "./index.css";
+import { db } from "./database/db";
+
+db.open().catch((error: unknown) => {
+  console.error("Failed to initialize Watch Log database:", error);
+});
 
 import React from "react";
 import ReactDOM from "react-dom/client";
@@ -11,4 +16,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <RouterProvider router={router} />
   </React.StrictMode>
-);
+
+)
+;
