@@ -131,7 +131,7 @@ Current repositories include:
 
 The intended data access flow is:
 
-UI and Features → Repositories → Dexie → IndexedDB
+`UI and Features -> Repositories -> Dexie -> IndexedDB`
 
 This separation keeps persistence logic outside React components and provides a centralized location for database operations.
 
@@ -149,34 +149,31 @@ The media repository was verified by inserting a temporary TV show record, refre
 
 The temporary verification record and startup verification code were removed after successful validation.
 
-## Data Access Architecture
+## Library Persistence Verification
 
-Application features should not access Dexie tables directly.
+The media repository was integrated with the Library during the v2.0.0-alpha.4 development milestone.
 
-Database access is managed through repository modules.
+The Library was verified to:
 
-Current repositories include:
+- Load persisted media from IndexedDB
+- Add manually entered TV shows and movies
+- Preserve media across browser refreshes
+- Delete media from IndexedDB
+- Remove related episode records when deleting media
+- Refresh the Library UI after persistence operations
 
-- `mediaRepository`
-- `episodeRepository`
-- `settingsRepository`
+Manually added media may not have a TMDB identifier. The `tmdbId` field is therefore optional until media is associated with TMDB metadata.
 
-The intended data access flow is:
+Persisted Library records use the `PersistedMedia` type when the application requires a generated numeric database ID.
 
-UI and Features → Repositories → Dexie → IndexedDB
+## Dashboard Statistics
 
-This separation keeps persistence logic outside React components and provides a centralized location for database operations.
+Dashboard statistics use repository aggregate operations rather than direct Dexie table access.
 
-## Initial Schema Verification
+Current statistics include:
 
-IndexedDB schema version 1 was verified during the v2.0.0-alpha.3 development milestone.
+- TV show count from `mediaRepository.countByType("tv")`
+- Movie count from `mediaRepository.countByType("movie")`
+- Episode count from `episodeRepository.count()`
 
-The following object stores were successfully created:
-
-- `media`
-- `episodes`
-- `settings`
-
-The media repository was verified by inserting a temporary TV show record, refreshing the browser, and confirming that the record remained available in IndexedDB.
-
-The temporary verification record and startup verification code were removed after successful validation.
+Watch hours remain `0` until episode runtime and watched-duration data are available for a truthful calculation.

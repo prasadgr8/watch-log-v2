@@ -1,5 +1,25 @@
 # Changelog
 
+## v2.0.0-alpha.4
+
+### Project Orion - Library
+
+- Added persistent personal media library
+- Added manual TV show and movie creation
+- Added watch status selection for library items
+- Added persistent media loading from IndexedDB
+- Added media deletion with related episode cleanup
+- Refactored Library UI into `AddMediaForm` and `MediaCard` components
+- Added shared Library watch status options
+- Added `PersistedMedia` type for records with generated database IDs
+- Updated media model to support manually added media without a TMDB ID
+- Added real Dashboard TV show and movie counts from IndexedDB
+- Added real Dashboard episode count from the episode repository
+- Added Dashboard loading and error states
+- Added ESLint flat configuration and TypeScript/React lint tooling
+- Verified Library persistence across browser refreshes
+- Verified Dashboard counts update after media additions and deletions
+
 ## v2.0.0-alpha.3
 
 ### Project Orion - Data Layer
@@ -26,4 +46,3 @@
 - Tailwind CSS
 - Routing
 - Application Shell
-

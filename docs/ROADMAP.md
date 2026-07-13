@@ -40,7 +40,7 @@ Status: Completed
 
 ## v2.0.0-alpha.3 - Data Layer
 
-Status: Planned
+Status: Completed
 
 - Dexie database configuration
 - IndexedDB schema
@@ -52,13 +52,16 @@ Status: Planned
 
 ## v2.0.0-alpha.4 - Library
 
-Status: Planned
+Status: Completed
 
-- Add media
-- Media library
-- TV show tracking
-- Movie tracking
+- Persistent media library
+- Manual TV show and movie creation
+- Watch status selection
+- Media deletion
+- IndexedDB persistence
+- Library component architecture
 - Persistent dashboard statistics
+- Dashboard media and episode counts
 
 ## v2.0.0-alpha.5 - Media Search
 

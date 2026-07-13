@@ -3,6 +3,7 @@ export type {
   Media,
   MediaType,
   Movie,
+  PersistedMedia,
   TVShow,
   WatchStatus,
 } from "./media";

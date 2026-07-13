@@ -1,15 +1,11 @@
 export type MediaType = "tv" | "movie";
 
 export type WatchStatus =
-  | "planned"
-  | "watching"
-  | "completed"
-  | "on-hold"
-  | "dropped";
+  "planned" | "watching" | "completed" | "on-hold" | "dropped";
 
 export interface BaseMedia {
   id?: number;
-  tmdbId: number;
+  tmdbId?: number;
   mediaType: MediaType;
   title: string;
   overview?: string;
@@ -34,3 +30,6 @@ export interface Movie extends BaseMedia {
 }
 
 export type Media = TVShow | Movie;
+export type PersistedMedia = Media & {
+  id: number;
+};
