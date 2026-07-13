@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.0.0-alpha.5
+
+### Media Search
+
+- Added TMDB API integration for TV show and movie search
+- Added authenticated TMDB HTTP client and search service
+- Added typed TMDB multi-search response models
+- Added filtering of person results from media search
+- Added media search result cards with posters, release years, ratings, media type badges, and overviews
+- Added TMDB-to-Project Orion media mapping
+- Added search result persistence to the IndexedDB library
+- Added duplicate prevention using TMDB ID and media type
+- Added library-aware search result states
+- Added Search navigation and active route state
+
 ## v2.0.0-alpha.4
 
 ### Project Orion - Library

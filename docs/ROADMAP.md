@@ -65,13 +65,21 @@ Status: Completed
 
 ## v2.0.0-alpha.5 - Media Search
 
-Status: Planned
+Status: Completed
 
-- TMDB integration
+- TMDB API integration
+- Typed TMDB service layer
 - TV show search
 - Movie search
+- Media-only result filtering
 - Media metadata
-- Poster support
+- Poster support and missing poster fallback
+- Search result cards
+- TMDB-to-Project Orion media mapping
+- Add to Library from search results
+- IndexedDB persistence
+- Duplicate prevention using TMDB ID and media type
+- Library-aware search result states
 
 ## v2.0.0-alpha.6 - Episode Tracking
 
