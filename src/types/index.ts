@@ -8,6 +8,6 @@ export type {
   WatchStatus,
 } from "./media";
 
-export type { Episode } from "./episode";
+export type { Episode, PersistedEpisode } from "./episode";
 
 export type { AppSetting, ThemePreference } from "./settings";

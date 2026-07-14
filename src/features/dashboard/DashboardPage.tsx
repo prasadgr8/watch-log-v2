@@ -20,6 +20,10 @@ const initialStatistics: DashboardStatistics = {
   hours: 0,
 };
 
+function convertMinutesToHours(minutes: number): number {
+  return Math.round((minutes / 60) * 10) / 10;
+}
+
 export default function DashboardPage() {
   const [statistics, setStatistics] =
     useState<DashboardStatistics>(initialStatistics);
@@ -31,17 +35,19 @@ export default function DashboardPage() {
       try {
         setError(null);
 
-        const [tvShows, movies, episodes] = await Promise.all([
-          mediaRepository.countByType("tv"),
-          mediaRepository.countByType("movie"),
-          episodeRepository.count(),
-        ]);
+        const [tvShows, movies, watchedEpisodes, watchedRuntimeMinutes] =
+          await Promise.all([
+            mediaRepository.countByType("tv"),
+            mediaRepository.countByType("movie"),
+            episodeRepository.countWatched(),
+            episodeRepository.getWatchedRuntimeMinutes(),
+          ]);
 
         setStatistics({
           tvShows,
           movies,
-          episodes,
-          hours: 0,
+          episodes: watchedEpisodes,
+          hours: convertMinutesToHours(watchedRuntimeMinutes),
         });
       } catch (loadError) {
         console.error("Failed to load dashboard statistics:", loadError);

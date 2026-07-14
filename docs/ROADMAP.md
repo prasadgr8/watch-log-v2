@@ -81,15 +81,20 @@ Status: Completed
 - Duplicate prevention using TMDB ID and media type
 - Library-aware search result states
 
-## v2.0.0-alpha.6 - Episode Tracking
+## v2.0.0-alpha.6 - Episode and Season Tracking
 
-Status: Planned
+Status: Completed
 
-- Season tracking
-- Episode tracking
-- Watched status
-- Continue Watching
-- Progress calculation
+- TV show details
+- Season catalogue browsing
+- TMDB season and episode metadata integration
+- Episode metadata synchronization
+- IndexedDB episode schema version 2
+- Episode watched and unwatched status
+- Persistent episode watch state
+- Local watch-state preservation during TMDB synchronization
+- Watched episode Dashboard statistics
+- Watched runtime and watch-hour calculation
 
 ## v2.0.0-beta.1 - Backup and Recovery
 

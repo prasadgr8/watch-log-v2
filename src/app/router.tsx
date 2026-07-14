@@ -4,6 +4,7 @@ import AppLayout from "../components/layout/AppLayout";
 
 import DashboardPage from "../features/dashboard/DashboardPage";
 import LibraryPage from "../features/library/LibraryPage";
+import TvShowDetailsPage from "../features/library/TvShowDetailsPage";
 import SearchPage from "../features/search/SearchPage";
 import SettingsPage from "../features/settings/SettingsPage";
 
@@ -27,6 +28,10 @@ export const router = createBrowserRouter([
       {
         path: "library",
         element: <LibraryPage />,
+      },
+      {
+        path: "library/tv/:mediaId",
+        element: <TvShowDetailsPage />,
       },
       {
         path: "search",

@@ -1,4 +1,5 @@
 import { Film, Trash2, Tv } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import type { PersistedMedia } from "../../../types";
 
@@ -14,26 +15,40 @@ export default function MediaCard({ media, onDelete }: MediaCardProps) {
     watchStatusOptions.find((status) => status.value === media.userStatus)
       ?.label ?? media.userStatus;
 
+  const mediaContent = (
+    <>
+      <div className="rounded-lg bg-slate-800 p-2 text-blue-400">
+        {media.mediaType === "tv" ? (
+          <Tv className="h-5 w-5" />
+        ) : (
+          <Film className="h-5 w-5" />
+        )}
+      </div>
+
+      <div className="min-w-0">
+        <h3 className="truncate font-semibold text-white">{media.title}</h3>
+
+        <p className="mt-1 text-sm text-slate-400">
+          {media.mediaType === "tv" ? "TV Show" : "Movie"}
+        </p>
+      </div>
+    </>
+  );
+
   return (
     <article className="rounded-xl border border-slate-800 bg-slate-900 p-5">
       <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="rounded-lg bg-slate-800 p-2 text-blue-400">
-            {media.mediaType === "tv" ? (
-              <Tv className="h-5 w-5" />
-            ) : (
-              <Film className="h-5 w-5" />
-            )}
-          </div>
-
-          <div className="min-w-0">
-            <h3 className="truncate font-semibold text-white">{media.title}</h3>
-
-            <p className="mt-1 text-sm text-slate-400">
-              {media.mediaType === "tv" ? "TV Show" : "Movie"}
-            </p>
-          </div>
-        </div>
+        {media.mediaType === "tv" ? (
+          <Link
+            to={`/library/tv/${media.id}`}
+            aria-label={`View ${media.title} details`}
+            className="flex min-w-0 items-start gap-3 rounded-lg transition hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+          >
+            {mediaContent}
+          </Link>
+        ) : (
+          <div className="flex min-w-0 items-start gap-3">{mediaContent}</div>
+        )}
 
         <button
           type="button"

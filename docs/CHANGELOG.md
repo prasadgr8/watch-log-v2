@@ -1,5 +1,29 @@
 # Changelog
 
+## v2.0.0-alpha.6
+
+### Episode and Season Tracking
+
+- Added TV show details route for persisted Library TV shows
+- Added TMDB TV show details and season service operations
+- Added typed TMDB TV show, season, and episode response models
+- Added TV show details with poster, status, air date, season count, episode count, and overview
+- Added season catalogue browsing
+- Added TMDB season episode synchronization with IndexedDB
+- Added episode metadata including TMDB ID, overview, runtime, still path, air date, and vote average
+- Added IndexedDB schema version 2 for TMDB-backed episode metadata
+- Added persisted episode typing for records with generated database IDs
+- Added watched and unwatched episode state persistence
+- Preserved local watch state when synchronizing TMDB episode metadata
+- Added episode runtime and air date display
+- Added watched episode count to Dashboard statistics
+- Added watched runtime calculation for Dashboard watch hours
+- Added TV show Library card navigation to TV show details
+- Preserved media deletion behaviour without accidental TV details navigation
+- Verified episode watch state persists across browser refreshes
+- Verified repeated season synchronization does not duplicate episodes
+- Verified Dashboard episode and watch-hour statistics reflect watched episodes
+
 ## v2.0.0-alpha.5
 
 ### Media Search

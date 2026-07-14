@@ -17,6 +17,14 @@ export class WatchLogDatabase extends Dexie {
         "++id, showId, [showId+seasonNumber+episodeNumber], watchedAt, updatedAt",
       settings: "&key, updatedAt",
     });
+
+    this.version(2).stores({
+      media:
+        "++id, tmdbId, mediaType, [tmdbId+mediaType], title, userStatus, createdAt, updatedAt",
+      episodes:
+        "++id, showId, tmdbId, [showId+tmdbId], [showId+seasonNumber+episodeNumber], watchedAt, updatedAt",
+      settings: "&key, updatedAt",
+    });
   }
 }
 

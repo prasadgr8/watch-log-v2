@@ -65,19 +65,29 @@ Planned fields include:
 
 ### Episodes
 
-Stores episode-level watch progress.
+Stores synchronized TV episode metadata and local episode-level watch progress.
 
-Planned fields include:
+Current fields include:
 
 - id
 - showId
+- tmdbId
 - seasonNumber
 - episodeNumber
 - title
+- overview
+- runtime
+- stillPath
+- airDate
+- voteAverage
 - watched
 - watchedAt
 - createdAt
 - updatedAt
+
+Episode metadata may be synchronized from TMDB.
+
+Local watch state is owned by Watch Log V2 and must be preserved when TMDB metadata is synchronized.
 
 ### Settings
 
@@ -149,6 +159,23 @@ The media repository was verified by inserting a temporary TV show record, refre
 
 The temporary verification record and startup verification code were removed after successful validation.
 
+## Schema Version 2
+
+IndexedDB schema version 2 was introduced during the v2.0.0-alpha.6 development milestone.
+
+The episode store was extended to support TMDB-backed episode metadata.
+
+The episode schema includes:
+
+- `tmdbId`
+- `[showId+tmdbId]`
+
+The existing episode identity index remains:
+
+- `[showId+seasonNumber+episodeNumber]`
+
+Schema version 1 remains declared so existing databases can migrate to version 2 without silently destroying local user data.
+
 ## Library Persistence Verification
 
 The media repository was integrated with the Library during the v2.0.0-alpha.4 development milestone.
@@ -166,6 +193,29 @@ Manually added media may not have a TMDB identifier. The `tmdbId` field is there
 
 Persisted Library records use the `PersistedMedia` type when the application requires a generated numeric database ID.
 
+## Episode Synchronization
+
+TV show season metadata is retrieved from TMDB and mapped to the Project Orion episode domain model.
+
+Episode persistence is managed through `episodeRepository`.
+
+The `synchronizeSeason` repository operation synchronizes incoming TMDB episode metadata with the local IndexedDB episode store.
+
+When an existing episode is synchronized, local user-owned state is preserved:
+
+- Database ID
+- Watched status
+- Watched timestamp
+- Created timestamp
+
+Incoming TMDB metadata may update the remaining episode metadata fields.
+
+This separation prevents a TMDB metadata refresh from resetting local watch history.
+
+Season synchronization is performed inside a Dexie read-write transaction.
+
+Episodes are currently reconciled by local show ID, season number, and episode number.
+
 ## Dashboard Statistics
 
 Dashboard statistics use repository aggregate operations rather than direct Dexie table access.
@@ -174,6 +224,11 @@ Current statistics include:
 
 - TV show count from `mediaRepository.countByType("tv")`
 - Movie count from `mediaRepository.countByType("movie")`
-- Episode count from `episodeRepository.count()`
+- Watched episode count from `episodeRepository.countWatched()`
+- Watched runtime from `episodeRepository.getWatchedRuntimeMinutes()`
 
-Watch hours remain `0` until episode runtime and watched-duration data are available for a truthful calculation.
+Dashboard watch hours are calculated from the runtime metadata of watched episodes.
+
+Episodes without runtime metadata contribute zero minutes to the watched runtime total.
+
+Runtime minutes are converted to hours and displayed with one decimal place.
