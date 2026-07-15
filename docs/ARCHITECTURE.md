@@ -47,3 +47,85 @@ Continue Watching items are ordered by the most recent cached `Episode.watchedAt
 The `Episode.watchedAt` field is used for this current-state projection because it is maintained transactionally with watch history. The watch history repository remains responsible for episode-level historical event access.
 
 Progress, next-episode information, and Continue Watching ordering are not persisted to the `Media` entity.
+
+## Backup and Recovery
+
+Backup and recovery are application infrastructure concerns implemented outside feature repositories.
+
+The backup service operates directly against the Dexie database because export requires a consistent snapshot across all application stores and restore requires a single atomic multi-store replacement transaction.
+
+### Backup Format
+
+Watch Log V2 uses a versioned JSON backup envelope containing:
+
+- a fixed application backup format identifier
+- an independent backup format version
+- the IndexedDB schema version at export time
+- an ISO-8601 export timestamp
+- media records
+- episode records
+- watch history records
+- application settings
+
+Backup format versioning is independent of IndexedDB schema versioning. A change to the database schema does not implicitly redefine the backup wire format.
+
+Application `Date` values are explicitly serialized as ISO-8601 UTC strings. Backup wire types are therefore separate from application domain types.
+
+Persisted numeric IDs are retained in backup data. This preserves the relationships from `Media.id` to `Episode.showId` and from `Episode.id` to `WatchHistory.episodeId`.
+
+### Backup Snapshot
+
+Export reads media, episodes, watch history, and settings within one read transaction.
+
+The transaction defines the backup snapshot boundary across all four stores.
+
+### Backup Validation
+
+Restore input is treated as untrusted runtime data.
+
+Before any replacement transaction starts, the backup validator verifies:
+
+- backup format
+- backup format version
+- source database schema version
+- required store collections
+- record field types
+- enum values
+- positive and non-negative integer constraints
+- ISO-8601 UTC timestamps
+- duplicate media, episode, and watch-history IDs
+- duplicate setting keys
+- episode references to existing TV media records
+- watch-history references to existing episode records
+
+Validated timestamp strings are hydrated to application `Date` values.
+
+Validation failure occurs before database replacement and therefore leaves current application data untouched.
+
+### Restore Semantics
+
+Backup restore uses replace semantics rather than merge semantics.
+
+A validated restore clears and replaces media, episodes, watch history, and settings within one read-write transaction.
+
+Records are restored using their original persisted IDs.
+
+The logical restore order is media, episodes, watch history, and settings.
+
+If any write fails during the replacement transaction, the transaction is rolled back and the previous database state is preserved.
+
+A valid empty backup intentionally clears all application data.
+
+### Recovery User Experience
+
+The Settings page allows users to export a JSON backup and select a backup for restore.
+
+A selected backup is parsed and validated before a replacement confirmation is displayed.
+
+The confirmation preview shows the backup filename, export timestamp, library item count, episode count, watch-event count, setting count, and backup format version.
+
+The user must explicitly choose to restore and replace current data.
+
+After a successful restore, the application reloads so all feature projections are rebuilt from the restored database state.
+
+Watch Log backup restore is separate from future third-party import pipelines. External imports, including a possible TV Time GDPR import, require source-specific parsing, mapping, reconciliation, and merge semantics rather than backup replace semantics.

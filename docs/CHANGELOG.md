@@ -1,5 +1,43 @@
 # Changelog
 
+## v2.0.0-beta.1 — Backup and Recovery
+
+### Added
+
+- Added a versioned Watch Log V2 JSON backup format.
+- Added transactional export of media, episodes, watch history, and settings.
+- Added explicit date serialization for backup data.
+- Added persisted primary-key preservation for relational recovery.
+- Added strict runtime backup validation and date hydration.
+- Added validation for backup format, backup version, and database version.
+- Added duplicate primary-key and setting-key detection.
+- Added media-to-episode and episode-to-watch-history integrity validation.
+- Added atomic replace restore across all application data stores.
+- Added rollback protection when a restore transaction fails.
+- Added Backup and Restore controls to the Settings page.
+- Added backup file download and restore file selection.
+- Added validated backup summary and explicit data-replacement confirmation.
+- Added invalid JSON and unsupported backup rejection.
+- Added automated backup, validation, and restore coverage.
+
+### Changed
+
+- Settings now provides local data recovery controls.
+- Restore replaces the current local Watch Log V2 database with the selected validated backup.
+- Backup and recovery operate directly against the database transaction boundary rather than normal feature repositories.
+
+### Quality
+
+- Added export coverage for all four application stores.
+- Added empty database backup coverage.
+- Added persisted ID and relationship preservation coverage.
+- Added 16 strict backup validation tests.
+- Added replace-restore and empty-restore coverage.
+- Added validation-failure data preservation coverage.
+- Added restore transaction rollback coverage.
+- Verified a complete browser backup-modify-restore recovery round trip.
+- Expanded the automated suite to 59 tests across eight test files.
+
 ## v2.0.0-alpha.9 — Continue Watching and Progress
 
 ### Added

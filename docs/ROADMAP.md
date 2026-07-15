@@ -149,14 +149,32 @@ Status: Complete
 - [x] Navigate Continue Watching cards to TV show details
 - [x] Add automated Continue Watching service coverage
 
-## v2.0.0-beta.1 - Backup and Recovery
+## v2.0.0-beta.1 — Backup and Recovery
 
-Status: Planned
+Status: Complete
 
-- JSON export
-- JSON import
-- Backup validation
-- Database migration support
+- [x] Define a versioned Watch Log V2 backup format
+- [x] Export media, episodes, watch history, and settings
+- [x] Create a transactionally consistent database snapshot
+- [x] Serialize application date fields to ISO-8601 timestamps
+- [x] Preserve persisted IDs and record relationships
+- [x] Validate backup format and version
+- [x] Validate the source database schema version
+- [x] Validate backup records at runtime
+- [x] Reject invalid ISO timestamps
+- [x] Reject duplicate primary keys and setting keys
+- [x] Validate media-to-episode relationships
+- [x] Validate episode-to-watch-history relationships
+- [x] Hydrate backup timestamps to application Date values
+- [x] Implement atomic replace restore
+- [x] Preserve current data when backup validation fails
+- [x] Roll back the complete replacement when restore fails
+- [x] Support restoring a valid empty backup
+- [x] Add backup controls to Settings
+- [x] Add restore file validation and backup preview
+- [x] Add explicit replace-data confirmation
+- [x] Verify browser backup and recovery round trip
+- [x] Add automated backup and recovery coverage
 
 ## Future Milestones
 
