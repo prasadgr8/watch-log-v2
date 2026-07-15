@@ -4,6 +4,8 @@ import { db } from "../db";
 
 import type { Episode, Media } from "../../types";
 
+import { episodeRepository } from "./episodeRepository";
+
 import { mediaRepository } from "./mediaRepository";
 
 function createTvShow(overrides: Partial<Media> = {}): Media {
@@ -137,7 +139,7 @@ describe("mediaRepository", () => {
     expect(storedMedia).toBeUndefined();
   });
 
-  it("removes related episodes when a TV show is removed", async () => {
+  it("removes related episodes and watch history when a TV show is removed", async () => {
     const showId = await mediaRepository.add(createTvShow());
 
     const otherShowId = await mediaRepository.add(
@@ -147,9 +149,9 @@ describe("mediaRepository", () => {
       }),
     );
 
-    await db.episodes.add(createEpisode(showId));
+    const firstEpisodeId = await episodeRepository.add(createEpisode(showId));
 
-    await db.episodes.add(
+    const secondEpisodeId = await episodeRepository.add(
       createEpisode(showId, {
         tmdbId: 62086,
         episodeNumber: 2,
@@ -157,12 +159,35 @@ describe("mediaRepository", () => {
       }),
     );
 
-    await db.episodes.add(
+    const otherShowEpisodeId = await episodeRepository.add(
       createEpisode(otherShowId, {
         tmdbId: 119123,
         title: "Chapter One",
       }),
     );
+
+    const now = new Date("2026-07-15T00:00:00.000Z");
+
+    await db.watchHistory.bulkAdd([
+      {
+        episodeId: firstEpisodeId,
+        watchedAt: new Date("2026-07-10T18:30:00.000Z"),
+        source: "manual",
+        createdAt: now,
+      },
+      {
+        episodeId: secondEpisodeId,
+        watchedAt: new Date("2026-07-11T18:30:00.000Z"),
+        source: "manual",
+        createdAt: now,
+      },
+      {
+        episodeId: otherShowEpisodeId,
+        watchedAt: new Date("2026-07-12T18:30:00.000Z"),
+        source: "manual",
+        createdAt: now,
+      },
+    ]);
 
     await mediaRepository.remove(showId);
 
@@ -178,10 +203,24 @@ describe("mediaRepository", () => {
       .equals(otherShowId)
       .toArray();
 
+    const removedEpisodeWatchHistory = await db.watchHistory
+      .where("episodeId")
+      .anyOf(firstEpisodeId, secondEpisodeId)
+      .toArray();
+
+    const otherEpisodeWatchHistory = await db.watchHistory
+      .where("episodeId")
+      .equals(otherShowEpisodeId)
+      .toArray();
+
     expect(removedShow).toBeUndefined();
     expect(removedShowEpisodes).toHaveLength(0);
+    expect(removedEpisodeWatchHistory).toHaveLength(0);
 
     expect(otherShowEpisodes).toHaveLength(1);
     expect(otherShowEpisodes[0]?.title).toBe("Chapter One");
+
+    expect(otherEpisodeWatchHistory).toHaveLength(1);
+    expect(otherEpisodeWatchHistory[0]?.episodeId).toBe(otherShowEpisodeId);
   });
 });

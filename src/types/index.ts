@@ -11,3 +11,9 @@ export type {
 export type { Episode, PersistedEpisode } from "./episode";
 
 export type { AppSetting, ThemePreference } from "./settings";
+
+export type {
+  PersistedWatchHistory,
+  WatchHistory,
+  WatchHistorySource,
+} from "./watchHistory";

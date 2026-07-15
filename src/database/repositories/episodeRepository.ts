@@ -93,19 +93,48 @@ export const episodeRepository = {
     });
   },
 
-  async markWatched(id: number): Promise<number> {
-    return db.episodes.update(id, {
-      watched: true,
-      watchedAt: new Date(),
-      updatedAt: new Date(),
+  async markWatched(id: number): Promise<void> {
+    const now = new Date();
+
+    await db.transaction("rw", db.episodes, db.watchHistory, async () => {
+      const episode = await db.episodes.get(id);
+
+      if (!episode) {
+        throw new Error(`Episode ${id} was not found.`);
+      }
+
+      await db.watchHistory.add({
+        episodeId: id,
+        watchedAt: now,
+        source: "manual",
+        createdAt: now,
+      });
+
+      await db.episodes.update(id, {
+        watched: true,
+        watchedAt: now,
+        updatedAt: now,
+      });
     });
   },
 
-  async markUnwatched(id: number): Promise<number> {
-    return db.episodes.update(id, {
-      watched: false,
-      watchedAt: undefined,
-      updatedAt: new Date(),
+  async markUnwatched(id: number): Promise<void> {
+    const now = new Date();
+
+    await db.transaction("rw", db.episodes, db.watchHistory, async () => {
+      const episode = await db.episodes.get(id);
+
+      if (!episode) {
+        throw new Error(`Episode ${id} was not found.`);
+      }
+
+      await db.watchHistory.where("episodeId").equals(id).delete();
+
+      await db.episodes.update(id, {
+        watched: false,
+        watchedAt: undefined,
+        updatedAt: now,
+      });
     });
   },
 

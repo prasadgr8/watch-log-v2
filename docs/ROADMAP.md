@@ -112,6 +112,24 @@ Status: Complete
 - [x] Test settings repository operations
 - [x] Test IndexedDB schema upgrade from version 1 to version 2
 
+## v2.0.0-alpha.8 — Watch History Foundation
+
+Status: Complete
+
+- [x] Define the watch history domain model
+- [x] Add manual and import watch event sources
+- [x] Add the watch history IndexedDB store
+- [x] Upgrade the database schema to version 3
+- [x] Backfill existing watched episodes during version 2 to version 3 migration
+- [x] Add watch history repository operations
+- [x] Order episode watch history by watch timestamp
+- [x] Retrieve the latest watch event for an episode
+- [x] Persist manual watch events transactionally with episode watch state
+- [x] Remove episode watch history transactionally when marking an episode unwatched
+- [x] Reject watch-state actions for missing episodes
+- [x] Cascade watch history deletion when a TV show is removed
+- [x] Add automated watch history and integrity coverage
+
 ## v2.0.0-beta.1 - Backup and Recovery
 
 Status: Planned

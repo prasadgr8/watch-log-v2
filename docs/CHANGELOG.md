@@ -1,5 +1,30 @@
 # Changelog
 
+## v2.0.0-alpha.8 — Watch History Foundation
+
+### Added
+
+- Added a dedicated watch history domain model with manual and import event sources.
+- Added the `watchHistory` IndexedDB store in database schema version 3.
+- Added a version 2 to version 3 migration that backfills existing watched episodes into watch history.
+- Added a watch history repository for event creation, episode history retrieval, latest-event retrieval, and episode history removal.
+- Added automated watch history repository and schema migration coverage.
+
+### Changed
+
+- Updated episode watch actions to persist watch history and cached episode watch state in a single Dexie transaction.
+- Updated Mark Unwatched semantics to remove all watch history for the episode and clear its cached watch state.
+- Updated TV show deletion to remove related watch history before deleting episodes and media.
+- Updated test database cleanup to include the watch history store.
+
+### Quality
+
+- Added regression coverage for watch history ordering and latest-event retrieval.
+- Added transactional watch and unwatch integrity coverage.
+- Added missing-episode watch-state integrity coverage.
+- Added cascade deletion coverage for related watch history while preserving unrelated show data.
+- Expanded the automated data-layer suite to 28 tests across five test files.
+
 ## v2.0.0-alpha.7 — Data Layer Test Foundation
 
 ### Added

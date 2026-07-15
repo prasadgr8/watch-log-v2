@@ -254,3 +254,50 @@ Automated coverage includes:
 Season synchronization tests enforce an important data ownership rule: provider metadata may be refreshed from TMDB, but user-owned watch state must be preserved.
 
 The migration test verifies that legacy media, episodes, watched state, and settings survive the version 1 to version 2 schema upgrade and that the version 2 episode indexes are available.
+
+## Watch History
+
+Database schema version 3 introduces a dedicated `watchHistory` store.
+
+A watch history record represents a watch event for an episode:
+
+- `id` — generated local watch event identifier
+- `episodeId` — local episode identifier
+- `watchedAt` — timestamp of the watch event
+- `source` — event origin, currently `manual` or `import`
+- `createdAt` — timestamp when the event was persisted locally
+
+The watch history store uses the following indexes:
+
+- `episodeId`
+- `watchedAt`
+- `source`
+- `[episodeId+watchedAt]`
+
+### Hybrid Watch-State Model
+
+Watch Log V2 uses a hybrid watch-state model.
+
+`watchHistory` owns individual watch events and provides the historical event record. The `Episode` entity retains `watched` and `watchedAt` as cached current-state fields for efficient UI and aggregate queries.
+
+When an episode is marked watched, a manual watch history event is created and the episode cache is updated in the same Dexie transaction.
+
+When an episode is marked unwatched, all watch history events for that episode are removed and the episode cache is cleared in the same transaction. In the current application semantics, Mark Unwatched means that the episode is considered not watched.
+
+### Version 2 to Version 3 Migration
+
+The version 3 schema adds the `watchHistory` store.
+
+During upgrade from version 2, existing episodes with `watched` set to `true`, a defined `watchedAt`, and a persisted episode ID are backfilled into watch history.
+
+Each backfilled event preserves the existing episode watch timestamp and uses `manual` as its source. This is valid for pre-version-3 Watch Log V2 data because watch actions before the watch history foundation were manual application actions.
+
+Unwatched episodes are not backfilled.
+
+### Referential Integrity
+
+Watch-state changes are transactional across the `episodes` and `watchHistory` stores.
+
+TV show deletion is transactional across `media`, `episodes`, and `watchHistory`. Related episode IDs are resolved first, related watch history is deleted, then the episodes and media record are removed.
+
+This prevents orphan watch history records for deleted episodes while preserving data belonging to unrelated shows.

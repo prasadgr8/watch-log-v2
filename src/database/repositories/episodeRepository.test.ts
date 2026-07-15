@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import type { Episode } from "../../types";
 
+import { db } from "../db";
+
 import { episodeRepository } from "./episodeRepository";
 
 function createEpisode(overrides: Partial<Episode> = {}): Episode {
@@ -179,7 +181,7 @@ describe("episodeRepository", () => {
     });
   });
 
-  it("marks an episode as watched", async () => {
+  it("marks an episode as watched and creates a watch history event", async () => {
     const episodeId = await episodeRepository.add(createEpisode());
 
     const originalEpisode = await episodeRepository.getById(episodeId);
@@ -188,27 +190,73 @@ describe("episodeRepository", () => {
 
     const watchedEpisode = await episodeRepository.getById(episodeId);
 
+    const watchHistoryEvents = await db.watchHistory
+      .where("episodeId")
+      .equals(episodeId)
+      .toArray();
+
     expect(watchedEpisode?.watched).toBe(true);
     expect(watchedEpisode?.watchedAt).toBeInstanceOf(Date);
 
     expect(watchedEpisode?.updatedAt.getTime()).toBeGreaterThanOrEqual(
       originalEpisode?.updatedAt.getTime() ?? 0,
     );
+
+    expect(watchHistoryEvents).toHaveLength(1);
+
+    expect(watchHistoryEvents[0]).toMatchObject({
+      episodeId,
+      watchedAt: watchedEpisode?.watchedAt,
+      source: "manual",
+    });
+
+    expect(watchHistoryEvents[0]?.createdAt).toBeInstanceOf(Date);
   });
 
-  it("marks an episode as unwatched and clears watchedAt", async () => {
-    const episodeId = await episodeRepository.add(
-      createEpisode({
-        watched: true,
-        watchedAt: new Date("2026-07-10T18:30:00.000Z"),
-      }),
-    );
+  it("marks an episode as unwatched and removes its watch history", async () => {
+    const episodeId = await episodeRepository.add(createEpisode());
+
+    await episodeRepository.markWatched(episodeId);
+    await episodeRepository.markWatched(episodeId);
+
+    const watchHistoryBefore = await db.watchHistory
+      .where("episodeId")
+      .equals(episodeId)
+      .toArray();
+
+    expect(watchHistoryBefore).toHaveLength(2);
 
     await episodeRepository.markUnwatched(episodeId);
 
     const unwatchedEpisode = await episodeRepository.getById(episodeId);
 
+    const watchHistoryAfter = await db.watchHistory
+      .where("episodeId")
+      .equals(episodeId)
+      .toArray();
+
     expect(unwatchedEpisode?.watched).toBe(false);
     expect(unwatchedEpisode?.watchedAt).toBeUndefined();
+    expect(watchHistoryAfter).toHaveLength(0);
+  });
+
+  it("does not create watch history when marking a missing episode as watched", async () => {
+    await expect(episodeRepository.markWatched(999)).rejects.toThrow(
+      "Episode 999 was not found.",
+    );
+
+    const watchHistoryEvents = await db.watchHistory.toArray();
+
+    expect(watchHistoryEvents).toHaveLength(0);
+  });
+
+  it("rejects marking a missing episode as unwatched", async () => {
+    await expect(episodeRepository.markUnwatched(999)).rejects.toThrow(
+      "Episode 999 was not found.",
+    );
+
+    const watchHistoryEvents = await db.watchHistory.toArray();
+
+    expect(watchHistoryEvents).toHaveLength(0);
   });
 });
