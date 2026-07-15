@@ -96,6 +96,22 @@ Status: Completed
 - Watched episode Dashboard statistics
 - Watched runtime and watch-hour calculation
 
+## v2.0.0-alpha.7 — Data Layer Test Foundation
+
+Status: Complete
+
+- [x] Configure Vitest
+- [x] Configure fake IndexedDB test environment
+- [x] Add deterministic database cleanup between tests
+- [x] Test media repository persistence and queries
+- [x] Test media removal and episode cascade deletion
+- [x] Test episode season synchronization
+- [x] Test TMDB metadata refresh during episode re-synchronization
+- [x] Test preservation of local episode watch state
+- [x] Test watched and unwatched transitions
+- [x] Test settings repository operations
+- [x] Test IndexedDB schema upgrade from version 1 to version 2
+
 ## v2.0.0-beta.1 - Backup and Recovery
 
 Status: Planned

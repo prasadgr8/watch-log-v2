@@ -1,5 +1,25 @@
 # Changelog
 
+## v2.0.0-alpha.7 — Data Layer Test Foundation
+
+### Added
+
+- Added Vitest as the automated test runner.
+- Added fake-indexeddb for deterministic IndexedDB testing in Node.
+- Added isolated database cleanup before and after repository tests.
+- Added media repository coverage for persistence, filtering, updates, removal, and episode cascade deletion.
+- Added episode repository coverage for season synchronization, TMDB metadata refresh, watch-state preservation, and watched/unwatched transitions.
+- Added settings repository coverage for storage, retrieval, overwrite, missing keys, and removal.
+- Added IndexedDB schema migration coverage from version 1 to version 2.
+- Added `npm test` and `npm run test:watch` scripts.
+
+### Quality
+
+- Added 19 automated data-layer tests across four test suites.
+- Verified that TMDB episode metadata re-synchronization preserves local watch history.
+- Verified that deleting a TV show removes its related episodes without affecting episodes belonging to other shows.
+- Verified that version 1 media, episode watch state, and settings survive the version 2 schema upgrade.
+
 ## v2.0.0-alpha.6
 
 ### Episode and Season Tracking

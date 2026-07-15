@@ -232,3 +232,25 @@ Dashboard watch hours are calculated from the runtime metadata of watched episod
 Episodes without runtime metadata contribute zero minutes to the watched runtime total.
 
 Runtime minutes are converted to hours and displayed with one decimal place.
+
+## Automated Data Layer Testing
+
+The IndexedDB data layer is tested with Vitest and fake-indexeddb.
+
+Repository tests run against the shared Dexie database instance in a Node test environment backed by fake-indexeddb. The media, episodes, and settings stores are cleared before and after each test to provide deterministic test isolation.
+
+Automated coverage includes:
+
+- media persistence, retrieval, updates, and filtering
+- media removal and related episode cascade deletion
+- episode ordering by episode number
+- season episode synchronization
+- TMDB metadata refresh during re-synchronization
+- preservation of local episode identity and watch state during re-synchronization
+- watched and unwatched episode transitions
+- settings storage, retrieval, overwrite, and removal
+- IndexedDB schema migration from version 1 to version 2
+
+Season synchronization tests enforce an important data ownership rule: provider metadata may be refreshed from TMDB, but user-owned watch state must be preserved.
+
+The migration test verifies that legacy media, episodes, watched state, and settings survive the version 1 to version 2 schema upgrade and that the version 2 episode indexes are available.
