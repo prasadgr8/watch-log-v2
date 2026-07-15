@@ -1,5 +1,35 @@
 # Changelog
 
+## v2.0.0-alpha.9 — Continue Watching and Progress
+
+### Added
+
+- Added a derived Continue Watching service for eligible TV shows.
+- Added TV show episode progress calculation using synchronized regular episodes.
+- Added deterministic next-episode selection using season and episode order.
+- Added a Continue Watching section to the Dashboard.
+- Added watched episode counts, progress percentages, progress bars, and Up Next episode details.
+- Added navigation from Continue Watching cards to the existing TV show details page.
+- Added automated Continue Watching service coverage.
+
+### Changed
+
+- Continue Watching excludes Season 0 specials from progress and next-episode calculations.
+- Continue Watching excludes shows with no watched regular episodes.
+- Continue Watching excludes completed shows.
+- Continue Watching requires a valid cached watch timestamp for current watch activity.
+- Continue Watching items are ordered by most recent watch activity.
+
+### Quality
+
+- Added regression coverage for progress and next-episode calculation.
+- Added cross-season next-episode ordering coverage.
+- Added Season 0 exclusion coverage.
+- Added zero-progress and completed-show exclusion coverage.
+- Added missing watch timestamp integrity coverage.
+- Added independent multi-show progress and recent-activity ordering coverage.
+- Expanded the automated suite to 36 tests across six test files.
+
 ## v2.0.0-alpha.8 — Watch History Foundation
 
 ### Added

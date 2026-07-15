@@ -130,6 +130,25 @@ Status: Complete
 - [x] Cascade watch history deletion when a TV show is removed
 - [x] Add automated watch history and integrity coverage
 
+## v2.0.0-alpha.9 — Continue Watching and Progress
+
+Status: Complete
+
+- [x] Define a derived Continue Watching feature model
+- [x] Calculate TV show progress from synchronized regular episodes
+- [x] Exclude Season 0 specials from progress calculations
+- [x] Exclude shows with no watched regular episodes
+- [x] Exclude completed shows
+- [x] Select the next unwatched episode using season and episode order
+- [x] Derive recent watch activity from cached episode watch timestamps
+- [x] Order Continue Watching shows by most recent watch activity
+- [x] Add Continue Watching cards to the Dashboard
+- [x] Display watched and total episode counts
+- [x] Display progress percentage and progress bar
+- [x] Display the next episode code and title
+- [x] Navigate Continue Watching cards to TV show details
+- [x] Add automated Continue Watching service coverage
+
 ## v2.0.0-beta.1 - Backup and Recovery
 
 Status: Planned
