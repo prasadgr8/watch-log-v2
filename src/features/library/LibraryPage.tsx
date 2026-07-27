@@ -17,6 +17,7 @@ import type {
 
 import AddMediaForm from "./components/AddMediaForm";
 import MediaCard from "./components/MediaCard";
+import EditMediaModal from "./components/EditMediaModal";
 
 import {
   sortLibrary,
@@ -43,6 +44,8 @@ export default function LibraryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedMedia, setSelectedMedia] = useState<PersistedMedia | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [search, setSearch] = useState("");
 
 const [mediaType, setMediaType] =
@@ -143,18 +146,23 @@ const [sort, setSort] =
   }
 
   async function handleDelete(id: number): Promise<void> {
-    try {
-      setError(null);
+  try {
+    setError(null);
 
-      await mediaRepository.remove(id);
+    await mediaRepository.remove(id);
 
-      await loadMedia();
-    } catch (deleteError) {
-      console.error("Failed to delete media:", deleteError);
+    await loadMedia();
+  } catch (deleteError) {
+    console.error("Failed to delete media:", deleteError);
 
-      setError("Unable to delete this media item.");
-    }
+    setError("Unable to delete this media item.");
   }
+}
+
+function handleEdit(media: PersistedMedia): void {
+  setSelectedMedia(media);
+  setIsEditModalOpen(true);
+}
 
   return (
     <div className="space-y-8">
@@ -256,11 +264,24 @@ const [sort, setSort] =
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {visibleMedia.map((item) => (
-              <MediaCard key={item.id} media={item} onDelete={handleDelete} />
+              <MediaCard
+                key={item.id}
+                media={item}
+                onDelete={handleDelete}
+                onEdit={handleEdit}
+              />
             ))}
           </div>
         )}
       </section>
+       <EditMediaModal
+    media={selectedMedia}
+    isOpen={isEditModalOpen}
+    onClose={() => {
+      setIsEditModalOpen(false);
+      setSelectedMedia(null);
+    }}
+  />
     </div>
   );
 }

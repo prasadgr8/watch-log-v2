@@ -1,4 +1,4 @@
-import { Film, Trash2, Tv } from "lucide-react";
+import { Film, Pencil, Trash2, Tv } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import type { PersistedMedia } from "../../../types";
@@ -8,9 +8,14 @@ import { watchStatusOptions } from "../libraryOptions";
 interface MediaCardProps {
   media: PersistedMedia;
   onDelete: (id: number) => Promise<void>;
+  onEdit: (media: PersistedMedia) => void;
 }
 
-export default function MediaCard({ media, onDelete }: MediaCardProps) {
+export default function MediaCard({
+  media,
+  onDelete,
+  onEdit,
+}: MediaCardProps) {
   const statusLabel =
     watchStatusOptions.find((status) => status.value === media.userStatus)
       ?.label ?? media.userStatus;
@@ -50,14 +55,25 @@ export default function MediaCard({ media, onDelete }: MediaCardProps) {
           <div className="flex min-w-0 items-start gap-3">{mediaContent}</div>
         )}
 
-        <button
-          type="button"
-          onClick={() => void onDelete(media.id)}
-          aria-label={`Delete ${media.title}`}
-          className="rounded-lg p-2 text-slate-500 transition hover:bg-red-950 hover:text-red-400"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-2">
+  <button
+    type="button"
+    onClick={() => onEdit(media)}
+    aria-label={`Edit ${media.title}`}
+    className="rounded-lg p-2 text-slate-500 transition hover:bg-blue-950 hover:text-blue-400"
+  >
+    <Pencil className="h-4 w-4" />
+  </button>
+
+  <button
+    type="button"
+    onClick={() => void onDelete(media.id)}
+    aria-label={`Delete ${media.title}`}
+    className="rounded-lg p-2 text-slate-500 transition hover:bg-red-950 hover:text-red-400"
+  >
+    <Trash2 className="h-4 w-4" />
+  </button>
+</div>
       </div>
 
       <div className="mt-5">
