@@ -25,3 +25,11 @@ export const watchStatusOptions: {
     label: "Dropped",
   },
 ];
+export const librarySortOptions = [
+  { value: "recent", label: "Recently Added" },
+  { value: "title-asc", label: "Title (A–Z)" },
+  { value: "title-desc", label: "Title (Z–A)" },
+  { value: "year-desc", label: "Year (Newest)" },
+  { value: "year-asc", label: "Year (Oldest)" },
+  { value: "rating-desc", label: "Rating" },
+];
