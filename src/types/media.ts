@@ -15,6 +15,7 @@ export interface BaseMedia {
   rating?: number;
   createdAt: Date;
   updatedAt: Date;
+  notes?: string;
 }
 
 export interface TVShow extends BaseMedia {

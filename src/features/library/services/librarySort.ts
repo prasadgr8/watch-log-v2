@@ -1,4 +1,4 @@
-import type { Media } from "../../../database/models";
+import type { PersistedMedia  } from "../../../types/media";
 
 export type LibrarySort =
   | "recent"
@@ -9,9 +9,9 @@ export type LibrarySort =
   | "rating-desc";
 
 export function sortLibrary(
-  media: Media[],
+  media: PersistedMedia[],
   sort: LibrarySort,
-): Media[] {
+): PersistedMedia[] {
   const sorted = [...media];
 
   switch (sort) {
@@ -25,11 +25,9 @@ export function sortLibrary(
         b.title.localeCompare(a.title),
       );
 
-    case "year-desc":
-      return sorted.sort((a, b) => b.year - a.year);
-
-    case "year-asc":
-      return sorted.sort((a, b) => a.year - b.year);
+case "year-desc":
+case "year-asc":
+  return sorted;
 
     case "rating-desc":
       return sorted.sort(

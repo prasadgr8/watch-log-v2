@@ -1,17 +1,17 @@
-import type { Media, UserStatus } from "../../../types";
+import type { PersistedMedia, WatchStatus } from "../../../types/media";
 
 export type MediaTypeFilter = "all" | "tv" | "movie";
 
 export interface LibraryFilters {
   search: string;
   mediaType: MediaTypeFilter;
-  status: UserStatus | "all";
+  status: WatchStatus | "all";
 }
 
 export function filterLibrary(
-  media: Media[],
+  media: PersistedMedia[],
   filters: LibraryFilters,
-): Media[] {
+): PersistedMedia[] {
   let result = media;
 
   const search = filters.search.trim().toLowerCase();

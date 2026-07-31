@@ -157,11 +157,31 @@ const [sort, setSort] =
 
     setError("Unable to delete this media item.");
   }
+
 }
 
 function handleEdit(media: PersistedMedia): void {
   setSelectedMedia(media);
   setIsEditModalOpen(true);
+}
+async function handleSave(values: {
+  status: PersistedMedia["userStatus"];
+  rating: number;
+  notes: string;
+}): Promise<void> {
+  if (selectedMedia === null) {
+  return;
+}
+
+await mediaRepository.update(selectedMedia.id, {
+  userStatus: values.status,
+  rating: values.rating,
+  notes: values.notes,
+});
+
+await loadMedia();
+
+setSelectedMedia(null);
 }
 
   return (
@@ -275,13 +295,14 @@ function handleEdit(media: PersistedMedia): void {
         )}
       </section>
        <EditMediaModal
-    media={selectedMedia}
-    isOpen={isEditModalOpen}
-    onClose={() => {
-      setIsEditModalOpen(false);
-      setSelectedMedia(null);
-    }}
-  />
+  media={selectedMedia}
+  isOpen={isEditModalOpen}
+  onClose={() => {
+    setIsEditModalOpen(false);
+    setSelectedMedia(null);
+  }}
+  onSave={handleSave}
+/>
     </div>
   );
 }
