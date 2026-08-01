@@ -20,7 +20,7 @@ export default function Sidebar() {
     <aside className="w-64 bg-slate-900 border-r border-slate-800 p-5">
       <NavLink
         to="/"
-        className="mb-8 block text-2xl font-bold transition hover:text-blue-400"
+        className="mb-8 block text-2xl font-bold text-white transition-all duration-200 hover:scale-105 hover:text-blue-400"
       >
         📺 Watch Log
       </NavLink>
