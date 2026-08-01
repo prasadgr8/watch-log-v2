@@ -18,7 +18,12 @@ const menu = [
 export default function Sidebar() {
   return (
     <aside className="w-64 bg-slate-900 border-r border-slate-800 p-5">
-      <h1 className="text-2xl font-bold mb-8">📺 Watch Log</h1>
+      <NavLink
+        to="/"
+        className="mb-8 block text-2xl font-bold transition hover:text-blue-400"
+      >
+        📺 Watch Log
+      </NavLink>
 
       <nav className="space-y-2">
         {menu.map((item) => {

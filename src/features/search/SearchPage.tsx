@@ -2,7 +2,7 @@ import { type FormEventHandler, useState } from "react";
 import { Search } from "lucide-react";
 
 import { mediaRepository } from "../../database/repositories";
-
+import { libraryService } from "../library/services/libraryService";
 import {
   mapTmdbResultToMedia,
   tmdbSearchService,
@@ -108,7 +108,7 @@ export default function SearchPage() {
 
       const media = mapTmdbResultToMedia(result);
 
-      await mediaRepository.add(media);
+      await libraryService.addMedia(media);
 
       setLibraryKeys((currentKeys) => {
         const nextKeys = new Set(currentKeys);
