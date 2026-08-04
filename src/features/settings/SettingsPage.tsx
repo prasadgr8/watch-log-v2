@@ -1,3 +1,4 @@
+import { readTvTimeZip } from "../import/services/tvTimeZipReader";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -5,6 +6,7 @@ import {
   FileJson,
   RotateCcw,
   Upload,
+  Database,
 } from "lucide-react";
 import { ChangeEvent, useRef, useState } from "react";
 
@@ -71,7 +73,7 @@ function getErrorMessage(error: unknown): string {
 
 export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const tvTimeInputRef = useRef<HTMLInputElement>(null);
   const [selectedBackup, setSelectedBackup] = useState<SelectedBackup | null>(
     null,
   );
@@ -81,6 +83,7 @@ export default function SettingsPage() {
 
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [tvTimeFileName, setTvTimeFileName] = useState<string | null>(null);
 
   async function handleExportBackup(): Promise<void> {
     try {
@@ -160,7 +163,32 @@ export default function SettingsPage() {
     setSelectedBackup(null);
     setRestoreError(null);
   }
+  function handleChooseTvTimeExport(): void {
+    tvTimeInputRef.current?.click();
+  }
 
+  async function handleTvTimeFileSelected(
+    event: ChangeEvent<HTMLInputElement>,
+  ): Promise<void> {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    setTvTimeFileName(file.name);
+
+    try {
+      const files = await readTvTimeZip(file);
+
+      console.log("TV Time ZIP contains:");
+      console.table(files);
+    } catch (error) {
+      console.error("Failed to read TV Time ZIP:", error);
+    } finally {
+      event.target.value = "";
+    }
+  }
   return (
     <div className="space-y-10">
       <div>
@@ -363,6 +391,47 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+      <section className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+        <div className="flex items-start gap-4">
+          <div className="rounded-lg bg-purple-600/15 p-3 text-purple-400">
+            <Database className="h-6 w-6" />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <h2 className="text-xl font-semibold text-white">
+              Import from TV Time
+            </h2>
+
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+              Import your TV Time GDPR export and migrate your library, watch
+              progress, and ratings into Watch Log.
+            </p>
+
+            <input
+              ref={tvTimeInputRef}
+              type="file"
+              accept=".zip,.csv"
+              onChange={handleTvTimeFileSelected}
+              className="hidden"
+            />
+
+            <button
+              type="button"
+              onClick={handleChooseTvTimeExport}
+              className="mt-5 inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm font-medium text-slate-100 transition hover:bg-slate-700"
+            >
+              <Database className="h-4 w-4" />
+              Choose TV Time Export
+            </button>
+            {tvTimeFileName && (
+              <div className="mt-4 flex items-center gap-2 text-sm text-emerald-400">
+                <CheckCircle2 className="h-4 w-4" />
+                <span>{tvTimeFileName}</span>
               </div>
             )}
           </div>
