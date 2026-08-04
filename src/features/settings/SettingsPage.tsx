@@ -1,4 +1,8 @@
-import { readTvTimeZip } from "../import/services/tvTimeZipReader";
+import {
+  readTvTimeZip,
+  // type TvTimeZipData,
+} from "../import/services/tvTimeZipReader";
+
 import {
   validateTvTimeFiles,
   type ValidationResult,
@@ -90,6 +94,7 @@ export default function SettingsPage() {
   const [tvTimeFileName, setTvTimeFileName] = useState<string | null>(null);
   const [validationResult, setValidationResult] =
     useState<ValidationResult | null>(null);
+  //const [tvTimeZip, setTvTimeZip] = useState<TvTimeZipData | null>(null);
   async function handleExportBackup(): Promise<void> {
     try {
       setIsExporting(true);
@@ -184,9 +189,13 @@ export default function SettingsPage() {
     setTvTimeFileName(file.name);
 
     try {
-      const files = await readTvTimeZip(file);
+      const zipData = await readTvTimeZip(file);
 
-      const result = validateTvTimeFiles(files);
+      const result = validateTvTimeFiles(zipData.fileNames);
+
+      setValidationResult(result);
+
+      console.log(zipData);
 
       setValidationResult(result);
     } catch (error) {

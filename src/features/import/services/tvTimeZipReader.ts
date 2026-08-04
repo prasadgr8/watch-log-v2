@@ -1,7 +1,15 @@
 import JSZip from "jszip";
 
-export async function readTvTimeZip(file: File) {
+export interface TvTimeZipData {
+  zip: JSZip;
+  fileNames: string[];
+}
+
+export async function readTvTimeZip(file: File): Promise<TvTimeZipData> {
   const zip = await JSZip.loadAsync(file);
 
-  return Object.keys(zip.files);
+  return {
+    zip,
+    fileNames: Object.keys(zip.files),
+  };
 }
