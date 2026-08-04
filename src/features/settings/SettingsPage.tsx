@@ -1,5 +1,9 @@
 import { readTvTimeZip } from "../import/services/tvTimeZipReader";
 import {
+  validateTvTimeFiles,
+  type ValidationResult,
+} from "../import/services/tvTimeValidator";
+import {
   AlertTriangle,
   CheckCircle2,
   Download,
@@ -84,7 +88,8 @@ export default function SettingsPage() {
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [tvTimeFileName, setTvTimeFileName] = useState<string | null>(null);
-
+  const [validationResult, setValidationResult] =
+    useState<ValidationResult | null>(null);
   async function handleExportBackup(): Promise<void> {
     try {
       setIsExporting(true);
@@ -181,8 +186,9 @@ export default function SettingsPage() {
     try {
       const files = await readTvTimeZip(file);
 
-      console.log("TV Time ZIP contains:");
-      console.table(files);
+      const result = validateTvTimeFiles(files);
+
+      setValidationResult(result);
     } catch (error) {
       console.error("Failed to read TV Time ZIP:", error);
     } finally {
@@ -432,6 +438,35 @@ export default function SettingsPage() {
               <div className="mt-4 flex items-center gap-2 text-sm text-emerald-400">
                 <CheckCircle2 className="h-4 w-4" />
                 <span>{tvTimeFileName}</span>
+              </div>
+            )}
+            {validationResult && (
+              <div className="mt-5 rounded-lg border border-slate-800 bg-slate-950/60 p-4">
+                <h3 className="mb-3 font-medium text-white">
+                  TV Time Export Validation
+                </h3>
+
+                <div className="space-y-2">
+                  {validationResult.found.map((file) => (
+                    <div
+                      key={file}
+                      className="flex items-center gap-2 text-emerald-400"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span>{file}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {validationResult.valid ? (
+                  <p className="mt-4 text-sm text-emerald-400">
+                    Ready to import.
+                  </p>
+                ) : (
+                  <p className="mt-4 text-sm text-red-400">
+                    Missing required files.
+                  </p>
+                )}
               </div>
             )}
           </div>
