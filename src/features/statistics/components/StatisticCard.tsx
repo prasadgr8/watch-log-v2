@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 interface StatisticCardProps {
   title: string;
-  value: number;
+  value: number | string;
+  suffix?: string;
   icon?: ReactNode;
   iconClassName?: string;
 }
@@ -9,6 +10,7 @@ interface StatisticCardProps {
 export default function StatisticCard({
   title,
   value,
+  suffix,
   icon,
   iconClassName = "text-slate-400",
 }: StatisticCardProps) {
@@ -20,7 +22,15 @@ export default function StatisticCard({
             {title}
           </p>
 
-          <h2 className="mt-3 text-4xl font-bold text-white">{value}</h2>
+          <h2 className="mt-3 text-4xl font-bold text-white">
+            {value}
+
+            {suffix && (
+              <span className="ml-1 text-lg font-medium text-slate-400">
+                {suffix}
+              </span>
+            )}
+          </h2>
         </div>
 
         {icon && <div className={iconClassName}>{icon}</div>}
