@@ -1,13 +1,18 @@
 import { mediaRepository } from "../../../database/repositories";
+import type { WatchLogExport } from "../types/export";
 
 export const exportService = {
-  async exportLibrary() {
+  async exportLibrary(): Promise<WatchLogExport> {
     const media = await mediaRepository.getAll();
 
     return {
-      version: "2.0.0",
+      application: "Watch Log V2",
+      formatVersion: 1,
       exportedAt: new Date().toISOString(),
-      media,
+
+      data: {
+        media,
+      },
     };
   },
 };
