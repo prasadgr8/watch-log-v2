@@ -1,3 +1,6 @@
+import { parseCsvFromZip } from "../import/services/tvTimeCsvParser";
+import type { FollowedTvShow } from "../import/types/tvTimeModels";
+
 import {
   readTvTimeZip,
   // type TvTimeZipData,
@@ -94,6 +97,7 @@ export default function SettingsPage() {
   const [tvTimeFileName, setTvTimeFileName] = useState<string | null>(null);
   const [validationResult, setValidationResult] =
     useState<ValidationResult | null>(null);
+  const [tvShowCount, setTvShowCount] = useState<number | null>(null);
   //const [tvTimeZip, setTvTimeZip] = useState<TvTimeZipData | null>(null);
   async function handleExportBackup(): Promise<void> {
     try {
@@ -190,20 +194,40 @@ export default function SettingsPage() {
 
     try {
       const zipData = await readTvTimeZip(file);
-
+      console.table(
+        Object.values(zipData.zip.files).map((f) => ({
+          name: f.name,
+          dir: f.dir,
+        })),
+      );
       const result = validateTvTimeFiles(zipData.fileNames);
 
       setValidationResult(result);
+
+      if (result.valid) {
+        const shows = await parseCsvFromZip<FollowedTvShow>(
+          zipData.zip,
+          "followed_tv_show.csv",
+        );
+        console.log("Shows:", shows);
+        console.log("Shows length:", shows.length);
+
+        setTvShowCount(shows.length);
+        console.log("TV Shows parsed:", shows.length);
+        console.table(shows.slice(0, 5));
+      }
 
       console.log(zipData);
 
       setValidationResult(result);
     } catch (error) {
-      console.error("Failed to read TV Time ZIP:", error);
+      //console.error("Failed to read TV Time ZIP:", error);
+      console.error(error);
     } finally {
       event.target.value = "";
     }
   }
+  console.log("tvShowCount state:", tvShowCount);
   return (
     <div className="space-y-10">
       <div>
@@ -468,9 +492,23 @@ export default function SettingsPage() {
                 </div>
 
                 {validationResult.valid ? (
-                  <p className="mt-4 text-sm text-emerald-400">
-                    Ready to import.
-                  </p>
+                  <>
+                    {tvShowCount !== null && (
+                      <div className="mt-4 rounded-lg border border-slate-800 bg-slate-900/60 p-3">
+                        <div className="text-sm text-slate-400">
+                          TV Shows Detected
+                        </div>
+
+                        <div className="mt-1 text-2xl font-bold text-white">
+                          {tvShowCount}
+                        </div>
+                      </div>
+                    )}
+
+                    <p className="mt-4 text-sm text-emerald-400">
+                      Ready to import.
+                    </p>
+                  </>
                 ) : (
                   <p className="mt-4 text-sm text-red-400">
                     Missing required files.

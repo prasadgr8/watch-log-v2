@@ -5,13 +5,19 @@ export async function parseCsvFromZip<T>(
   zip: JSZip,
   fileName: string,
 ): Promise<T[]> {
-  const file = zip.file(fileName);
+  console.log("Looking for:", fileName);
 
-  if (!file) {
+  const zipEntry = Object.values(zip.files).find(
+    (entry) => !entry.dir && entry.name.endsWith(fileName),
+  );
+
+  console.log("Matched entry:", zipEntry);
+
+  if (!zipEntry) {
     throw new Error(`CSV file not found: ${fileName}`);
   }
 
-  const csvText = await file.async("text");
+  const csvText = await zipEntry.async("text");
 
   const result = Papa.parse<T>(csvText, {
     header: true,
