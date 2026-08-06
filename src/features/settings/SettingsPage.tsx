@@ -1,5 +1,11 @@
 import { parseCsvFromZip } from "../import/services/tvTimeCsvParser";
-import type { FollowedTvShow } from "../import/types/tvTimeModels";
+
+import type {
+  FollowedTvShow,
+  UserTvShowData,
+  SeenEpisodeLatest,
+  ShowSeenEpisodeLatest,
+} from "../import/types/tvTimeModels";
 //import type { ImportPreview } from "../import/types/importPreview";
 import {
   readTvTimeZip,
@@ -99,6 +105,7 @@ export default function SettingsPage() {
     useState<ValidationResult | null>(null);
 
   const [tvShowCount, setTvShowCount] = useState<number | null>(null);
+  const [progressCount, setProgressCount] = useState<number | null>(null);
   //const [tvTimeZip, setTvTimeZip] = useState<TvTimeZipData | null>(null);
   async function handleExportBackup(): Promise<void> {
     try {
@@ -213,15 +220,39 @@ export default function SettingsPage() {
 
         setTvShowCount(shows.length);
 
-        const progress = await parseCsvFromZip<Record<string, string>>(
+        const progress = await parseCsvFromZip<UserTvShowData>(
           zipData.zip,
           "user_tv_show_data.csv",
         );
+        const latestEpisodes = await parseCsvFromZip<SeenEpisodeLatest>(
+          zipData.zip,
+          "seen_episode_latest.csv",
+        );
+        const showLatest = await parseCsvFromZip<ShowSeenEpisodeLatest>(
+          zipData.zip,
+          "show_seen_episode_latest.csv",
+        );
 
-        console.log("Progress records:", progress.length);
+        console.log("Show latest records:", showLatest.length);
+
+        if (showLatest.length > 0) {
+          console.log("First show latest:", showLatest[0]);
+        }
+        console.log("Latest episode records:", latestEpisodes.length);
+
+        if (latestEpisodes.length > 0) {
+          console.log("First latest episode:", latestEpisodes[0]);
+        }
+
+        setProgressCount(progress.length);
+        const followedShows = progress.filter(
+          (item) => item.is_followed === "1",
+        );
+
+        console.log("Followed shows:", followedShows.length);
 
         if (progress.length > 0) {
-          console.log("First progress record:", progress[0]);
+          console.log("User TV Show Data Columns:", Object.keys(progress[0]));
         }
       }
 
@@ -503,12 +534,26 @@ export default function SettingsPage() {
                   <>
                     {tvShowCount !== null && (
                       <div className="mt-4 rounded-lg border border-slate-800 bg-slate-900/60 p-3">
-                        <div className="text-sm text-slate-400">
-                          TV Shows Detected
-                        </div>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div>
+                            <div className="text-sm text-slate-400">
+                              TV Shows
+                            </div>
 
-                        <div className="mt-1 text-2xl font-bold text-white">
-                          {tvShowCount}
+                            <div className="mt-1 text-2xl font-bold text-white">
+                              {tvShowCount}
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="text-sm text-slate-400">
+                              TV Show Data
+                            </div>
+
+                            <div className="mt-1 text-2xl font-bold text-white">
+                              {progressCount ?? "-"}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )}
