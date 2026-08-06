@@ -1,6 +1,6 @@
 import { parseCsvFromZip } from "../import/services/tvTimeCsvParser";
 import type { FollowedTvShow } from "../import/types/tvTimeModels";
-
+//import type { ImportPreview } from "../import/types/importPreview";
 import {
   readTvTimeZip,
   // type TvTimeZipData,
@@ -97,6 +97,7 @@ export default function SettingsPage() {
   const [tvTimeFileName, setTvTimeFileName] = useState<string | null>(null);
   const [validationResult, setValidationResult] =
     useState<ValidationResult | null>(null);
+
   const [tvShowCount, setTvShowCount] = useState<number | null>(null);
   //const [tvTimeZip, setTvTimeZip] = useState<TvTimeZipData | null>(null);
   async function handleExportBackup(): Promise<void> {
@@ -194,12 +195,12 @@ export default function SettingsPage() {
 
     try {
       const zipData = await readTvTimeZip(file);
-      console.table(
+      /*console.table(
         Object.values(zipData.zip.files).map((f) => ({
           name: f.name,
           dir: f.dir,
         })),
-      );
+      );*/
       const result = validateTvTimeFiles(zipData.fileNames);
 
       setValidationResult(result);
@@ -209,15 +210,22 @@ export default function SettingsPage() {
           zipData.zip,
           "followed_tv_show.csv",
         );
-        console.log("Shows:", shows);
-        console.log("Shows length:", shows.length);
 
         setTvShowCount(shows.length);
-        console.log("TV Shows parsed:", shows.length);
-        console.table(shows.slice(0, 5));
+
+        const progress = await parseCsvFromZip<Record<string, string>>(
+          zipData.zip,
+          "user_tv_show_data.csv",
+        );
+
+        console.log("Progress records:", progress.length);
+
+        if (progress.length > 0) {
+          console.log("First progress record:", progress[0]);
+        }
       }
 
-      console.log(zipData);
+      //console.log(zipData);
 
       setValidationResult(result);
     } catch (error) {
@@ -227,7 +235,7 @@ export default function SettingsPage() {
       event.target.value = "";
     }
   }
-  console.log("tvShowCount state:", tvShowCount);
+  //console.log("tvShowCount state:", tvShowCount);
   return (
     <div className="space-y-10">
       <div>
@@ -447,14 +455,14 @@ export default function SettingsPage() {
             </h2>
 
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-              Import your TV Time GDPR export and migrate your library, watch
-              progress, and ratings into Watch Log.
+              Select your TV Time GDPR ZIP export. Watch Log will validate the
+              archive and import your library, watch progress, and ratings.
             </p>
 
             <input
               ref={tvTimeInputRef}
               type="file"
-              accept=".zip,.csv"
+              accept=".zip"
               onChange={handleTvTimeFileSelected}
               className="hidden"
             />
@@ -465,7 +473,7 @@ export default function SettingsPage() {
               className="mt-5 inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm font-medium text-slate-100 transition hover:bg-slate-700"
             >
               <Database className="h-4 w-4" />
-              Choose TV Time Export
+              Choose TV Time ZIP
             </button>
             {tvTimeFileName && (
               <div className="mt-4 flex items-center gap-2 text-sm text-emerald-400">
