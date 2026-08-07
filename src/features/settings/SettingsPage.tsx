@@ -1,5 +1,7 @@
 import { parseCsvFromZip } from "../import/services/tvTimeCsvParser";
-
+//import { buildTvTimeImportPreview } from "../import/services/tvTimeImportService";
+import { buildImportCandidates } from "../import/services/tvTimeCandidateBuilder";
+import { findBestTvdbMatch } from "../import/services/tvdbMatcher";
 import type {
   FollowedTvShow,
   UserTvShowData,
@@ -224,6 +226,25 @@ export default function SettingsPage() {
           zipData.zip,
           "user_tv_show_data.csv",
         );
+        const candidates = buildImportCandidates(shows, progress);
+        let imported = 0;
+        let failed = 0;
+        for (const candidate of candidates) {
+          console.log(`Importing: ${candidate.title}`);
+          try {
+            await findBestTvdbMatch(candidate);
+            imported++;
+          } catch (error) {
+            failed++;
+            console.error(`Failed to import: ${candidate.title}`, error);
+          }
+        }
+        console.log("Import Complete");
+        console.log("Imported:", imported);
+        console.log("Failed:", failed);
+
+        console.log("Import Candidates:", candidates.length);
+        console.table(candidates.slice(0, 5));
         const latestEpisodes = await parseCsvFromZip<SeenEpisodeLatest>(
           zipData.zip,
           "seen_episode_latest.csv",
@@ -232,7 +253,16 @@ export default function SettingsPage() {
           zipData.zip,
           "show_seen_episode_latest.csv",
         );
+        const ratings = await parseCsvFromZip<Record<string, string>>(
+          zipData.zip,
+          "ratings-v2-prod-votes.csv",
+        );
 
+        console.log("Ratings records:", ratings.length);
+
+        if (ratings.length > 0) {
+          console.log("First rating:", ratings[0]);
+        }
         console.log("Show latest records:", showLatest.length);
 
         if (showLatest.length > 0) {
