@@ -1,26 +1,9 @@
-import { parseCsvFromZip } from "../import/services/tvTimeCsvParser";
-//import { buildTvTimeImportPreview } from "../import/services/tvTimeImportService";
-import { buildImportCandidates } from "../import/services/tvTimeCandidateBuilder";
-import { findBestTvdbMatch } from "../import/services/tvdbMatcher";
-import { synchronizeTvTimeShowEpisodes } from "../import/services/tvTimeEpisodeImporter";
-import { episodeRepository } from "../../database/repositories";
-import type {
-  FollowedTvShow,
-  UserTvShowData,
-  SeenEpisodeLatest,
-  ShowSeenEpisodeLatest,
-  SeenEpisodeSource,
-} from "../import/types/tvTimeModels";
-//import type { ImportPreview } from "../import/types/importPreview";
 import {
-  readTvTimeZip,
-  // type TvTimeZipData,
-} from "../import/services/tvTimeZipReader";
-
-import {
-  validateTvTimeFiles,
-  type ValidationResult,
-} from "../import/services/tvTimeValidator";
+  buildTvTimeImportPreview,
+  executeTvTimeImport,
+  type TvTimeImportResult,
+} from "../import/services/tvTimeImportService";
+import type { ValidationResult } from "../import/services/tvTimeValidator";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -111,6 +94,10 @@ export default function SettingsPage() {
 
   const [tvShowCount, setTvShowCount] = useState<number | null>(null);
   const [progressCount, setProgressCount] = useState<number | null>(null);
+  const [tvTimeImportFile, setTvTimeImportFile] = useState<File | null>(null);
+  const [isTvTimeImporting, setIsTvTimeImporting] = useState(false);
+  const [tvTimeImportResult, setTvTimeImportResult] =
+    useState<TvTimeImportResult | null>(null);
   //const [tvTimeZip, setTvTimeZip] = useState<TvTimeZipData | null>(null);
   async function handleExportBackup(): Promise<void> {
     try {
@@ -206,278 +193,43 @@ export default function SettingsPage() {
     setTvTimeFileName(file.name);
 
     try {
-      const zipData = await readTvTimeZip(file);
-      /*console.table(
-        Object.values(zipData.zip.files).map((f) => ({
-          name: f.name,
-          dir: f.dir,
-        })),
-      );*/
-      const result = validateTvTimeFiles(zipData.fileNames);
+      const preview = await buildTvTimeImportPreview(file);
 
-      setValidationResult(result);
+      setValidationResult(preview.validation);
 
-      if (result.valid) {
-        const shows = await parseCsvFromZip<FollowedTvShow>(
-          zipData.zip,
-          "followed_tv_show.csv",
-        );
-
-        setTvShowCount(shows.length);
-
-        const progress = await parseCsvFromZip<UserTvShowData>(
-          zipData.zip,
-          "user_tv_show_data.csv",
-        );
-        const candidates = buildImportCandidates(shows, progress);
-        console.log(
-          "Falling Skies candidate:",
-          candidates.find(
-            (candidate) => candidate.title.toLowerCase() === "falling skies",
-          ),
-        );
-        //let imported = 0;
-        //let failed = 0;
-        let imported = 0;
-        let skipped = 0;
-        let failed = 0;
-        /*for (const candidate of candidates) {
-          console.log(`Importing: ${candidate.title}`);
-          try {
-            await findBestTvdbMatch(candidate);
-            imported++;
-          } catch (error) {
-            failed++;
-            console.error(`Failed to import: ${candidate.title}`, error);
-          }
-        }*/
-        const mediaByTitle = new Map<
-          string,
-          NonNullable<Awaited<ReturnType<typeof findBestTvdbMatch>>>["media"]
-        >();
-        for (const candidate of candidates) {
-          console.log(`Importing: ${candidate.title}`);
-
-          try {
-            const result = await findBestTvdbMatch(candidate);
-            if (result?.media) {
-              mediaByTitle.set(candidate.title, result.media);
-            }
-
-            if (
-              result?.media &&
-              result.media.id !== undefined &&
-              result.media.tmdbId !== undefined &&
-              result.media.mediaType === "tv"
-            ) {
-              const episodeCount = await synchronizeTvTimeShowEpisodes(
-                result.media.id,
-                result.media.tmdbId,
-              );
-
-              console.log(
-                `Synchronized ${episodeCount} episodes: ${result.media.title}`,
-              );
-            }
-
-            if (result?.status === "imported") {
-              imported++;
-            } else if (result?.status === "skipped") {
-              skipped++;
-            }
-          } catch (error) {
-            failed++;
-
-            console.error(`Failed to import: ${candidate.title}`, error);
-          }
-        }
-        console.log("Import Complete");
-        console.log("Imported:", imported);
-        console.log("Failed:", failed);
-        console.log("Skipped:", skipped);
-
-        console.log("Import Candidates:", candidates.length);
-        console.table(candidates.slice(0, 5));
-        const latestEpisodes = await parseCsvFromZip<SeenEpisodeLatest>(
-          zipData.zip,
-          "seen_episode_latest.csv",
-        );
-        const seenEpisodes = await parseCsvFromZip<SeenEpisodeSource>(
-          zipData.zip,
-          "seen_episode_source.csv",
-        );
-        const firstSeenEpisode = seenEpisodes[0];
-        /*if (firstSeenEpisode) {
-          const fallingSkiesMedia = await mediaRepository.getByTmdbId(
-            34967,
-            "tv",
-          );
-
-          if (!fallingSkiesMedia?.id) {
-            throw new Error("Falling Skies Media was not found.");
-          }
-
-          const episode = await episodeRepository.getByShowSeasonAndEpisode(
-            fallingSkiesMedia.id,
-            Number(firstSeenEpisode.episode_season_number),
-            Number(firstSeenEpisode.episode_number),
-          );
-
-          if (!episode) {
-            throw new Error(
-              `Episode not found: ${firstSeenEpisode.tv_show_name} S${firstSeenEpisode.episode_season_number}E${firstSeenEpisode.episode_number}`,
-            );
-          }
-
-          const watchedAt = new Date(
-            firstSeenEpisode.created_at.replace(" ", "T"),
-          );
-
-          if (episode.id === undefined) {
-            throw new Error("Matched episode does not have a persisted ID.");
-          }
-
-          await episodeRepository.markWatchedFromImport(episode.id, watchedAt);
-
-          console.log("Imported watched episode:", {
-            title: episode.title,
-            season: episode.seasonNumber,
-            episode: episode.episodeNumber,
-            watchedAt,
-          });
-        } */
-        console.log("First TV Time seen episode:", firstSeenEpisode);
-
-        console.log("Seen episode records:", seenEpisodes.length);
-        let importedWatchedEpisodes = 0;
-        let skippedWatchedEpisodes = 0;
-        let failedWatchedEpisodes = 0;
-
-        for (const seenEpisode of seenEpisodes) {
-          try {
-            const media = mediaByTitle.get(seenEpisode.tv_show_name);
-
-            if (!media?.id) {
-              skippedWatchedEpisodes++;
-
-              console.warn(
-                "No Media found for TV Time episode:",
-                seenEpisode.tv_show_name,
-                `S${seenEpisode.episode_season_number}E${seenEpisode.episode_number}`,
-              );
-
-              continue;
-            }
-
-            const episode = await episodeRepository.getByShowSeasonAndEpisode(
-              media.id,
-              Number(seenEpisode.episode_season_number),
-              Number(seenEpisode.episode_number),
-            );
-
-            if (!episode) {
-              skippedWatchedEpisodes++;
-
-              console.warn(
-                "No Watch Log episode found:",
-                seenEpisode.tv_show_name,
-                `S${seenEpisode.episode_season_number}E${seenEpisode.episode_number}`,
-              );
-
-              continue;
-            }
-
-            if (episode.id === undefined) {
-              throw new Error(
-                `Episode has no persisted ID: ${seenEpisode.tv_show_name} S${seenEpisode.episode_season_number}E${seenEpisode.episode_number}`,
-              );
-            }
-
-            const watchedAt = new Date(
-              seenEpisode.created_at.replace(" ", "T"),
-            );
-
-            const wasImported = await episodeRepository.markWatchedFromImport(
-              episode.id,
-              watchedAt,
-            );
-
-            if (wasImported) {
-              importedWatchedEpisodes++;
-            } else {
-              skippedWatchedEpisodes++;
-            }
-
-            console.log(
-              "Imported watched episode:",
-              `${seenEpisode.tv_show_name} S${seenEpisode.episode_season_number}E${seenEpisode.episode_number}`,
-            );
-          } catch (error) {
-            failedWatchedEpisodes++;
-
-            console.error(
-              `Failed watched episode import: ${seenEpisode.tv_show_name} S${seenEpisode.episode_season_number}E${seenEpisode.episode_number}`,
-              error,
-            );
-          }
-        }
-
-        console.log("Watched Episode Import Complete");
-        console.log("Watched Episodes Imported:", importedWatchedEpisodes);
-        console.log("Watched Episodes Skipped:", skippedWatchedEpisodes);
-        console.log("Watched Episodes Failed:", failedWatchedEpisodes);
-
-        if (seenEpisodes.length > 0) {
-          console.log("First seen episode:", seenEpisodes[0]);
-        }
-        const showLatest = await parseCsvFromZip<ShowSeenEpisodeLatest>(
-          zipData.zip,
-          "show_seen_episode_latest.csv",
-        );
-        const ratings = await parseCsvFromZip<Record<string, string>>(
-          zipData.zip,
-          "ratings-v2-prod-votes.csv",
-        );
-
-        console.log("Ratings records:", ratings.length);
-
-        if (ratings.length > 0) {
-          console.log("First rating:", ratings[0]);
-        }
-        console.log("Show latest records:", showLatest.length);
-
-        if (showLatest.length > 0) {
-          console.log("First show latest:", showLatest[0]);
-        }
-        console.log("Latest episode records:", latestEpisodes.length);
-
-        if (latestEpisodes.length > 0) {
-          console.log("First latest episode:", latestEpisodes[0]);
-        }
-
-        setProgressCount(progress.length);
-        const followedShows = progress.filter(
-          (item) => item.is_followed === "1",
-        );
-
-        console.log("Followed shows:", followedShows.length);
-
-        if (progress.length > 0) {
-          console.log("User TV Show Data Columns:", Object.keys(progress[0]));
-        }
+      if (!preview.valid) {
+        setTvShowCount(null);
+        setProgressCount(null);
+        return;
       }
 
-      //console.log(zipData);
-
-      setValidationResult(result);
+      setTvShowCount(preview.tvShows);
+      setProgressCount(preview.tvShowData);
+      setTvTimeImportFile(file);
     } catch (error) {
-      //console.error("Failed to read TV Time ZIP:", error);
-      console.error(error);
+      console.error("Failed to preview TV Time export:", error);
     } finally {
       event.target.value = "";
     }
   }
-  //console.log("tvShowCount state:", tvShowCount);
+  async function handleTvTimeImport(): Promise<void> {
+    if (!tvTimeImportFile) {
+      return;
+    }
+
+    setIsTvTimeImporting(true);
+
+    try {
+      const result = await executeTvTimeImport(tvTimeImportFile);
+
+      setTvTimeImportResult(result);
+      setTvTimeImportFile(null);
+    } catch (error) {
+      console.error("Failed to import TV Time export:", error);
+    } finally {
+      setIsTvTimeImporting(false);
+    }
+  }
   return (
     <div className="space-y-10">
       <div>
@@ -769,9 +521,83 @@ export default function SettingsPage() {
                       </div>
                     )}
 
-                    <p className="mt-4 text-sm text-emerald-400">
-                      Ready to import.
-                    </p>
+                    <div className="mt-4 flex items-center gap-3">
+                      <p className="text-sm text-emerald-400">
+                        Ready to import.
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={handleTvTimeImport}
+                        disabled={!tvTimeImportFile || isTvTimeImporting}
+                        className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isTvTimeImporting ? "Importing..." : "Import"}
+                      </button>
+                    </div>
+                    {tvTimeImportResult && (
+                      <div className="mt-5 rounded-lg border border-slate-800 bg-slate-900/60 p-4">
+                        <h3 className="font-medium text-white">
+                          Import Complete
+                        </h3>
+
+                        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                          <div>
+                            <div className="text-xs text-slate-400">
+                              Shows imported
+                            </div>
+                            <div className="text-xl font-semibold text-white">
+                              {tvTimeImportResult.importedShows}
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="text-xs text-slate-400">
+                              Shows skipped
+                            </div>
+                            <div className="text-xl font-semibold text-white">
+                              {tvTimeImportResult.skippedShows}
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="text-xs text-slate-400">
+                              Shows failed
+                            </div>
+                            <div className="text-xl font-semibold text-white">
+                              {tvTimeImportResult.failedShows}
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="text-xs text-slate-400">
+                              Watched episodes imported
+                            </div>
+                            <div className="text-xl font-semibold text-white">
+                              {tvTimeImportResult.importedWatchedEpisodes}
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="text-xs text-slate-400">
+                              Watched episodes skipped
+                            </div>
+                            <div className="text-xl font-semibold text-white">
+                              {tvTimeImportResult.skippedWatchedEpisodes}
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="text-xs text-slate-400">
+                              Watched episodes failed
+                            </div>
+                            <div className="text-xl font-semibold text-white">
+                              {tvTimeImportResult.failedWatchedEpisodes}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <p className="mt-4 text-sm text-red-400">

@@ -3,6 +3,7 @@ const REQUIRED_FILES = [
   "user_tv_show_data.csv",
   "seen_episode_latest.csv",
   "show_seen_episode_latest.csv",
+  "seen_episode_source.csv",
 ] as const;
 
 export interface ValidationResult {
