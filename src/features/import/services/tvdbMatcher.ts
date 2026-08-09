@@ -2,6 +2,7 @@ import { tmdbSearchService } from "../../../services/tmdb";
 import { mapTmdbResultToMedia } from "../../../services/tmdb";
 import { libraryService } from "../../library/services/libraryService";
 import type { ImportCandidate } from "../types/importCandidate";
+import { mediaRepository } from "../../../database/repositories";
 
 export async function findBestTvdbMatch(candidate: ImportCandidate) {
   const response = await tmdbSearchService.searchTvShows(candidate.title);
@@ -17,10 +18,27 @@ export async function findBestTvdbMatch(candidate: ImportCandidate) {
     userStatus: candidate.watchStatus,
   });
 
+  const existingMedia =
+    media.tmdbId !== undefined
+      ? await mediaRepository.getByTmdbId(media.tmdbId, media.mediaType)
+      : undefined;
+
+  if (existingMedia) {
+    console.log("Already in library, skipping:", media.title);
+    console.log("Existing Media Record:", existingMedia);
+
+    return {
+      status: "skipped" as const,
+      media: existingMedia,
+    };
+  }
+
   await libraryService.addMedia(media);
 
   console.log("Imported:", media.title);
-  //console.log("Imported Media:", media);
 
-  return media;
+  return {
+    status: "imported" as const,
+    media,
+  };
 }

@@ -117,7 +117,35 @@ export const episodeRepository = {
       });
     });
   },
+  async markWatchedFromImport(id: number, watchedAt: Date): Promise<boolean> {
+    const now = new Date();
 
+    return db.transaction("rw", db.episodes, db.watchHistory, async () => {
+      const episode = await db.episodes.get(id);
+
+      if (!episode) {
+        throw new Error(`Episode ${id} was not found.`);
+      }
+
+      if (episode.watched) {
+        return false;
+      }
+
+      await db.watchHistory.add({
+        episodeId: id,
+        watchedAt,
+        source: "import",
+        createdAt: now,
+      });
+
+      await db.episodes.update(id, {
+        watched: true,
+        watchedAt,
+        updatedAt: now,
+      });
+      return true;
+    });
+  },
   async markUnwatched(id: number): Promise<void> {
     const now = new Date();
 

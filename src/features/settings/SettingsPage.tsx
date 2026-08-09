@@ -2,11 +2,14 @@ import { parseCsvFromZip } from "../import/services/tvTimeCsvParser";
 //import { buildTvTimeImportPreview } from "../import/services/tvTimeImportService";
 import { buildImportCandidates } from "../import/services/tvTimeCandidateBuilder";
 import { findBestTvdbMatch } from "../import/services/tvdbMatcher";
+import { synchronizeTvTimeShowEpisodes } from "../import/services/tvTimeEpisodeImporter";
+import { episodeRepository } from "../../database/repositories";
 import type {
   FollowedTvShow,
   UserTvShowData,
   SeenEpisodeLatest,
   ShowSeenEpisodeLatest,
+  SeenEpisodeSource,
 } from "../import/types/tvTimeModels";
 //import type { ImportPreview } from "../import/types/importPreview";
 import {
@@ -227,9 +230,18 @@ export default function SettingsPage() {
           "user_tv_show_data.csv",
         );
         const candidates = buildImportCandidates(shows, progress);
+        console.log(
+          "Falling Skies candidate:",
+          candidates.find(
+            (candidate) => candidate.title.toLowerCase() === "falling skies",
+          ),
+        );
+        //let imported = 0;
+        //let failed = 0;
         let imported = 0;
+        let skipped = 0;
         let failed = 0;
-        for (const candidate of candidates) {
+        /*for (const candidate of candidates) {
           console.log(`Importing: ${candidate.title}`);
           try {
             await findBestTvdbMatch(candidate);
@@ -238,10 +250,51 @@ export default function SettingsPage() {
             failed++;
             console.error(`Failed to import: ${candidate.title}`, error);
           }
+        }*/
+        const mediaByTitle = new Map<
+          string,
+          NonNullable<Awaited<ReturnType<typeof findBestTvdbMatch>>>["media"]
+        >();
+        for (const candidate of candidates) {
+          console.log(`Importing: ${candidate.title}`);
+
+          try {
+            const result = await findBestTvdbMatch(candidate);
+            if (result?.media) {
+              mediaByTitle.set(candidate.title, result.media);
+            }
+
+            if (
+              result?.media &&
+              result.media.id !== undefined &&
+              result.media.tmdbId !== undefined &&
+              result.media.mediaType === "tv"
+            ) {
+              const episodeCount = await synchronizeTvTimeShowEpisodes(
+                result.media.id,
+                result.media.tmdbId,
+              );
+
+              console.log(
+                `Synchronized ${episodeCount} episodes: ${result.media.title}`,
+              );
+            }
+
+            if (result?.status === "imported") {
+              imported++;
+            } else if (result?.status === "skipped") {
+              skipped++;
+            }
+          } catch (error) {
+            failed++;
+
+            console.error(`Failed to import: ${candidate.title}`, error);
+          }
         }
         console.log("Import Complete");
         console.log("Imported:", imported);
         console.log("Failed:", failed);
+        console.log("Skipped:", skipped);
 
         console.log("Import Candidates:", candidates.length);
         console.table(candidates.slice(0, 5));
@@ -249,6 +302,134 @@ export default function SettingsPage() {
           zipData.zip,
           "seen_episode_latest.csv",
         );
+        const seenEpisodes = await parseCsvFromZip<SeenEpisodeSource>(
+          zipData.zip,
+          "seen_episode_source.csv",
+        );
+        const firstSeenEpisode = seenEpisodes[0];
+        /*if (firstSeenEpisode) {
+          const fallingSkiesMedia = await mediaRepository.getByTmdbId(
+            34967,
+            "tv",
+          );
+
+          if (!fallingSkiesMedia?.id) {
+            throw new Error("Falling Skies Media was not found.");
+          }
+
+          const episode = await episodeRepository.getByShowSeasonAndEpisode(
+            fallingSkiesMedia.id,
+            Number(firstSeenEpisode.episode_season_number),
+            Number(firstSeenEpisode.episode_number),
+          );
+
+          if (!episode) {
+            throw new Error(
+              `Episode not found: ${firstSeenEpisode.tv_show_name} S${firstSeenEpisode.episode_season_number}E${firstSeenEpisode.episode_number}`,
+            );
+          }
+
+          const watchedAt = new Date(
+            firstSeenEpisode.created_at.replace(" ", "T"),
+          );
+
+          if (episode.id === undefined) {
+            throw new Error("Matched episode does not have a persisted ID.");
+          }
+
+          await episodeRepository.markWatchedFromImport(episode.id, watchedAt);
+
+          console.log("Imported watched episode:", {
+            title: episode.title,
+            season: episode.seasonNumber,
+            episode: episode.episodeNumber,
+            watchedAt,
+          });
+        } */
+        console.log("First TV Time seen episode:", firstSeenEpisode);
+
+        console.log("Seen episode records:", seenEpisodes.length);
+        let importedWatchedEpisodes = 0;
+        let skippedWatchedEpisodes = 0;
+        let failedWatchedEpisodes = 0;
+
+        for (const seenEpisode of seenEpisodes) {
+          try {
+            const media = mediaByTitle.get(seenEpisode.tv_show_name);
+
+            if (!media?.id) {
+              skippedWatchedEpisodes++;
+
+              console.warn(
+                "No Media found for TV Time episode:",
+                seenEpisode.tv_show_name,
+                `S${seenEpisode.episode_season_number}E${seenEpisode.episode_number}`,
+              );
+
+              continue;
+            }
+
+            const episode = await episodeRepository.getByShowSeasonAndEpisode(
+              media.id,
+              Number(seenEpisode.episode_season_number),
+              Number(seenEpisode.episode_number),
+            );
+
+            if (!episode) {
+              skippedWatchedEpisodes++;
+
+              console.warn(
+                "No Watch Log episode found:",
+                seenEpisode.tv_show_name,
+                `S${seenEpisode.episode_season_number}E${seenEpisode.episode_number}`,
+              );
+
+              continue;
+            }
+
+            if (episode.id === undefined) {
+              throw new Error(
+                `Episode has no persisted ID: ${seenEpisode.tv_show_name} S${seenEpisode.episode_season_number}E${seenEpisode.episode_number}`,
+              );
+            }
+
+            const watchedAt = new Date(
+              seenEpisode.created_at.replace(" ", "T"),
+            );
+
+            const wasImported = await episodeRepository.markWatchedFromImport(
+              episode.id,
+              watchedAt,
+            );
+
+            if (wasImported) {
+              importedWatchedEpisodes++;
+            } else {
+              skippedWatchedEpisodes++;
+            }
+
+            console.log(
+              "Imported watched episode:",
+              `${seenEpisode.tv_show_name} S${seenEpisode.episode_season_number}E${seenEpisode.episode_number}`,
+            );
+          } catch (error) {
+            failedWatchedEpisodes++;
+
+            console.error(
+              `Failed watched episode import: ${seenEpisode.tv_show_name} S${seenEpisode.episode_season_number}E${seenEpisode.episode_number}`,
+              error,
+            );
+          }
+        }
+
+        console.log("Watched Episode Import Complete");
+        console.log("Watched Episodes Imported:", importedWatchedEpisodes);
+        console.log("Watched Episodes Skipped:", skippedWatchedEpisodes);
+        console.log("Watched Episodes Failed:", failedWatchedEpisodes);
+
+        if (seenEpisodes.length > 0) {
+          console.log("First seen episode:", seenEpisodes[0]);
+        }
         const showLatest = await parseCsvFromZip<ShowSeenEpisodeLatest>(
           zipData.zip,
           "show_seen_episode_latest.csv",

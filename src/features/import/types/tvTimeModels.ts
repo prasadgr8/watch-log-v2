@@ -7,6 +7,7 @@ export interface FollowedTvShow {
 }
 
 export interface UserTvShowData {
+  user_id: string;
   tv_show_id: string;
   tv_show_name: string;
   is_followed: string;
@@ -14,33 +15,43 @@ export interface UserTvShowData {
   nb_episodes_seen: string;
 }
 
-export interface SeenEpisodeLatest {
-  tv_show_id: string;
+export interface SeenEpisodeSource {
+  episode_number: string;
+  user_id: string;
+  episode_id: string;
+  source: string;
+  created_at: string;
+  updated_at: string;
+  tv_show_name: string;
+  episode_season_number: string;
+}
+
+export interface WatchedOnEpisode {
+  created_at: string;
+  updated_at: string;
   tv_show_name: string;
   episode_season_number: string;
   episode_number: string;
+  user_id: string;
+  episode_id: string;
+  watched_on_source_id: string;
+}
+
+export interface ShowSeenEpisodeLatest {
+  tv_show_id: string;
+  episode_id: string;
+  created_at: string;
   updated_at: string;
-}
-export interface UserTvShowData {
-  user_id: string;
-  tv_show_id: string;
   tv_show_name: string;
-  is_followed: string;
-  is_favorited: string;
-  nb_episodes_seen: string;
+  user_id: string;
 }
+
 export interface SeenEpisodeLatest {
+  episode_season_number: string;
+  episode_number: string;
   user_id: string;
-  tv_show_id: string;
   episode_id: string;
-}
-export interface ShowSeenEpisodeLatest {
-  tv_show_id: string;
-  episode_id: string;
-  user_id: string;
-}
-export interface ShowSeenEpisodeLatest {
-  user_id: string;
-  tv_show_id: string;
-  episode_id: string;
+  created_at: string;
+  updated_at: string;
+  tv_show_name: string;
 }
