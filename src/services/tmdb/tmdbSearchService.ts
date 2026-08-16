@@ -43,6 +43,7 @@ export const tmdbSearchService = {
   async searchTvShows(
     query: string,
     page = 1,
+    firstAirDateYear?: number,
   ): Promise<TmdbSearchResponse<TmdbTvSearchResult>> {
     const normalizedQuery = normalizeQuery(query);
 
@@ -61,6 +62,7 @@ export const tmdbSearchService = {
         page,
         include_adult: false,
         language: "en-US",
+        first_air_date_year: firstAirDateYear,
       },
     });
   },
