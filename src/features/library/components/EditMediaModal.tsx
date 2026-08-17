@@ -12,6 +12,12 @@ interface EditMediaModalProps {
   }) => void;
 }
 
+interface EditMediaFormProps {
+  media: PersistedMedia;
+  onClose: () => void;
+  onSave: EditMediaModalProps["onSave"];
+}
+
 export default function EditMediaModal({
   media,
   isOpen,
@@ -22,9 +28,21 @@ export default function EditMediaModal({
     return null;
   }
 
+  return (
+    <EditMediaForm
+      key={media.id}
+      media={media}
+      onClose={onClose}
+      onSave={onSave}
+    />
+  );
+}
+
+function EditMediaForm({ media, onClose, onSave }: EditMediaFormProps) {
   const [status, setStatus] = useState(media.userStatus);
   const [rating, setRating] = useState(media.rating ?? 0);
   const [notes, setNotes] = useState(media.notes ?? "");
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
       <div className="w-full max-w-lg rounded-xl bg-slate-900 p-6 shadow-xl">
@@ -37,6 +55,7 @@ export default function EditMediaModal({
             {media.mediaType === "movie" ? "Movie" : "TV Show"}
           </p>
         </div>
+
         <div className="mt-5">
           <label
             htmlFor="status"
@@ -58,6 +77,7 @@ export default function EditMediaModal({
             <option value="dropped">Dropped</option>
           </select>
         </div>
+
         <div className="mt-6">
           <label className="block text-sm font-medium text-slate-300">
             Rating
@@ -76,6 +96,7 @@ export default function EditMediaModal({
             ))}
           </div>
         </div>
+
         <div className="mt-6">
           <label
             htmlFor="notes"
@@ -93,6 +114,7 @@ export default function EditMediaModal({
             className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none"
           />
         </div>
+
         <div className="mt-6 flex justify-end gap-3">
           <button
             type="button"
