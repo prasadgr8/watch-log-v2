@@ -272,12 +272,17 @@ export async function findBestTvdbMatch(candidate: ImportCandidate) {
     };
   }
 
-  await libraryService.addMedia(media);
+  const mediaId = await libraryService.addMedia(media);
 
-  console.log("Imported:", media.title);
+  const importedMedia = {
+    ...media,
+    id: mediaId,
+  };
+
+  console.log("Imported:", importedMedia.title);
 
   return {
     status: "imported" as const,
-    media,
+    media: importedMedia,
   };
 }
