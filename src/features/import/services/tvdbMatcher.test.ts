@@ -7,8 +7,6 @@ import type { TmdbTvSearchResult } from "../../../services/tmdb";
 import { tmdbSearchService } from "../../../services/tmdb";
 import { findBestTvdbMatch } from "./tvdbMatcher";
 
-const tmdbSearchTvShowsMock = vi.spyOn(tmdbSearchService, "searchTvShows");
-
 function createTmdbTvResult(
   overrides: Partial<TmdbTvSearchResult> = {},
 ): TmdbTvSearchResult {
@@ -29,12 +27,14 @@ function createTmdbTvResult(
 }
 
 describe("findBestTvdbMatch", () => {
+  let tmdbSearchTvShowsMock: ReturnType<typeof vi.spyOn>;
+
   beforeEach(async () => {
     await db.media.clear();
     await db.episodes.clear();
     await db.watchHistory.clear();
 
-    tmdbSearchTvShowsMock.mockReset();
+    tmdbSearchTvShowsMock = vi.spyOn(tmdbSearchService, "searchTvShows");
   });
 
   it("returns the generated media id after importing a new TV show", async () => {
@@ -66,5 +66,31 @@ describe("findBestTvdbMatch", () => {
       title: "Breaking Bad",
       userStatus: "watching",
     });
+  });
+  it("rejects a single TMDB result when only the year matches", async () => {
+    tmdbSearchTvShowsMock.mockResolvedValue({
+      page: 1,
+      results: [
+        createTmdbTvResult({
+          id: 9999,
+          name: "Completely Different Show",
+          original_name: "Completely Different Show",
+          first_air_date: "2008-05-01",
+        }),
+      ],
+      total_pages: 1,
+      total_results: 1,
+    });
+
+    const result = await findBestTvdbMatch({
+      tvTimeShowId: "tvtime-unrelated-show",
+      title: "Breaking Bad (2008)",
+      followed: true,
+      episodesSeen: 1,
+      favorite: false,
+      watchStatus: "watching",
+    });
+    expect(tmdbSearchTvShowsMock).toHaveBeenCalledWith("Breaking Bad", 1, 2008);
+    expect(result).toBeNull();
   });
 });

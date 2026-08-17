@@ -151,7 +151,8 @@ function findBestResult(
   if (
     results.length === 1 &&
     parsedTitle.year !== undefined &&
-    getResultYear(best.result) === parsedTitle.year
+    getResultYear(best.result) === parsedTitle.year &&
+    best.score >= 60
   ) {
     console.log(
       "Accepted single TMDB result by matching year:",
