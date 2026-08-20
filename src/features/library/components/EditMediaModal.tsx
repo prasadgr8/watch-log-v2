@@ -4,6 +4,7 @@ import type { PersistedMedia } from "../../../types/media";
 interface EditMediaModalProps {
   media: PersistedMedia | null;
   isOpen: boolean;
+  isSaving: boolean;
   onClose: () => void;
   onSave: (values: {
     status: PersistedMedia["userStatus"];
@@ -14,6 +15,7 @@ interface EditMediaModalProps {
 
 interface EditMediaFormProps {
   media: PersistedMedia;
+  isSaving: boolean;
   onClose: () => void;
   onSave: EditMediaModalProps["onSave"];
 }
@@ -21,6 +23,7 @@ interface EditMediaFormProps {
 export default function EditMediaModal({
   media,
   isOpen,
+  isSaving,
   onClose,
   onSave,
 }: EditMediaModalProps) {
@@ -32,13 +35,19 @@ export default function EditMediaModal({
     <EditMediaForm
       key={media.id}
       media={media}
+      isSaving={isSaving}
       onClose={onClose}
       onSave={onSave}
     />
   );
 }
 
-function EditMediaForm({ media, onClose, onSave }: EditMediaFormProps) {
+function EditMediaForm({
+  media,
+  isSaving,
+  onClose,
+  onSave,
+}: EditMediaFormProps) {
   const [status, setStatus] = useState(media.userStatus);
   const [rating, setRating] = useState(media.rating ?? 0);
   const [notes, setNotes] = useState(media.notes ?? "");
@@ -126,6 +135,7 @@ function EditMediaForm({ media, onClose, onSave }: EditMediaFormProps) {
 
           <button
             type="button"
+            disabled={isSaving}
             onClick={() =>
               onSave({
                 status,
@@ -135,7 +145,7 @@ function EditMediaForm({ media, onClose, onSave }: EditMediaFormProps) {
             }
             className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-500"
           >
-            Save Changes
+            {isSaving ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </div>

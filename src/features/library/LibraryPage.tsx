@@ -3,10 +3,7 @@ import { Film } from "lucide-react";
 
 import { mediaRepository } from "../../database/repositories";
 
-import {
-  filterLibrary,
-  type MediaTypeFilter,
-} from "./services/libraryFilter";
+import { filterLibrary, type MediaTypeFilter } from "./services/libraryFilter";
 
 import type {
   Media,
@@ -19,15 +16,9 @@ import AddMediaForm from "./components/AddMediaForm";
 import MediaCard from "./components/MediaCard";
 import EditMediaModal from "./components/EditMediaModal";
 
-import {
-  sortLibrary,
-  type LibrarySort,
-} from "./services/librarySort";
+import { sortLibrary, type LibrarySort } from "./services/librarySort";
 
-import {
-  watchStatusOptions,
-  librarySortOptions,
-} from "./libraryOptions";
+import { watchStatusOptions, librarySortOptions } from "./libraryOptions";
 
 interface AddMediaValues {
   title: string;
@@ -43,20 +34,20 @@ export default function LibraryPage() {
   const [media, setMedia] = useState<PersistedMedia[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isEditSaving, setIsEditSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedMedia, setSelectedMedia] = useState<PersistedMedia | null>(null);
+  const [selectedMedia, setSelectedMedia] = useState<PersistedMedia | null>(
+    null,
+  );
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [search, setSearch] = useState("");
 
-const [mediaType, setMediaType] =
-  useState<MediaTypeFilter>("all");
+  const [mediaType, setMediaType] = useState<MediaTypeFilter>("all");
 
-const [status, setStatus] =
-  useState<WatchStatus | "all">("all");
-const [sort, setSort] =
-  useState<LibrarySort>("recent");
+  const [status, setStatus] = useState<WatchStatus | "all">("all");
+  const [sort, setSort] = useState<LibrarySort>("recent");
 
-    async function loadMedia(): Promise<void> {
+  async function loadMedia(): Promise<void> {
     try {
       setError(null);
 
@@ -101,14 +92,14 @@ const [sort, setSort] =
     };
   }, []);
   const visibleMedia = useMemo(() => {
-  const filtered = filterLibrary(media, {
-    search,
-    mediaType,
-    status,
-  });
+    const filtered = filterLibrary(media, {
+      search,
+      mediaType,
+      status,
+    });
 
-  return sortLibrary(filtered, sort);
-}, [media, search, mediaType, status, sort]);
+    return sortLibrary(filtered, sort);
+  }, [media, search, mediaType, status, sort]);
   async function handleAddMedia(values: AddMediaValues): Promise<boolean> {
     const trimmedTitle = values.title.trim();
 
@@ -146,43 +137,54 @@ const [sort, setSort] =
   }
 
   async function handleDelete(id: number): Promise<void> {
-  try {
-    setError(null);
+    try {
+      setError(null);
 
-    await mediaRepository.remove(id);
+      await mediaRepository.remove(id);
 
-    await loadMedia();
-  } catch (deleteError) {
-    console.error("Failed to delete media:", deleteError);
+      await loadMedia();
+    } catch (deleteError) {
+      console.error("Failed to delete media:", deleteError);
 
-    setError("Unable to delete this media item.");
+      setError("Unable to delete this media item.");
+    }
   }
 
-}
+  function handleEdit(media: PersistedMedia): void {
+    setSelectedMedia(media);
+    setIsEditModalOpen(true);
+  }
+  async function handleSave(values: {
+    status: PersistedMedia["userStatus"];
+    rating: number;
+    notes: string;
+  }): Promise<void> {
+    if (selectedMedia === null || isEditSaving) {
+      return;
+    }
 
-function handleEdit(media: PersistedMedia): void {
-  setSelectedMedia(media);
-  setIsEditModalOpen(true);
-}
-async function handleSave(values: {
-  status: PersistedMedia["userStatus"];
-  rating: number;
-  notes: string;
-}): Promise<void> {
-  if (selectedMedia === null) {
-  return;
-}
+    try {
+      setIsEditSaving(true);
+      setError(null);
 
-await mediaRepository.update(selectedMedia.id, {
-  userStatus: values.status,
-  rating: values.rating,
-  notes: values.notes,
-});
+      await mediaRepository.update(selectedMedia.id, {
+        userStatus: values.status,
+        rating: values.rating,
+        notes: values.notes,
+      });
 
-await loadMedia();
+      await loadMedia();
 
-setSelectedMedia(null);
-}
+      setIsEditModalOpen(false);
+      setSelectedMedia(null);
+    } catch (saveError) {
+      console.error("Failed to update media:", saveError);
+
+      setError("Unable to save your changes. Please try again.");
+    } finally {
+      setIsEditSaving(false);
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -195,57 +197,51 @@ setSelectedMedia(null);
       </div>
 
       <AddMediaForm isSaving={isSaving} onSubmit={handleAddMedia} />
-<div className="library-filters">
-  <input
-  type="text"
-  placeholder="Search title..."
-  value={search}
-  onChange={(e) => setSearch(e.target.value)}
-  className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-/>
+      <div className="library-filters">
+        <input
+          type="text"
+          placeholder="Search title..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+        />
 
-  <select
-    value={mediaType}
-    onChange={(e) =>
-      setMediaType(e.target.value as MediaTypeFilter)
-    }
-    className="min-w-[170px] rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-  >
-    <option value="all">All Media</option>
-    <option value="tv">TV Shows</option>
-    <option value="movie">Movies</option>
-  </select>
+        <select
+          value={mediaType}
+          onChange={(e) => setMediaType(e.target.value as MediaTypeFilter)}
+          className="min-w-[170px] rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+        >
+          <option value="all">All Media</option>
+          <option value="tv">TV Shows</option>
+          <option value="movie">Movies</option>
+        </select>
 
-  <select
-    value={status}
-    onChange={(e) =>
-      setStatus(e.target.value as WatchStatus | "all")
-    }
-    className="min-w-[170px] rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-  >
-    <option value="all">All Status</option>
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value as WatchStatus | "all")}
+          className="min-w-[170px] rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+        >
+          <option value="all">All Status</option>
 
-    {watchStatusOptions.map((option) => (
-      <option key={option.value} value={option.value}>
-        {option.label}
-      </option>
-    ))}
-  </select>
+          {watchStatusOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
 
-  <select
-    value={sort}
-    onChange={(e) =>
-      setSort(e.target.value as LibrarySort)
-    }
-    className="min-w-[170px] rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-  >
-    {librarySortOptions.map((option) => (
-      <option key={option.value} value={option.value}>
-        {option.label}
-      </option>
-    ))}
-  </select>
-</div>
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value as LibrarySort)}
+          className="min-w-[170px] rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+        >
+          {librarySortOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
       {error && (
         <p
           role="alert"
@@ -260,8 +256,7 @@ setSelectedMedia(null);
           <h2 className="text-xl font-semibold text-white">Your Media</h2>
 
           <span className="text-sm text-slate-400">
-            {visibleMedia.length}{" "}
-            {visibleMedia.length === 1 ? "item" : "items"}
+            {visibleMedia.length} {visibleMedia.length === 1 ? "item" : "items"}
           </span>
         </div>
 
@@ -294,15 +289,16 @@ setSelectedMedia(null);
           </div>
         )}
       </section>
-       <EditMediaModal
-  media={selectedMedia}
-  isOpen={isEditModalOpen}
-  onClose={() => {
-    setIsEditModalOpen(false);
-    setSelectedMedia(null);
-  }}
-  onSave={handleSave}
-/>
+      <EditMediaModal
+        media={selectedMedia}
+        isOpen={isEditModalOpen}
+        isSaving={isEditSaving}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedMedia(null);
+        }}
+        onSave={handleSave}
+      />
     </div>
   );
 }
