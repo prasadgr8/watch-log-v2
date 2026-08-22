@@ -1,4 +1,7 @@
-import { episodeRepository } from "../../../database/repositories";
+import {
+  episodeRepository,
+  mediaRepository,
+} from "../../../database/repositories";
 import { readTvTimeZip } from "./tvTimeZipReader";
 import { validateTvTimeFiles, type ValidationResult } from "./tvTimeValidator";
 import { parseCsvFromZip } from "./tvTimeCsvParser";
@@ -124,10 +127,18 @@ export async function executeTvTimeImport(
         result.media.tmdbId !== undefined &&
         result.media.mediaType === "tv"
       ) {
-        await synchronizeTvTimeShowEpisodes(
-          result.media.id,
-          result.media.tmdbId,
-        );
+        try {
+          await synchronizeTvTimeShowEpisodes(
+            result.media.id,
+            result.media.tmdbId,
+          );
+        } catch (syncError) {
+          if (result.status === "imported") {
+            await mediaRepository.remove(result.media.id);
+          }
+
+          throw syncError;
+        }
       }
 
       if (result.status === "imported") {
