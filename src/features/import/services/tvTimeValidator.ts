@@ -1,4 +1,5 @@
 const REQUIRED_FILES = [
+  "user.csv",
   "followed_tv_show.csv",
   "user_tv_show_data.csv",
   "seen_episode_latest.csv",

@@ -6,6 +6,10 @@ export interface FollowedTvShow {
   active: string;
 }
 
+export interface TvTimeUser {
+  timezone: string;
+}
+
 export interface UserTvShowData {
   user_id: string;
   tv_show_id: string;

@@ -8,10 +8,12 @@ import { parseCsvFromZip } from "./tvTimeCsvParser";
 import { buildImportCandidates } from "./tvTimeCandidateBuilder";
 import { findBestTvdbMatch } from "./tvdbMatcher";
 import { synchronizeTvTimeShowEpisodes } from "./tvTimeEpisodeImporter";
+import { parseTvTimeDate, resolveTvTimeZone } from "./tvTimeZone";
 import type {
   FollowedTvShow,
-  UserTvShowData,
   SeenEpisodeSource,
+  TvTimeUser,
+  UserTvShowData,
 } from "../types/tvTimeModels";
 
 export interface TvTimeImportPreview {
@@ -61,17 +63,6 @@ export interface TvTimeImportResult {
   failedWatchedEpisodes: number;
 }
 
-function parseTvTimeDate(value: string): Date {
-  const normalized = value.trim().replace(" ", "T");
-  const date = new Date(normalized);
-
-  if (Number.isNaN(date.getTime())) {
-    throw new Error(`Invalid TV Time timestamp: ${value}`);
-  }
-
-  return date;
-}
-
 export async function executeTvTimeImport(
   file: File,
 ): Promise<TvTimeImportResult> {
@@ -99,6 +90,10 @@ export async function executeTvTimeImport(
     zipData.zip,
     "seen_episode_source.csv",
   );
+
+  const users = await parseCsvFromZip<TvTimeUser>(zipData.zip, "user.csv");
+
+  const timeZone = resolveTvTimeZone(users[0]?.timezone ?? "");
 
   const candidates = buildImportCandidates(shows, progress);
 
@@ -179,7 +174,7 @@ export async function executeTvTimeImport(
 
       const imported = await episodeRepository.markWatchedFromImport(
         episode.id,
-        parseTvTimeDate(seenEpisode.created_at),
+        parseTvTimeDate(seenEpisode.created_at, timeZone),
       );
 
       if (imported) {
