@@ -306,7 +306,7 @@ export default function SettingsPage() {
               type="button"
               onClick={handleChooseBackup}
               disabled={isRestoring}
-              className="mt-5 inline-flex items-center gap-2 rounded-lg border border-border bg-input-bg px-4 py-2.5 text-sm font-medium text-primary transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-5 inline-flex items-center gap-2 rounded-lg border border-muted bg-input-bg px-4 py-2.5 text-sm font-medium text-primary transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Upload className="h-4 w-4" />
               Choose Backup File
@@ -464,7 +464,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={handleChooseTvTimeExport}
-              className="mt-5 inline-flex items-center gap-2 rounded-lg border border-border bg-input-bg px-4 py-2.5 text-sm font-medium text-primary transition hover:bg-surface-hover"
+              className="mt-5 inline-flex items-center gap-2 rounded-lg border border-muted bg-input-bg px-4 py-2.5 text-sm font-medium text-primary transition hover:bg-surface-hover"
             >
               <Database className="h-4 w-4" />
               Choose TV Time ZIP
