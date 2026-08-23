@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, CalendarDays, LoaderCircle, Tv } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarDays,
+  Check,
+  LoaderCircle,
+  RotateCcw,
+  Tv,
+} from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 
 import {
@@ -17,6 +24,8 @@ import {
 import type { PersistedEpisode, PersistedMedia } from "../../types";
 
 import EpisodeList from "./components/EpisodeList";
+
+import { deriveSeasonStatus } from "./services/seasonStatus";
 
 interface TvShowDetailsState {
   media: PersistedMedia;
@@ -47,6 +56,8 @@ export default function TvShowDetailsPage() {
   const [updatingEpisodeId, setUpdatingEpisodeId] = useState<number | null>(
     null,
   );
+
+  const [isUpdatingSeasonStatus, setIsUpdatingSeasonStatus] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [seasonError, setSeasonError] = useState<string | null>(null);
@@ -192,6 +203,49 @@ export default function TvShowDetailsPage() {
     }
   }
 
+  async function handleUpdateSeasonWatchStatus(
+    action: "watched" | "unwatched",
+  ): Promise<void> {
+    if (!details || selectedSeasonNumber === null || isUpdatingSeasonStatus) {
+      return;
+    }
+
+    try {
+      setIsUpdatingSeasonStatus(true);
+      setSeasonError(null);
+
+      if (action === "watched") {
+        await episodeRepository.markSeasonWatched(
+          details.media.id,
+          selectedSeasonNumber,
+        );
+      } else {
+        await episodeRepository.markSeasonUnwatched(
+          details.media.id,
+          selectedSeasonNumber,
+        );
+      }
+
+      const updatedEpisodes = await episodeRepository.getByShowSeason(
+        details.media.id,
+        selectedSeasonNumber,
+      );
+
+      setEpisodes(
+        updatedEpisodes.filter(
+          (updatedEpisode): updatedEpisode is PersistedEpisode =>
+            updatedEpisode.id !== undefined,
+        ),
+      );
+    } catch (updateError) {
+      console.error("Failed to update season watch status:", updateError);
+
+      setSeasonError("Unable to update this season. Please try again.");
+    } finally {
+      setIsUpdatingSeasonStatus(false);
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="rounded-xl border border-border bg-surface p-8 text-center text-muted">
@@ -223,6 +277,9 @@ export default function TvShowDetailsPage() {
 
   const { tvDetails } = details;
   const posterUrl = getPosterUrl(tvDetails.poster_path);
+
+  const seasonStatus =
+    selectedSeasonNumber === null ? null : deriveSeasonStatus(episodes);
 
   return (
     <div className="space-y-8">
@@ -366,11 +423,71 @@ export default function TvShowDetailsPage() {
               {seasonError}
             </div>
           ) : (
-            <EpisodeList
-              episodes={episodes}
-              updatingEpisodeId={updatingEpisodeId}
-              onToggleWatched={handleToggleWatched}
-            />
+            <>
+              {seasonStatus !== null && seasonStatus.totalEpisodeCount > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-medium ${
+                        seasonStatus.status === "fully-watched"
+                          ? "bg-success/10 text-success"
+                          : seasonStatus.status === "partially-watched"
+                            ? "bg-accent/15 text-accent-text"
+                            : "bg-surface-elevated text-muted"
+                      }`}
+                    >
+                      {seasonStatus.status === "fully-watched"
+                        ? "Fully watched"
+                        : seasonStatus.status === "partially-watched"
+                          ? "In progress"
+                          : "Unwatched"}
+                    </span>
+
+                    <p className="text-sm text-muted">
+                      {seasonStatus.watchedEpisodeCount} of{" "}
+                      {seasonStatus.totalEpisodeCount} watched
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void handleUpdateSeasonWatchStatus(
+                        seasonStatus.status === "fully-watched"
+                          ? "unwatched"
+                          : "watched",
+                      )
+                    }
+                    disabled={isUpdatingSeasonStatus}
+                    className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition disabled:cursor-wait disabled:opacity-50 ${
+                      seasonStatus.status === "fully-watched"
+                        ? "bg-surface-elevated text-muted hover:bg-surface-hover hover:text-primary"
+                        : "bg-accent text-inverted hover:bg-accent-hover"
+                    }`}
+                  >
+                    {isUpdatingSeasonStatus ? (
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                    ) : seasonStatus.status === "fully-watched" ? (
+                      <RotateCcw className="h-4 w-4" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
+
+                    {isUpdatingSeasonStatus
+                      ? "Updating..."
+                      : seasonStatus.status === "fully-watched"
+                        ? "Mark Season Unwatched"
+                        : "Mark Season Watched"}
+                  </button>
+                </div>
+              )}
+
+              <EpisodeList
+                episodes={episodes}
+                updatingEpisodeId={updatingEpisodeId}
+                onToggleWatched={handleToggleWatched}
+              />
+            </>
           )}
         </section>
       )}
