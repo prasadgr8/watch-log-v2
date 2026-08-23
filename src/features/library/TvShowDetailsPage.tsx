@@ -194,7 +194,7 @@ export default function TvShowDetailsPage() {
 
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-400">
+      <div className="rounded-xl border border-border bg-surface p-8 text-center text-muted">
         Loading TV show details...
       </div>
     );
@@ -205,7 +205,7 @@ export default function TvShowDetailsPage() {
       <div className="space-y-6">
         <Link
           to="/library"
-          className="inline-flex items-center gap-2 text-sm font-medium text-blue-400 transition hover:text-blue-300"
+          className="inline-flex items-center gap-2 text-sm font-medium text-accent-text transition hover:text-accent-hover"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Library
@@ -213,7 +213,7 @@ export default function TvShowDetailsPage() {
 
         <div
           role="alert"
-          className="rounded-xl border border-red-900 bg-red-950/50 p-6 text-red-300"
+          className="rounded-xl border border-danger/60 bg-danger/10 p-6 text-danger"
         >
           {error ?? "Unable to load TV show details."}
         </div>
@@ -228,15 +228,15 @@ export default function TvShowDetailsPage() {
     <div className="space-y-8">
       <Link
         to="/library"
-        className="inline-flex items-center gap-2 text-sm font-medium text-blue-400 transition hover:text-blue-300"
+        className="inline-flex items-center gap-2 text-sm font-medium text-accent-text transition hover:text-accent-hover"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to Library
       </Link>
 
-      <section className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
+      <section className="overflow-hidden rounded-xl border border-border bg-surface">
         <div className="grid md:grid-cols-[240px_1fr]">
-          <div className="aspect-[2/3] bg-slate-950 md:aspect-auto">
+          <div className="aspect-[2/3] bg-app-bg md:aspect-auto">
             {posterUrl ? (
               <img
                 src={posterUrl}
@@ -244,7 +244,7 @@ export default function TvShowDetailsPage() {
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full min-h-80 items-center justify-center text-slate-600">
+              <div className="flex h-full min-h-80 items-center justify-center text-muted">
                 <Tv className="h-16 w-16" />
               </div>
             )}
@@ -252,21 +252,21 @@ export default function TvShowDetailsPage() {
 
           <div className="p-6 md:p-8">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-800 px-3 py-1 text-xs font-medium text-slate-300">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated px-3 py-1 text-xs font-medium text-muted">
                 <Tv className="h-3.5 w-3.5" />
                 TV Show
               </span>
 
-              <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-medium text-slate-300">
+              <span className="rounded-full bg-surface-elevated px-3 py-1 text-xs font-medium text-muted">
                 {tvDetails.status}
               </span>
             </div>
 
-            <h1 className="mt-5 text-3xl font-bold text-white md:text-4xl">
+            <h1 className="mt-5 text-3xl font-bold text-primary md:text-4xl">
               {tvDetails.name}
             </h1>
 
-            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-400">
+            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-3 text-sm text-muted">
               <span className="inline-flex items-center gap-2">
                 <CalendarDays className="h-4 w-4" />
                 {tvDetails.first_air_date || "Air date unavailable"}
@@ -283,7 +283,7 @@ export default function TvShowDetailsPage() {
               </span>
             </div>
 
-            <p className="mt-6 max-w-4xl leading-7 text-slate-300">
+            <p className="mt-6 max-w-4xl leading-7 text-muted">
               {tvDetails.overview || "No overview available."}
             </p>
           </div>
@@ -292,9 +292,9 @@ export default function TvShowDetailsPage() {
 
       <section>
         <div className="mb-4">
-          <h2 className="text-2xl font-semibold text-white">Seasons</h2>
+          <h2 className="text-2xl font-semibold text-primary">Seasons</h2>
 
-          <p className="mt-2 text-slate-400">
+          <p className="mt-2 text-muted">
             Select a season to synchronize and browse its episodes.
           </p>
         </div>
@@ -311,24 +311,24 @@ export default function TvShowDetailsPage() {
                 disabled={isLoadingSeason}
                 className={`rounded-xl border p-5 text-left transition disabled:cursor-wait disabled:opacity-60 ${
                   isSelected
-                    ? "border-blue-500 bg-blue-950/30"
-                    : "border-slate-800 bg-slate-900 hover:border-slate-700"
+                    ? "border-accent-hover bg-accent/15"
+                    : "border-border bg-surface hover:border-muted"
                 }`}
               >
-                <h3 className="font-semibold text-white">{season.name}</h3>
+                <h3 className="font-semibold text-primary">{season.name}</h3>
 
-                <p className="mt-2 text-sm text-slate-400">
+                <p className="mt-2 text-sm text-muted">
                   {season.episode_count}{" "}
                   {season.episode_count === 1 ? "episode" : "episodes"}
                 </p>
 
                 {season.air_date && (
-                  <p className="mt-2 text-sm text-slate-500">
+                  <p className="mt-2 text-sm text-muted">
                     First aired {season.air_date}
                   </p>
                 )}
 
-                <p className="mt-4 line-clamp-3 text-sm leading-6 text-slate-400">
+                <p className="mt-4 line-clamp-3 text-sm leading-6 text-muted">
                   {season.overview || "No season overview available."}
                 </p>
               </button>
@@ -340,28 +340,28 @@ export default function TvShowDetailsPage() {
       {selectedSeasonNumber !== null && (
         <section className="space-y-4">
           <div>
-            <h2 className="text-2xl font-semibold text-white">
+            <h2 className="text-2xl font-semibold text-primary">
               {selectedSeasonNumber === 0
                 ? "Specials"
                 : `Season ${selectedSeasonNumber}`}{" "}
               Episodes
             </h2>
 
-            <p className="mt-2 text-slate-400">
+            <p className="mt-2 text-muted">
               Episode metadata is synchronized with your local Watch Log
               database.
             </p>
           </div>
 
           {isLoadingSeason ? (
-            <div className="flex items-center justify-center gap-3 rounded-xl border border-slate-800 bg-slate-900 p-10 text-slate-400">
+            <div className="flex items-center justify-center gap-3 rounded-xl border border-border bg-surface p-10 text-muted">
               <LoaderCircle className="h-5 w-5 animate-spin" />
               Loading and synchronizing episodes...
             </div>
           ) : seasonError ? (
             <div
               role="alert"
-              className="rounded-xl border border-red-900 bg-red-950/50 p-6 text-red-300"
+              className="rounded-xl border border-danger/60 bg-danger/10 p-6 text-danger"
             >
               {seasonError}
             </div>
