@@ -1,8 +1,27 @@
-import { Outlet } from "react-router-dom";
-import Sidebar from "./Sidebar";
+import { useEffect, useRef, useState } from "react";
+import { Outlet, useLocation } from "react-router-dom";
+
 import Header from "./Header";
+import Sidebar from "./Sidebar";
 
 export default function AppLayout() {
+  const location = useLocation();
+
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  // Close the mobile drawer on route navigation. The previous pathname is
+  // tracked in a ref so the state update only fires when the route *changes*
+  // (not on the initial mount) — this keeps the effect free of synchronous
+  // setState-in-effect violations.
+  const previousPathnameRef = useRef(location.pathname);
+
+  useEffect(() => {
+    if (previousPathnameRef.current !== location.pathname) {
+      previousPathnameRef.current = location.pathname;
+      setIsMobileNavOpen(false);
+    }
+  }, [location.pathname]);
+
   return (
     <div className="flex h-screen bg-app-bg text-primary">
       {/*
@@ -17,15 +36,18 @@ export default function AppLayout() {
         Skip to content
       </a>
 
-      <Sidebar />
+      <Sidebar
+        isMobileNavOpen={isMobileNavOpen}
+        onCloseMobileNav={() => setIsMobileNavOpen(false)}
+      />
 
-      <div className="flex flex-1 flex-col">
-        <Header />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Header onMenuClick={() => setIsMobileNavOpen(true)} />
 
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex-1 overflow-auto p-6 focus:outline-none"
+          className="min-w-0 flex-1 overflow-auto p-4 md:p-6 focus:outline-none"
         >
           <Outlet />
         </main>
