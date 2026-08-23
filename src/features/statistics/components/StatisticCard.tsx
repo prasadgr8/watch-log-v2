@@ -12,21 +12,21 @@ export default function StatisticCard({
   value,
   suffix,
   icon,
-  iconClassName = "text-slate-400",
+  iconClassName = "text-muted",
 }: StatisticCardProps) {
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-800 p-6 shadow-sm transition hover:border-blue-500 hover:shadow-lg">
+    <div className="rounded-xl border border-border bg-surface p-6 shadow-sm transition hover:border-accent-hover hover:shadow-lg">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-slate-400">
+          <p className="text-sm font-medium uppercase tracking-wide text-muted">
             {title}
           </p>
 
-          <h2 className="mt-3 text-4xl font-bold text-white">
+          <h2 className="mt-3 text-4xl font-bold text-primary">
             {value}
 
             {suffix && (
-              <span className="ml-1 text-lg font-medium text-slate-400">
+              <span className="ml-1 text-lg font-medium text-muted">
                 {suffix}
               </span>
             )}

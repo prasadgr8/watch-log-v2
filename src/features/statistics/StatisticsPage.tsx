@@ -57,43 +57,45 @@ export default function StatisticsPage() {
     <div className="space-y-8">
       <div>
         <div className="flex items-center gap-3">
-          <BarChart3 className="text-blue-400" size={32} />
+          <BarChart3 className="text-accent-text" size={32} />
 
-          <h1 className="text-3xl font-bold text-white">Statistics</h1>
+          <h1 className="text-3xl font-bold text-primary">Statistics</h1>
         </div>
 
-        <p className="mt-2 text-slate-400">
+        <p className="mt-2 text-muted">
           View insights and statistics about your media library.
         </p>
       </div>
-      <div className="border-b border-slate-700 pb-2">
-        <h2 className="text-xl font-semibold text-white">Library Overview</h2>
+      <div className="border-b border-border pb-2">
+        <h2 className="text-xl font-semibold text-primary">Library Overview</h2>
       </div>
       <div className="grid gap-6 md:grid-cols-3">
         <StatisticCard
           title="Total Media"
           value={stats.total}
           icon={<Library size={24} />}
-          iconClassName="text-blue-400"
+          iconClassName="text-accent-text"
         />
 
         <StatisticCard
           title="Movies"
           value={stats.movies}
           icon={<Film size={24} />}
-          iconClassName="text-purple-400"
+          iconClassName="text-accent-text"
         />
 
         <StatisticCard
           title="TV Shows"
           value={stats.tvShows}
           icon={<Tv size={24} />}
-          iconClassName="text-cyan-400"
+          iconClassName="text-accent-text"
         />
       </div>
 
-      <div className="border-b border-slate-700 pb-2">
-        <h2 className="text-xl font-semibold text-white">Rating Statistics</h2>
+      <div className="border-b border-border pb-2">
+        <h2 className="text-xl font-semibold text-primary">
+          Rating Statistics
+        </h2>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -102,14 +104,14 @@ export default function StatisticsPage() {
           value={stats.averageRating.toFixed(1)}
           suffix=" / 10"
           icon={<StarHalf size={24} />}
-          iconClassName="text-amber-400"
+          iconClassName="text-warning"
         />
 
         <StatisticCard
           title="Rated Titles"
           value={stats.ratedTitles}
           icon={<Star size={24} />}
-          iconClassName="text-yellow-400"
+          iconClassName="text-warning"
         />
 
         <StatisticCard
@@ -117,50 +119,50 @@ export default function StatisticsPage() {
           value={stats.highestRating.toFixed(1)}
           suffix=" / 10"
           icon={<Trophy size={24} />}
-          iconClassName="text-orange-400"
+          iconClassName="text-warning"
         />
       </div>
-      <div className="border-b border-slate-700 pb-2">
-        <h2 className="text-xl font-semibold text-white">Watch Status</h2>
+      <div className="border-b border-border pb-2">
+        <h2 className="text-xl font-semibold text-primary">Watch Status</h2>
       </div>
       <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         <StatisticCard
           title="Planned"
           value={stats.planned}
           icon={<Clock3 size={24} />}
-          iconClassName="text-yellow-400"
+          iconClassName="text-warning"
         />
 
         <StatisticCard
           title="Watching"
           value={stats.watching}
           icon={<PlayCircle size={24} />}
-          iconClassName="text-sky-400"
+          iconClassName="text-accent-text"
         />
 
         <StatisticCard
           title="Completed"
           value={stats.completed}
           icon={<CheckCircle2 size={24} />}
-          iconClassName="text-green-400"
+          iconClassName="text-success"
         />
 
         <StatisticCard
           title="On Hold"
           value={stats.onHold}
           icon={<PauseCircle size={24} />}
-          iconClassName="text-orange-400"
+          iconClassName="text-warning"
         />
 
         <StatisticCard
           title="Dropped"
           value={stats.dropped}
           icon={<XCircle size={24} />}
-          iconClassName="text-red-400"
+          iconClassName="text-danger"
         />
       </div>
-      <div className="border-b border-slate-700 pb-2">
-        <h2 className="text-xl font-semibold text-white">Progress</h2>
+      <div className="border-b border-border pb-2">
+        <h2 className="text-xl font-semibold text-primary">Progress</h2>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -169,21 +171,21 @@ export default function StatisticsPage() {
           value={stats.completionRate}
           suffix="%"
           icon={<TrendingUp size={24} />}
-          iconClassName="text-green-400"
+          iconClassName="text-success"
         />
 
         <StatisticCard
           title="Active Titles"
           value={stats.activeTitles}
           icon={<Activity size={24} />}
-          iconClassName="text-blue-400"
+          iconClassName="text-accent-text"
         />
 
         <StatisticCard
           title="Remaining Titles"
           value={stats.remainingTitles}
           icon={<Hourglass size={24} />}
-          iconClassName="text-orange-400"
+          iconClassName="text-warning"
         />
       </div>
     </div>
