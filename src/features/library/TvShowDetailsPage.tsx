@@ -23,7 +23,11 @@ import {
 
 import type { PersistedEpisode, PersistedMedia } from "../../types";
 
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
+
 import EpisodeList from "./components/EpisodeList";
+
+import { getUnwatchedPreviousInSeason } from "./services/episodeWatchOrder";
 
 import { deriveSeasonStatus } from "./services/seasonStatus";
 
@@ -58,6 +62,16 @@ export default function TvShowDetailsPage() {
   );
 
   const [isUpdatingSeasonStatus, setIsUpdatingSeasonStatus] = useState(false);
+
+  const [sequentialTargetEpisodeId, setSequentialTargetEpisodeId] =
+    useState<number | null>(null);
+
+  const [sequentialPreviousEpisodeIds, setSequentialPreviousEpisodeIds] =
+    useState<number[]>([]);
+
+  const [sequentialBusyAction, setSequentialBusyAction] = useState<
+    "previous" | "single" | null
+  >(null);
 
   const [error, setError] = useState<string | null>(null);
   const [seasonError, setSeasonError] = useState<string | null>(null);
@@ -180,6 +194,23 @@ export default function TvShowDetailsPage() {
       if (episode.watched) {
         await episodeRepository.markUnwatched(episode.id);
       } else {
+        const previousUnwatchedEpisodes = getUnwatchedPreviousInSeason(
+          episodes,
+          episode.episodeNumber,
+        );
+
+        if (previousUnwatchedEpisodes.length > 0) {
+          setSequentialTargetEpisodeId(episode.id);
+
+          setSequentialPreviousEpisodeIds(
+            previousUnwatchedEpisodes.map(
+              (previousEpisode) => previousEpisode.id,
+            ),
+          );
+
+          return;
+        }
+
         await episodeRepository.markWatched(episode.id);
       }
 
@@ -243,6 +274,61 @@ export default function TvShowDetailsPage() {
       setSeasonError("Unable to update this season. Please try again.");
     } finally {
       setIsUpdatingSeasonStatus(false);
+    }
+  }
+
+  function closeSequentialDialog(): void {
+    setSequentialTargetEpisodeId(null);
+    setSequentialPreviousEpisodeIds([]);
+    setSequentialBusyAction(null);
+  }
+
+  async function resolveSequentialWatch(
+    action: "previous" | "single",
+  ): Promise<void> {
+    if (
+      !details ||
+      selectedSeasonNumber === null ||
+      sequentialTargetEpisodeId === null ||
+      sequentialBusyAction !== null
+    ) {
+      return;
+    }
+
+    const targetEpisodeId = sequentialTargetEpisodeId;
+
+    try {
+      setSequentialBusyAction(action);
+      setSeasonError(null);
+
+      if (action === "previous") {
+        await episodeRepository.markEpisodesWatched([
+          targetEpisodeId,
+          ...sequentialPreviousEpisodeIds,
+        ]);
+      } else {
+        await episodeRepository.markWatched(targetEpisodeId);
+      }
+
+      const updatedEpisodes = await episodeRepository.getByShowSeason(
+        details.media.id,
+        selectedSeasonNumber,
+      );
+
+      setEpisodes(
+        updatedEpisodes.filter(
+          (updatedEpisode): updatedEpisode is PersistedEpisode =>
+            updatedEpisode.id !== undefined,
+        ),
+      );
+
+      closeSequentialDialog();
+    } catch (resolveError) {
+      console.error("Failed to update episode watch status:", resolveError);
+
+      setSeasonError("Unable to update this episode. Please try again.");
+
+      closeSequentialDialog();
     }
   }
 
@@ -491,6 +577,29 @@ export default function TvShowDetailsPage() {
           )}
         </section>
       )}
+
+      <ConfirmDialog
+        isOpen={sequentialTargetEpisodeId !== null}
+        title="Mark Episode Watched"
+        description={
+          sequentialPreviousEpisodeIds.length === 1
+            ? "You have 1 previous unwatched episode in this season. Would you like to mark it as watched too?"
+            : `You have ${sequentialPreviousEpisodeIds.length} previous unwatched episodes in this season. Would you like to mark them as watched too?`
+        }
+        primaryLabel="Mark Previous + This"
+        secondaryLabel="Only This Episode"
+        tertiaryLabel="Cancel"
+        busyAction={
+          sequentialBusyAction === "previous"
+            ? "primary"
+            : sequentialBusyAction === "single"
+              ? "secondary"
+              : null
+        }
+        onPrimary={() => void resolveSequentialWatch("previous")}
+        onSecondary={() => void resolveSequentialWatch("single")}
+        onTertiary={closeSequentialDialog}
+      />
     </div>
   );
 }
