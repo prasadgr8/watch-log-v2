@@ -2,7 +2,7 @@ import { type FormEventHandler, useState } from "react";
 import { Search } from "lucide-react";
 
 import { mediaRepository } from "../../database/repositories";
-
+import { libraryService } from "../library/services/libraryService";
 import {
   mapTmdbResultToMedia,
   tmdbSearchService,
@@ -108,7 +108,7 @@ export default function SearchPage() {
 
       const media = mapTmdbResultToMedia(result);
 
-      await mediaRepository.add(media);
+      await libraryService.addMedia(media);
 
       setLibraryKeys((currentKeys) => {
         const nextKeys = new Set(currentKeys);
@@ -129,14 +129,14 @@ export default function SearchPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-white">Media Search</h1>
+        <h1 className="text-3xl font-bold text-primary">Media Search</h1>
 
-        <p className="mt-2 text-slate-400">
+        <p className="mt-2 text-muted">
           Search TMDB for TV shows and movies.
         </p>
       </div>
 
-      <section className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+      <section className="rounded-xl border border-border bg-surface p-6">
         <form
           className="flex flex-col gap-3 md:flex-row"
           onSubmit={handleSubmit}
@@ -148,7 +148,7 @@ export default function SearchPage() {
           <div className="relative flex-1">
             <Search
               aria-hidden="true"
-              className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500"
+              className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted"
             />
 
             <input
@@ -158,14 +158,14 @@ export default function SearchPage() {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search for a TV show or movie"
               autoComplete="off"
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 py-3 pl-12 pr-4 text-white outline-none transition placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              className="w-full rounded-lg border border-border bg-input-bg py-3 pl-12 pr-4 text-primary outline-none transition placeholder:text-muted focus:border-accent-hover focus:ring-2 focus:ring-accent-hover/20"
             />
           </div>
 
           <button
             type="submit"
             disabled={isSearching}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 font-medium text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-6 py-3 font-medium text-inverted transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Search className="h-4 w-4" />
 
@@ -176,7 +176,7 @@ export default function SearchPage() {
         {error && (
           <p
             role="alert"
-            className="mt-4 rounded-lg border border-red-900 bg-red-950/50 px-4 py-3 text-sm text-red-300"
+            className="mt-4 rounded-lg border border-danger/60 bg-danger/10 px-4 py-3 text-sm text-danger"
           >
             {error}
           </p>
@@ -186,22 +186,22 @@ export default function SearchPage() {
       {hasSearched && !error && (
         <section>
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-white">Search Results</h2>
+            <h2 className="text-xl font-semibold text-primary">Search Results</h2>
 
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-muted">
               {results.length} {results.length === 1 ? "result" : "results"}
             </span>
           </div>
 
           {results.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/50 p-12 text-center">
-              <Search className="mx-auto h-10 w-10 text-slate-500" />
+            <div className="rounded-xl border border-dashed border-border bg-surface/50 p-12 text-center">
+              <Search className="mx-auto h-10 w-10 text-muted" />
 
-              <h3 className="mt-4 text-lg font-semibold text-white">
+              <h3 className="mt-4 text-lg font-semibold text-primary">
                 No media found
               </h3>
 
-              <p className="mt-2 text-slate-400">
+              <p className="mt-2 text-muted">
                 Try searching with a different title.
               </p>
             </div>

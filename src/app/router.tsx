@@ -7,13 +7,10 @@ import LibraryPage from "../features/library/LibraryPage";
 import TvShowDetailsPage from "../features/library/TvShowDetailsPage";
 import SearchPage from "../features/search/SearchPage";
 import SettingsPage from "../features/settings/SettingsPage";
+import StatisticsPage from "../features/statistics/StatisticsPage";
 
 function MoviesPage() {
   return <h1 className="text-3xl font-bold">🎬 Movies</h1>;
-}
-
-function StatisticsPage() {
-  return <h1 className="text-3xl font-bold">📊 Statistics</h1>;
 }
 
 export const router = createBrowserRouter([

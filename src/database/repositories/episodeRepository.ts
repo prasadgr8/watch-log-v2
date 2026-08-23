@@ -2,6 +2,73 @@ import { db } from "../db";
 
 import type { Episode, PersistedEpisode } from "../../types";
 
+export interface BulkMarkWatchedResult {
+  newlyWatchedCount: number;
+  alreadyWatchedCount: number;
+  missingCount: number;
+}
+
+export interface BulkMarkUnwatchedResult {
+  newlyUnwatchedCount: number;
+  alreadyUnwatchedCount: number;
+}
+
+interface ManualWatchOutcome {
+  newlyWatchedCount: number;
+  alreadyWatchedCount: number;
+  missingCount: number;
+}
+
+/*
+ * Applies the markWatched() semantics to a list of episode IDs and reports
+ * how many transitioned. Already watched episodes are skipped so their
+ * cached watchedAt and history remain untouched; unknown IDs are skipped.
+ * Must run inside an active read-write transaction spanning db.episodes and
+ * db.watchHistory so episode updates and history events stay atomic.
+ */
+async function applyManualWatch(
+  episodeIds: number[],
+  watchedAt: Date,
+  operationCreatedAt: Date,
+): Promise<ManualWatchOutcome> {
+  let newlyWatchedCount = 0;
+  let alreadyWatchedCount = 0;
+  let missingCount = 0;
+
+  for (const episodeId of episodeIds) {
+    const episode = await db.episodes.get(episodeId);
+
+    if (!episode) {
+      missingCount++;
+
+      continue;
+    }
+
+    if (episode.watched) {
+      alreadyWatchedCount++;
+
+      continue;
+    }
+
+    await db.watchHistory.add({
+      episodeId,
+      watchedAt,
+      source: "manual",
+      createdAt: operationCreatedAt,
+    });
+
+    await db.episodes.update(episodeId, {
+      watched: true,
+      watchedAt,
+      updatedAt: operationCreatedAt,
+    });
+
+    newlyWatchedCount++;
+  }
+
+  return { newlyWatchedCount, alreadyWatchedCount, missingCount };
+}
+
 export const episodeRepository = {
   async add(episode: Episode): Promise<number> {
     const id = await db.episodes.add(episode);
@@ -117,7 +184,35 @@ export const episodeRepository = {
       });
     });
   },
+  async markWatchedFromImport(id: number, watchedAt: Date): Promise<boolean> {
+    const now = new Date();
 
+    return db.transaction("rw", db.episodes, db.watchHistory, async () => {
+      const episode = await db.episodes.get(id);
+
+      if (!episode) {
+        throw new Error(`Episode ${id} was not found.`);
+      }
+
+      if (episode.watched) {
+        return false;
+      }
+
+      await db.watchHistory.add({
+        episodeId: id,
+        watchedAt,
+        source: "import",
+        createdAt: now,
+      });
+
+      await db.episodes.update(id, {
+        watched: true,
+        watchedAt,
+        updatedAt: now,
+      });
+      return true;
+    });
+  },
   async markUnwatched(id: number): Promise<void> {
     const now = new Date();
 
@@ -136,6 +231,118 @@ export const episodeRepository = {
         updatedAt: now,
       });
     });
+  },
+
+  async markEpisodesWatched(
+    episodeIds: number[],
+    watchedAt?: Date,
+  ): Promise<BulkMarkWatchedResult> {
+    const now = new Date();
+    const effectiveWatchedAt = watchedAt ?? now;
+
+    let outcome: BulkMarkWatchedResult = {
+      newlyWatchedCount: 0,
+      alreadyWatchedCount: 0,
+      missingCount: 0,
+    };
+
+    await db.transaction("rw", db.episodes, db.watchHistory, async () => {
+      outcome = await applyManualWatch(episodeIds, effectiveWatchedAt, now);
+    });
+
+    return outcome;
+  },
+
+  async markSeasonWatched(
+    showId: number,
+    seasonNumber: number,
+    watchedAt?: Date,
+  ): Promise<BulkMarkWatchedResult> {
+    const now = new Date();
+    const effectiveWatchedAt = watchedAt ?? now;
+
+    let outcome: BulkMarkWatchedResult = {
+      newlyWatchedCount: 0,
+      alreadyWatchedCount: 0,
+      missingCount: 0,
+    };
+
+    await db.transaction("rw", db.episodes, db.watchHistory, async () => {
+      const seasonEpisodes = await db.episodes
+        .where("showId")
+        .equals(showId)
+        .filter((episode) => episode.seasonNumber === seasonNumber)
+        .toArray();
+
+      const seasonEpisodeIds: number[] = [];
+
+      for (const episode of seasonEpisodes) {
+        if (episode.id !== undefined) {
+          seasonEpisodeIds.push(episode.id);
+        }
+      }
+
+      outcome = await applyManualWatch(
+        seasonEpisodeIds,
+        effectiveWatchedAt,
+        now,
+      );
+    });
+
+    return outcome;
+  },
+
+  async markSeasonUnwatched(
+    showId: number,
+    seasonNumber: number,
+  ): Promise<BulkMarkUnwatchedResult> {
+    const now = new Date();
+
+    let newlyUnwatchedCount = 0;
+    let alreadyUnwatchedCount = 0;
+
+    await db.transaction("rw", db.episodes, db.watchHistory, async () => {
+      const seasonEpisodes = await db.episodes
+        .where("showId")
+        .equals(showId)
+        .filter((episode) => episode.seasonNumber === seasonNumber)
+        .toArray();
+
+      const watchedEpisodeIds: number[] = [];
+
+      for (const episode of seasonEpisodes) {
+        if (episode.id === undefined) {
+          continue;
+        }
+
+        if (!episode.watched) {
+          alreadyUnwatchedCount++;
+
+          continue;
+        }
+
+        watchedEpisodeIds.push(episode.id);
+      }
+
+      if (watchedEpisodeIds.length > 0) {
+        await db.watchHistory
+          .where("episodeId")
+          .anyOf(watchedEpisodeIds)
+          .delete();
+      }
+
+      for (const episodeId of watchedEpisodeIds) {
+        await db.episodes.update(episodeId, {
+          watched: false,
+          watchedAt: undefined,
+          updatedAt: now,
+        });
+
+        newlyUnwatchedCount++;
+      }
+    });
+
+    return { newlyUnwatchedCount, alreadyUnwatchedCount };
   },
 
   async remove(id: number): Promise<void> {

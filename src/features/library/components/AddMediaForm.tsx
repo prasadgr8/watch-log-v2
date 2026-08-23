@@ -44,17 +44,17 @@ export default function AddMediaForm({
   }
 
   return (
-    <section className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+    <section className="rounded-xl border border-border bg-surface p-6">
       <div className="mb-6 flex items-center gap-3">
-        <Plus className="h-5 w-5 text-blue-400" />
+        <Plus className="h-5 w-5 text-accent-text" />
 
-        <h2 className="text-xl font-semibold text-white">Add Media</h2>
+        <h2 className="text-xl font-semibold text-primary">Add Media</h2>
       </div>
 
       <form className="grid gap-4 md:grid-cols-4" onSubmit={handleSubmit}>
         <div className="md:col-span-2">
           <label
-            className="mb-2 block text-sm font-medium text-slate-300"
+            className="mb-2 block text-sm font-medium text-muted"
             htmlFor="media-title"
           >
             Title
@@ -66,13 +66,13 @@ export default function AddMediaForm({
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             placeholder="Enter a TV show or movie title"
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+            className="w-full rounded-lg border border-border bg-input-bg px-4 py-2.5 text-primary outline-none transition focus:border-accent-hover focus:ring-2 focus:ring-accent-hover/20"
           />
         </div>
 
         <div>
           <label
-            className="mb-2 block text-sm font-medium text-slate-300"
+            className="mb-2 block text-sm font-medium text-muted"
             htmlFor="media-type"
           >
             Type
@@ -82,7 +82,7 @@ export default function AddMediaForm({
             id="media-type"
             value={mediaType}
             onChange={(event) => setMediaType(event.target.value as MediaType)}
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+            className="w-full rounded-lg border border-border bg-input-bg px-4 py-2.5 text-primary outline-none transition focus:border-accent-hover focus:ring-2 focus:ring-accent-hover/20"
           >
             <option value="tv">TV Show</option>
             <option value="movie">Movie</option>
@@ -91,7 +91,7 @@ export default function AddMediaForm({
 
         <div>
           <label
-            className="mb-2 block text-sm font-medium text-slate-300"
+            className="mb-2 block text-sm font-medium text-muted"
             htmlFor="watch-status"
           >
             Status
@@ -103,7 +103,7 @@ export default function AddMediaForm({
             onChange={(event) =>
               setUserStatus(event.target.value as WatchStatus)
             }
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+            className="w-full rounded-lg border border-border bg-input-bg px-4 py-2.5 text-primary outline-none transition focus:border-accent-hover focus:ring-2 focus:ring-accent-hover/20"
           >
             {watchStatusOptions.map((status) => (
               <option key={status.value} value={status.value}>
@@ -117,7 +117,7 @@ export default function AddMediaForm({
           <button
             type="submit"
             disabled={isSaving}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 font-medium text-inverted transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus className="h-4 w-4" />
 

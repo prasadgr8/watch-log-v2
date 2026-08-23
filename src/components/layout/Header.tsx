@@ -1,13 +1,23 @@
-import { Bell, Moon, Search } from "lucide-react";
+import { Bell, Moon, Search, Sun } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
-export default function Header() {
-  return (
-    <header className="flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900 px-6">
-      <div>
-        <h2 className="text-xl font-semibold text-white">Welcome Back 👋</h2>
+import { useTheme } from "../../app/theme";
 
-        <p className="text-sm text-slate-400">Track your TV Shows & Movies</p>
+export default function Header() {
+  const { resolvedTheme, setPreference } = useTheme();
+
+  const isDark = resolvedTheme === "dark";
+
+  const themeToggleLabel = isDark
+    ? "Switch to light theme"
+    : "Switch to dark theme";
+
+  return (
+    <header className="flex h-16 items-center justify-between border-b border-border bg-surface px-6">
+      <div>
+        <h2 className="text-xl font-semibold text-primary">Welcome Back 👋</h2>
+
+        <p className="text-sm text-muted">Track your TV Shows & Movies</p>
       </div>
 
       <div className="flex items-center gap-4">
@@ -17,16 +27,24 @@ export default function Header() {
           title="Search media"
           className={({ isActive }) =>
             isActive
-              ? "text-blue-400"
-              : "text-white transition hover:text-blue-400"
+              ? "text-accent"
+              : "text-primary transition hover:text-accent"
           }
         >
           <Search />
         </NavLink>
 
-        <Bell className="cursor-pointer hover:text-blue-400" />
+        <Bell className="cursor-pointer hover:text-accent" />
 
-        <Moon className="cursor-pointer hover:text-blue-400" />
+        <button
+          type="button"
+          onClick={() => setPreference(isDark ? "light" : "dark")}
+          aria-label={themeToggleLabel}
+          title={themeToggleLabel}
+          className="cursor-pointer hover:text-accent"
+        >
+          {isDark ? <Moon /> : <Sun />}
+        </button>
       </div>
     </header>
   );

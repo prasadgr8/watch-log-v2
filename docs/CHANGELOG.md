@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.0.0-alpha.7 — Statistics Dashboard
+
+Statistics Dashboard
+Library Overview
+Watch Status
+Rating Statistics
+Progress Statistics
+StatisticCard
+statisticsService
+
 ## v2.0.0-beta.1 — Backup and Recovery
 
 ### Added

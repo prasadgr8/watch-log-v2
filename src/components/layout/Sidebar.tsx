@@ -17,8 +17,13 @@ const menu = [
 
 export default function Sidebar() {
   return (
-    <aside className="w-64 bg-slate-900 border-r border-slate-800 p-5">
-      <h1 className="text-2xl font-bold mb-8">📺 Watch Log</h1>
+    <aside className="w-64 border-r border-border bg-surface p-5">
+      <NavLink
+        to="/"
+        className="mb-8 block text-2xl font-bold text-primary transition-all duration-200 hover:scale-105 hover:text-accent"
+      >
+        📺 Watch Log
+      </NavLink>
 
       <nav className="space-y-2">
         {menu.map((item) => {
@@ -30,7 +35,9 @@ export default function Sidebar() {
               to={item.path}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-lg px-3 py-2 transition ${
-                  isActive ? "bg-blue-600 text-white" : "hover:bg-slate-800"
+                  isActive
+                    ? "bg-accent text-inverted"
+                    : "hover:bg-surface-hover"
                 }`
               }
             >

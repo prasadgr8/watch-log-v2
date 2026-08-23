@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, CalendarDays, LoaderCircle, Tv } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarDays,
+  Check,
+  LoaderCircle,
+  RotateCcw,
+  Tv,
+} from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 
 import {
@@ -16,7 +23,13 @@ import {
 
 import type { PersistedEpisode, PersistedMedia } from "../../types";
 
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
+
 import EpisodeList from "./components/EpisodeList";
+
+import { getUnwatchedPreviousInSeason } from "./services/episodeWatchOrder";
+
+import { deriveSeasonStatus } from "./services/seasonStatus";
 
 interface TvShowDetailsState {
   media: PersistedMedia;
@@ -47,6 +60,18 @@ export default function TvShowDetailsPage() {
   const [updatingEpisodeId, setUpdatingEpisodeId] = useState<number | null>(
     null,
   );
+
+  const [isUpdatingSeasonStatus, setIsUpdatingSeasonStatus] = useState(false);
+
+  const [sequentialTargetEpisodeId, setSequentialTargetEpisodeId] =
+    useState<number | null>(null);
+
+  const [sequentialPreviousEpisodeIds, setSequentialPreviousEpisodeIds] =
+    useState<number[]>([]);
+
+  const [sequentialBusyAction, setSequentialBusyAction] = useState<
+    "previous" | "single" | null
+  >(null);
 
   const [error, setError] = useState<string | null>(null);
   const [seasonError, setSeasonError] = useState<string | null>(null);
@@ -169,6 +194,23 @@ export default function TvShowDetailsPage() {
       if (episode.watched) {
         await episodeRepository.markUnwatched(episode.id);
       } else {
+        const previousUnwatchedEpisodes = getUnwatchedPreviousInSeason(
+          episodes,
+          episode.episodeNumber,
+        );
+
+        if (previousUnwatchedEpisodes.length > 0) {
+          setSequentialTargetEpisodeId(episode.id);
+
+          setSequentialPreviousEpisodeIds(
+            previousUnwatchedEpisodes.map(
+              (previousEpisode) => previousEpisode.id,
+            ),
+          );
+
+          return;
+        }
+
         await episodeRepository.markWatched(episode.id);
       }
 
@@ -192,9 +234,107 @@ export default function TvShowDetailsPage() {
     }
   }
 
+  async function handleUpdateSeasonWatchStatus(
+    action: "watched" | "unwatched",
+  ): Promise<void> {
+    if (!details || selectedSeasonNumber === null || isUpdatingSeasonStatus) {
+      return;
+    }
+
+    try {
+      setIsUpdatingSeasonStatus(true);
+      setSeasonError(null);
+
+      if (action === "watched") {
+        await episodeRepository.markSeasonWatched(
+          details.media.id,
+          selectedSeasonNumber,
+        );
+      } else {
+        await episodeRepository.markSeasonUnwatched(
+          details.media.id,
+          selectedSeasonNumber,
+        );
+      }
+
+      const updatedEpisodes = await episodeRepository.getByShowSeason(
+        details.media.id,
+        selectedSeasonNumber,
+      );
+
+      setEpisodes(
+        updatedEpisodes.filter(
+          (updatedEpisode): updatedEpisode is PersistedEpisode =>
+            updatedEpisode.id !== undefined,
+        ),
+      );
+    } catch (updateError) {
+      console.error("Failed to update season watch status:", updateError);
+
+      setSeasonError("Unable to update this season. Please try again.");
+    } finally {
+      setIsUpdatingSeasonStatus(false);
+    }
+  }
+
+  function closeSequentialDialog(): void {
+    setSequentialTargetEpisodeId(null);
+    setSequentialPreviousEpisodeIds([]);
+    setSequentialBusyAction(null);
+  }
+
+  async function resolveSequentialWatch(
+    action: "previous" | "single",
+  ): Promise<void> {
+    if (
+      !details ||
+      selectedSeasonNumber === null ||
+      sequentialTargetEpisodeId === null ||
+      sequentialBusyAction !== null
+    ) {
+      return;
+    }
+
+    const targetEpisodeId = sequentialTargetEpisodeId;
+
+    try {
+      setSequentialBusyAction(action);
+      setSeasonError(null);
+
+      if (action === "previous") {
+        await episodeRepository.markEpisodesWatched([
+          targetEpisodeId,
+          ...sequentialPreviousEpisodeIds,
+        ]);
+      } else {
+        await episodeRepository.markWatched(targetEpisodeId);
+      }
+
+      const updatedEpisodes = await episodeRepository.getByShowSeason(
+        details.media.id,
+        selectedSeasonNumber,
+      );
+
+      setEpisodes(
+        updatedEpisodes.filter(
+          (updatedEpisode): updatedEpisode is PersistedEpisode =>
+            updatedEpisode.id !== undefined,
+        ),
+      );
+
+      closeSequentialDialog();
+    } catch (resolveError) {
+      console.error("Failed to update episode watch status:", resolveError);
+
+      setSeasonError("Unable to update this episode. Please try again.");
+
+      closeSequentialDialog();
+    }
+  }
+
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-400">
+      <div className="rounded-xl border border-border bg-surface p-8 text-center text-muted">
         Loading TV show details...
       </div>
     );
@@ -205,7 +345,7 @@ export default function TvShowDetailsPage() {
       <div className="space-y-6">
         <Link
           to="/library"
-          className="inline-flex items-center gap-2 text-sm font-medium text-blue-400 transition hover:text-blue-300"
+          className="inline-flex items-center gap-2 text-sm font-medium text-accent-text transition hover:text-accent-hover"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Library
@@ -213,7 +353,7 @@ export default function TvShowDetailsPage() {
 
         <div
           role="alert"
-          className="rounded-xl border border-red-900 bg-red-950/50 p-6 text-red-300"
+          className="rounded-xl border border-danger/60 bg-danger/10 p-6 text-danger"
         >
           {error ?? "Unable to load TV show details."}
         </div>
@@ -224,19 +364,22 @@ export default function TvShowDetailsPage() {
   const { tvDetails } = details;
   const posterUrl = getPosterUrl(tvDetails.poster_path);
 
+  const seasonStatus =
+    selectedSeasonNumber === null ? null : deriveSeasonStatus(episodes);
+
   return (
     <div className="space-y-8">
       <Link
         to="/library"
-        className="inline-flex items-center gap-2 text-sm font-medium text-blue-400 transition hover:text-blue-300"
+        className="inline-flex items-center gap-2 text-sm font-medium text-accent-text transition hover:text-accent-hover"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to Library
       </Link>
 
-      <section className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
+      <section className="overflow-hidden rounded-xl border border-border bg-surface">
         <div className="grid md:grid-cols-[240px_1fr]">
-          <div className="aspect-[2/3] bg-slate-950 md:aspect-auto">
+          <div className="aspect-[2/3] bg-app-bg md:aspect-auto">
             {posterUrl ? (
               <img
                 src={posterUrl}
@@ -244,7 +387,7 @@ export default function TvShowDetailsPage() {
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full min-h-80 items-center justify-center text-slate-600">
+              <div className="flex h-full min-h-80 items-center justify-center text-muted">
                 <Tv className="h-16 w-16" />
               </div>
             )}
@@ -252,21 +395,21 @@ export default function TvShowDetailsPage() {
 
           <div className="p-6 md:p-8">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-800 px-3 py-1 text-xs font-medium text-slate-300">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated px-3 py-1 text-xs font-medium text-muted">
                 <Tv className="h-3.5 w-3.5" />
                 TV Show
               </span>
 
-              <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-medium text-slate-300">
+              <span className="rounded-full bg-surface-elevated px-3 py-1 text-xs font-medium text-muted">
                 {tvDetails.status}
               </span>
             </div>
 
-            <h1 className="mt-5 text-3xl font-bold text-white md:text-4xl">
+            <h1 className="mt-5 text-3xl font-bold text-primary md:text-4xl">
               {tvDetails.name}
             </h1>
 
-            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-400">
+            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-3 text-sm text-muted">
               <span className="inline-flex items-center gap-2">
                 <CalendarDays className="h-4 w-4" />
                 {tvDetails.first_air_date || "Air date unavailable"}
@@ -283,7 +426,7 @@ export default function TvShowDetailsPage() {
               </span>
             </div>
 
-            <p className="mt-6 max-w-4xl leading-7 text-slate-300">
+            <p className="mt-6 max-w-4xl leading-7 text-muted">
               {tvDetails.overview || "No overview available."}
             </p>
           </div>
@@ -292,9 +435,9 @@ export default function TvShowDetailsPage() {
 
       <section>
         <div className="mb-4">
-          <h2 className="text-2xl font-semibold text-white">Seasons</h2>
+          <h2 className="text-2xl font-semibold text-primary">Seasons</h2>
 
-          <p className="mt-2 text-slate-400">
+          <p className="mt-2 text-muted">
             Select a season to synchronize and browse its episodes.
           </p>
         </div>
@@ -311,24 +454,24 @@ export default function TvShowDetailsPage() {
                 disabled={isLoadingSeason}
                 className={`rounded-xl border p-5 text-left transition disabled:cursor-wait disabled:opacity-60 ${
                   isSelected
-                    ? "border-blue-500 bg-blue-950/30"
-                    : "border-slate-800 bg-slate-900 hover:border-slate-700"
+                    ? "border-accent-hover bg-accent/15"
+                    : "border-border bg-surface hover:border-muted"
                 }`}
               >
-                <h3 className="font-semibold text-white">{season.name}</h3>
+                <h3 className="font-semibold text-primary">{season.name}</h3>
 
-                <p className="mt-2 text-sm text-slate-400">
+                <p className="mt-2 text-sm text-muted">
                   {season.episode_count}{" "}
                   {season.episode_count === 1 ? "episode" : "episodes"}
                 </p>
 
                 {season.air_date && (
-                  <p className="mt-2 text-sm text-slate-500">
+                  <p className="mt-2 text-sm text-muted">
                     First aired {season.air_date}
                   </p>
                 )}
 
-                <p className="mt-4 line-clamp-3 text-sm leading-6 text-slate-400">
+                <p className="mt-4 line-clamp-3 text-sm leading-6 text-muted">
                   {season.overview || "No season overview available."}
                 </p>
               </button>
@@ -340,40 +483,123 @@ export default function TvShowDetailsPage() {
       {selectedSeasonNumber !== null && (
         <section className="space-y-4">
           <div>
-            <h2 className="text-2xl font-semibold text-white">
+            <h2 className="text-2xl font-semibold text-primary">
               {selectedSeasonNumber === 0
                 ? "Specials"
                 : `Season ${selectedSeasonNumber}`}{" "}
               Episodes
             </h2>
 
-            <p className="mt-2 text-slate-400">
+            <p className="mt-2 text-muted">
               Episode metadata is synchronized with your local Watch Log
               database.
             </p>
           </div>
 
           {isLoadingSeason ? (
-            <div className="flex items-center justify-center gap-3 rounded-xl border border-slate-800 bg-slate-900 p-10 text-slate-400">
+            <div className="flex items-center justify-center gap-3 rounded-xl border border-border bg-surface p-10 text-muted">
               <LoaderCircle className="h-5 w-5 animate-spin" />
               Loading and synchronizing episodes...
             </div>
           ) : seasonError ? (
             <div
               role="alert"
-              className="rounded-xl border border-red-900 bg-red-950/50 p-6 text-red-300"
+              className="rounded-xl border border-danger/60 bg-danger/10 p-6 text-danger"
             >
               {seasonError}
             </div>
           ) : (
-            <EpisodeList
-              episodes={episodes}
-              updatingEpisodeId={updatingEpisodeId}
-              onToggleWatched={handleToggleWatched}
-            />
+            <>
+              {seasonStatus !== null && seasonStatus.totalEpisodeCount > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-medium ${
+                        seasonStatus.status === "fully-watched"
+                          ? "bg-success/10 text-success"
+                          : seasonStatus.status === "partially-watched"
+                            ? "bg-accent/15 text-accent-text"
+                            : "bg-surface-elevated text-muted"
+                      }`}
+                    >
+                      {seasonStatus.status === "fully-watched"
+                        ? "Fully watched"
+                        : seasonStatus.status === "partially-watched"
+                          ? "In progress"
+                          : "Unwatched"}
+                    </span>
+
+                    <p className="text-sm text-muted">
+                      {seasonStatus.watchedEpisodeCount} of{" "}
+                      {seasonStatus.totalEpisodeCount} watched
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void handleUpdateSeasonWatchStatus(
+                        seasonStatus.status === "fully-watched"
+                          ? "unwatched"
+                          : "watched",
+                      )
+                    }
+                    disabled={isUpdatingSeasonStatus}
+                    className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition disabled:cursor-wait disabled:opacity-50 ${
+                      seasonStatus.status === "fully-watched"
+                        ? "bg-surface-elevated text-muted hover:bg-surface-hover hover:text-primary"
+                        : "bg-accent text-inverted hover:bg-accent-hover"
+                    }`}
+                  >
+                    {isUpdatingSeasonStatus ? (
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                    ) : seasonStatus.status === "fully-watched" ? (
+                      <RotateCcw className="h-4 w-4" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
+
+                    {isUpdatingSeasonStatus
+                      ? "Updating..."
+                      : seasonStatus.status === "fully-watched"
+                        ? "Mark Season Unwatched"
+                        : "Mark Season Watched"}
+                  </button>
+                </div>
+              )}
+
+              <EpisodeList
+                episodes={episodes}
+                updatingEpisodeId={updatingEpisodeId}
+                onToggleWatched={handleToggleWatched}
+              />
+            </>
           )}
         </section>
       )}
+
+      <ConfirmDialog
+        isOpen={sequentialTargetEpisodeId !== null}
+        title="Mark Episode Watched"
+        description={
+          sequentialPreviousEpisodeIds.length === 1
+            ? "You have 1 previous unwatched episode in this season. Would you like to mark it as watched too?"
+            : `You have ${sequentialPreviousEpisodeIds.length} previous unwatched episodes in this season. Would you like to mark them as watched too?`
+        }
+        primaryLabel="Mark Previous + This"
+        secondaryLabel="Only This Episode"
+        tertiaryLabel="Cancel"
+        busyAction={
+          sequentialBusyAction === "previous"
+            ? "primary"
+            : sequentialBusyAction === "single"
+              ? "secondary"
+              : null
+        }
+        onPrimary={() => void resolveSequentialWatch("previous")}
+        onSecondary={() => void resolveSequentialWatch("single")}
+        onTertiary={closeSequentialDialog}
+      />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import Header from "./Header";
 
 export default function AppLayout() {
   return (
-    <div className="flex h-screen bg-slate-950 text-white">
+    <div className="flex h-screen bg-app-bg text-primary">
       <Sidebar />
 
       <div className="flex flex-1 flex-col">
