@@ -189,9 +189,9 @@ export default function LibraryPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-white">Library</h1>
+        <h1 className="text-3xl font-bold text-primary">Library</h1>
 
-        <p className="mt-2 text-slate-400">
+        <p className="mt-2 text-muted">
           Track the TV shows and movies in your personal library.
         </p>
       </div>
@@ -203,13 +203,13 @@ export default function LibraryPage() {
           placeholder="Search title..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+          className="flex-1 rounded-lg border border-border bg-input-bg px-4 py-2.5 text-primary outline-none transition focus:border-accent-hover focus:ring-2 focus:ring-accent-hover/20"
         />
 
         <select
           value={mediaType}
           onChange={(e) => setMediaType(e.target.value as MediaTypeFilter)}
-          className="min-w-[170px] rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+          className="min-w-[170px] rounded-lg border border-border bg-input-bg px-4 py-2.5 text-primary outline-none transition focus:border-accent-hover focus:ring-2 focus:ring-accent-hover/20"
         >
           <option value="all">All Media</option>
           <option value="tv">TV Shows</option>
@@ -219,7 +219,7 @@ export default function LibraryPage() {
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value as WatchStatus | "all")}
-          className="min-w-[170px] rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+          className="min-w-[170px] rounded-lg border border-border bg-input-bg px-4 py-2.5 text-primary outline-none transition focus:border-accent-hover focus:ring-2 focus:ring-accent-hover/20"
         >
           <option value="all">All Status</option>
 
@@ -233,7 +233,7 @@ export default function LibraryPage() {
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value as LibrarySort)}
-          className="min-w-[170px] rounded-lg border border-slate-700 bg-slate-950 px-4 py-2.5 text-white outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+          className="min-w-[170px] rounded-lg border border-border bg-input-bg px-4 py-2.5 text-primary outline-none transition focus:border-accent-hover focus:ring-2 focus:ring-accent-hover/20"
         >
           {librarySortOptions.map((option) => (
             <option key={option.value} value={option.value}>
@@ -245,7 +245,7 @@ export default function LibraryPage() {
       {error && (
         <p
           role="alert"
-          className="rounded-lg border border-red-900 bg-red-950/50 px-4 py-3 text-sm text-red-300"
+          className="rounded-lg border border-danger/60 bg-danger/10 px-4 py-3 text-sm text-danger"
         >
           {error}
         </p>
@@ -253,26 +253,26 @@ export default function LibraryPage() {
 
       <section>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-white">Your Media</h2>
+          <h2 className="text-xl font-semibold text-primary">Your Media</h2>
 
-          <span className="text-sm text-slate-400">
+          <span className="text-sm text-muted">
             {visibleMedia.length} {visibleMedia.length === 1 ? "item" : "items"}
           </span>
         </div>
 
         {isLoading ? (
-          <div className="rounded-xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-400">
+          <div className="rounded-xl border border-border bg-surface p-8 text-center text-muted">
             Loading your library...
           </div>
         ) : visibleMedia.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/50 p-12 text-center">
-            <Film className="mx-auto h-10 w-10 text-slate-500" />
+          <div className="rounded-xl border border-dashed border-border bg-surface/50 p-12 text-center">
+            <Film className="mx-auto h-10 w-10 text-muted" />
 
-            <h3 className="mt-4 text-lg font-semibold text-white">
+            <h3 className="mt-4 text-lg font-semibold text-primary">
               Your library is empty
             </h3>
 
-            <p className="mt-2 text-slate-400">
+            <p className="mt-2 text-muted">
               Add your first TV show or movie using the form above.
             </p>
           </div>

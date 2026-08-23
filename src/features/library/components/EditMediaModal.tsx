@@ -54,13 +54,13 @@ function EditMediaForm({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-full max-w-lg rounded-xl bg-slate-900 p-6 shadow-xl">
-        <h2 className="text-xl font-semibold text-white">Edit Progress</h2>
+      <div className="w-full max-w-lg rounded-xl bg-surface p-6 shadow-xl">
+        <h2 className="text-xl font-semibold text-primary">Edit Progress</h2>
 
-        <div className="mt-5 border-b border-slate-700 pb-4">
-          <h3 className="text-lg font-semibold text-white">{media.title}</h3>
+        <div className="mt-5 border-b border-border pb-4">
+          <h3 className="text-lg font-semibold text-primary">{media.title}</h3>
 
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-muted">
             {media.mediaType === "movie" ? "Movie" : "TV Show"}
           </p>
         </div>
@@ -68,7 +68,7 @@ function EditMediaForm({
         <div className="mt-5">
           <label
             htmlFor="status"
-            className="block text-sm font-medium text-slate-300"
+            className="block text-sm font-medium text-muted"
           >
             Status
           </label>
@@ -77,7 +77,7 @@ function EditMediaForm({
             id="status"
             value={status}
             onChange={(event) => setStatus(event.target.value as typeof status)}
-            className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-white focus:border-indigo-500 focus:outline-none"
+            className="mt-2 w-full rounded-lg border border-border bg-input-bg px-3 py-2 text-primary focus:border-accent-hover focus:outline-none"
           >
             <option value="planned">Plan to Watch</option>
             <option value="watching">Watching</option>
@@ -88,7 +88,7 @@ function EditMediaForm({
         </div>
 
         <div className="mt-6">
-          <label className="block text-sm font-medium text-slate-300">
+          <label className="block text-sm font-medium text-muted">
             Rating
           </label>
 
@@ -109,7 +109,7 @@ function EditMediaForm({
         <div className="mt-6">
           <label
             htmlFor="notes"
-            className="block text-sm font-medium text-slate-300"
+            className="block text-sm font-medium text-muted"
           >
             Notes
           </label>
@@ -120,7 +120,7 @@ function EditMediaForm({
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
             placeholder="Add your personal notes..."
-            className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none"
+            className="mt-2 w-full rounded-lg border border-border bg-input-bg px-3 py-2 text-primary placeholder:text-muted focus:border-accent-hover focus:outline-none"
           />
         </div>
 
@@ -128,7 +128,7 @@ function EditMediaForm({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-slate-600 px-4 py-2 text-slate-300 hover:bg-slate-800"
+            className="rounded-lg border border-border px-4 py-2 text-muted hover:bg-surface-elevated"
           >
             Cancel
           </button>
@@ -143,7 +143,7 @@ function EditMediaForm({
                 notes,
               })
             }
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-500"
+            className="rounded-lg bg-accent px-4 py-2 text-inverted hover:bg-accent-hover"
           >
             {isSaving ? "Saving..." : "Save Changes"}
           </button>

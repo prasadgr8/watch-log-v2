@@ -22,7 +22,7 @@ export default function MediaCard({
 
   const mediaContent = (
     <>
-      <div className="rounded-lg bg-slate-800 p-2 text-blue-400">
+      <div className="rounded-lg bg-surface-elevated p-2 text-accent-text">
         {media.mediaType === "tv" ? (
           <Tv className="h-5 w-5" />
         ) : (
@@ -31,9 +31,9 @@ export default function MediaCard({
       </div>
 
       <div className="min-w-0">
-        <h3 className="truncate font-semibold text-white">{media.title}</h3>
+        <h3 className="truncate font-semibold text-primary">{media.title}</h3>
 
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm text-muted">
           {media.mediaType === "tv" ? "TV Show" : "Movie"}
         </p>
       </div>
@@ -41,13 +41,13 @@ export default function MediaCard({
   );
 
   return (
-    <article className="rounded-xl border border-slate-800 bg-slate-900 p-5">
+    <article className="rounded-xl border border-border bg-surface p-5">
       <div className="flex items-start justify-between gap-4">
         {media.mediaType === "tv" ? (
           <Link
             to={`/library/tv/${media.id}`}
             aria-label={`View ${media.title} details`}
-            className="flex min-w-0 items-start gap-3 rounded-lg transition hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            className="flex min-w-0 items-start gap-3 rounded-lg transition hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-accent-hover/40"
           >
             {mediaContent}
           </Link>
@@ -60,7 +60,7 @@ export default function MediaCard({
     type="button"
     onClick={() => onEdit(media)}
     aria-label={`Edit ${media.title}`}
-    className="rounded-lg p-2 text-slate-500 transition hover:bg-blue-950 hover:text-blue-400"
+    className="rounded-lg p-2 text-muted transition hover:bg-accent/15 hover:text-accent-text"
   >
     <Pencil className="h-4 w-4" />
   </button>
@@ -69,7 +69,7 @@ export default function MediaCard({
     type="button"
     onClick={() => void onDelete(media.id)}
     aria-label={`Delete ${media.title}`}
-    className="rounded-lg p-2 text-slate-500 transition hover:bg-red-950 hover:text-red-400"
+    className="rounded-lg p-2 text-muted transition hover:bg-danger/10 hover:text-danger"
   >
     <Trash2 className="h-4 w-4" />
   </button>
@@ -77,7 +77,7 @@ export default function MediaCard({
       </div>
 
       <div className="mt-5">
-        <span className="inline-flex rounded-full bg-slate-800 px-3 py-1 text-xs font-medium text-slate-300">
+        <span className="inline-flex rounded-full bg-surface-elevated px-3 py-1 text-xs font-medium text-muted">
           {statusLabel}
         </span>
       </div>
