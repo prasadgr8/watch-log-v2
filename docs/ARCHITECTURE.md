@@ -48,6 +48,17 @@ The `Episode.watchedAt` field is used for this current-state projection because 
 
 Progress, next-episode information, and Continue Watching ordering are not persisted to the `Media` entity.
 
+## Statistics
+
+Statistics are derived at read time from existing persisted data.
+
+- The `Media`, `Episode`, and `WatchHistory` stores remain the only sources of watch-state truth.
+- There is no separate statistics IndexedDB store.
+- There is no parallel watch-state source of truth; statistics never persist derived values back into domain records.
+- Statistics computation sits above the repository/data layer: statistics services are pure derivations over records returned by the existing repositories.
+- Statistics remain offline-first; every displayed value is computed from local IndexedDB data.
+- The Dashboard and the Statistics page are different projections of the same underlying data. The Dashboard exposes watched-episode counts, watch hours, and Continue Watching progress; the Statistics page exposes library composition, rating, watch-status, and progress aggregates.
+
 ## Backup and Recovery
 
 Backup and recovery are application infrastructure concerns implemented outside feature repositories.

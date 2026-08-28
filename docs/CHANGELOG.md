@@ -1,14 +1,35 @@
 # Changelog
 
-## v2.0.0-alpha.7 — Statistics Dashboard
+## v2.0.0-alpha.6.7 — Media Editing, Statistics Dashboard, Theme and Import Foundation
 
-Statistics Dashboard
-Library Overview
-Watch Status
-Rating Statistics
-Progress Statistics
-StatisticCard
-statisticsService
+Delivered to `main` as squash merge commit `ec2364d` (PR #71). The individual
+development commits for this work remain on the `feature/alpha6-media-editing`
+workstream and were squash-merged rather than merged commit-by-commit. Later
+work on that workstream is not part of this release.
+
+This entry is numbered 6.7 because it completes the Alpha 6 media editing
+workstream. The v2.0.0-alpha.7 number remains assigned to the Data Layer Test
+Foundation, which shipped earlier.
+
+### Added
+
+- Added the Alpha 6 media editing workflow for editing library TV shows and movies.
+- Added bulk and smart watch status actions for library media.
+- Added a Statistics page with Library Overview, Rating Statistics, Watch Status, and Progress sections.
+- Added a derived library statistics service and a reusable StatisticCard component.
+- Added a light theme foundation with semantic theme tokens applied to the application shell, dashboard, library, TV details, search, statistics, and settings.
+- Added a shared confirm dialog component and application providers.
+- Added an export service foundation with a typed export contract and file download utility.
+- Added the TV Time import foundation: ZIP reading, CSV parsing, validation, TV-show matching, episode import, watched-episode import, and TV Time timezone conversion.
+- Added a TV Time import preview and import workflow to the Settings page.
+- Added PWA application icons and manifest assets.
+- Added Prettier formatting configuration.
+- Added automated theme coverage for the application, dashboard, library, TV details, search, statistics, and settings.
+
+### Changed
+
+- The Watch Log title in the header now navigates to the Dashboard.
+- Settings now provides TV Time import controls alongside the existing backup and recovery controls.
 
 ## v2.0.0-beta.1 — Backup and Recovery
 
