@@ -176,6 +176,24 @@ Status: Complete
 - [x] Verify browser backup and recovery round trip
 - [x] Add automated backup and recovery coverage
 
+## v2.0.0-alpha.6.7 — Media Editing, Statistics Dashboard, Theme and Import Foundation
+
+Status: Complete (shipped on `main` via squash merge commit `ec2364d`, PR #71)
+
+- Alpha 6 media editing workflow with an edit media modal
+- Bulk and smart watch status actions
+- Statistics Dashboard MVP: Library Overview, Rating Statistics, Watch Status, and Progress cards
+- Derived library statistics service and reusable StatisticCard component
+- Light theme foundation with semantic theme tokens across features
+- Export service foundation with typed export contract and download utility
+- TV Time import foundation: ZIP reading, CSV parsing, validation, matching, episode import, watched-episode import, timezone conversion
+- TV Time import preview and import workflow in Settings
+- PWA application icons and assets
+- Prettier formatting configuration
+
+Numbered 6.7 because it completes the Alpha 6 media editing workstream; the
+v2.0.0-alpha.7 number remains assigned to the Data Layer Test Foundation.
+
 ## Future Milestones
 
 Planned or exploratory features include:
@@ -183,9 +201,78 @@ Planned or exploratory features include:
 - Progressive Web App support
 - Offline installation
 - Optional Google Drive synchronization
-- Statistics and analytics
+- Advanced statistics and analytics (the basic Statistics Dashboard shipped in v2.0.0-alpha.6.7)
 - Dark and light themes
-- Responsive mobile experience
+- Responsive mobile experience (responsive/mobile work exists on the unmerged `feature/alpha6-media-editing` workstream; it is not shipped on `main`)
 - Additional personal media tracking categories
 
 Future features must be evaluated against the Project Orion product vision before implementation.
+
+---
+
+## TV Time Import Status
+
+### Shipped on main
+
+A TV Time GDPR ZIP import foundation shipped in v2.0.0-alpha.6.7:
+
+- ZIP reading
+- CSV parsing
+- Required-file validation
+- TV-show matching
+- Episode import
+- Watched-episode import
+- TV Time timezone conversion
+- Import preview and import workflow in Settings
+
+### Not yet shipped (side branch only)
+
+The following work exists on the unmerged `feature/alpha6-media-editing`
+workstream and must not be treated as shipped on `main`:
+
+- Phase 3B — Import Plan / Dry-Run Architecture: implementation exists on the side branch (read-only planning separated from execution)
+- Phase 3C — Real Import Preview: implementation exists on the side branch (real dry-run preview replacing the basic validation preview)
+- Phase 3D — Conflict Resolution: implementation exists on the side branch (show-level review/select/skip); Replace/Merge outcomes remain deferred
+- Phase 3E — Safe Import Execution: partially implemented on the side branch (import outcome classification); EPISODE_EXISTS / EPISODE_MISSING reconciliation semantics remain unfinished
+- Phase 3F — Import Progress & Results: partially implemented on the side branch (import progress reporting); the full result summary remains open
+- Phase 3G — Import History: not implemented
+- Phase 3H — Full Import Test Coverage: not implemented
+
+The detailed import roadmap for these phases is maintained on the
+`feature/alpha6-media-editing` workstream and will be reconciled into this
+document when that work lands on `main`.
+
+---
+
+## Planned Milestones
+
+These milestones are planned. They are not completed and are not recorded in
+the changelog until shipped.
+
+### v2.0.0-alpha.10 — Safe Import Execution
+
+Next implementation milestone. Purpose: complete the remaining safe import
+execution and reconciliation work:
+
+- Episode-level reconciliation for EPISODE_EXISTS and EPISODE_MISSING scenarios
+- Explicit partial-failure behavior for import execution
+- Preservation of local watch state during import reconciliation
+- Landing the unmerged Phase 3B–3F import work from `feature/alpha6-media-editing` onto `main`
+
+Replace/Merge conflict outcomes remain deferred pending explicit product
+approval.
+
+### v2.0.0-alpha.11 — Statistics Dashboard Enhancement
+
+Enhance the shipped Statistics Dashboard MVP:
+
+- Statistics derived from episodes and watch history (watched episodes, watch hours)
+- Automated coverage for the statistics service
+- Loading and error states consistent with the Dashboard
+
+Advanced analytics remain deferred in `future-enhhancements.md`.
+
+### v2.0.0-alpha.12 — Import History & Coverage
+
+- Persistent import history (Phase 3G)
+- Expanded import test coverage (Phase 3H)

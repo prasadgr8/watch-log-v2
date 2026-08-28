@@ -57,6 +57,17 @@ post-MVP.
 
 ## Advanced Statistics
 
+The basic Statistics Dashboard is already shipped on `main`
+(v2.0.0-alpha.6.7): library overview, rating statistics, watch status, and
+progress cards derived from the media library.
+
+Advanced analytics remain deferred post-MVP work:
+
+- Watch-history trends
+- Time-series analytics
+- Richer visualizations and charts
+- Rating distributions
+- Most-watched analytics
 - Yearly watch reports
 - Genre trends
 - Runtime statistics
