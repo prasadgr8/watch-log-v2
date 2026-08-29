@@ -46,6 +46,44 @@ describe("episodeRepository", () => {
     });
   });
 
+  it("returns all persisted episodes from the database", async () => {
+    await episodeRepository.add(
+      createEpisode({
+        tmdbId: 62085,
+        episodeNumber: 1,
+        title: "Pilot",
+      }),
+    );
+
+    await episodeRepository.add(
+      createEpisode({
+        tmdbId: 62086,
+        episodeNumber: 2,
+        title: "Cat's in the Bag...",
+        watched: true,
+        watchedAt: new Date("2026-07-10T18:30:00.000Z"),
+      }),
+    );
+
+    await episodeRepository.add(
+      createEpisode({
+        showId: 2,
+        tmdbId: 62087,
+        seasonNumber: 0,
+        episodeNumber: 1,
+        title: "Special",
+      }),
+    );
+
+    const episodes = await episodeRepository.getAll();
+
+    expect(episodes).toHaveLength(3);
+    expect(
+      episodes.map((episode) => episode.episodeNumber).sort(),
+    ).toEqual([1, 1, 2]);
+    expect(episodes.some((episode) => episode.watched)).toBe(true);
+  });
+
   it("returns season episodes ordered by episode number", async () => {
     await episodeRepository.add(
       createEpisode({

@@ -147,4 +147,29 @@ describe("watchHistoryRepository", () => {
     expect(firstEpisodeHistory).toHaveLength(0);
     expect(secondEpisodeHistory).toHaveLength(1);
   });
+
+  it("counts all persisted watch history events", async () => {
+    expect(await watchHistoryRepository.count()).toBe(0);
+
+    await watchHistoryRepository.add(
+      createWatchHistory({
+        watchedAt: new Date("2018-03-12T18:30:00.000Z"),
+        source: "import",
+      }),
+    );
+
+    await watchHistoryRepository.add(
+      createWatchHistory({
+        watchedAt: new Date("2026-07-15T00:00:00.000Z"),
+      }),
+    );
+
+    await watchHistoryRepository.add(
+      createWatchHistory({
+        episodeId: 2,
+      }),
+    );
+
+    expect(await watchHistoryRepository.count()).toBe(3);
+  });
 });
