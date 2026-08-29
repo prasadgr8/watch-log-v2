@@ -30,7 +30,16 @@ import type {
 
 export interface TvTimeImportResult {
   importedShows: number;
+  /**
+   * Shows intentionally not imported: no confident TMDB match (unmatched),
+   * already present in the library, or skipped by the user during review.
+   */
   skippedShows: number;
+  /**
+   * Shows that hit an actual execution failure: database failure, TMDB
+   * synchronization failure during execution, media creation failure, or
+   * another thrown error.
+   */
   failedShows: number;
   /** Watched rows that changed an unwatched episode to watched. */
   importedWatchedEpisodes: number;
@@ -357,7 +366,10 @@ export async function executeTvTimeImportPlan(
 
     try {
       if (entry.kind === "unmatched") {
-        failedShows++;
+        // No confident TMDB match: the show cannot safely be imported, so it
+        // is skipped. This is not an execution failure; failedShows stays
+        // reserved for thrown errors (database, synchronization, creation).
+        skippedShows++;
       } else if (entry.resolution?.decision === "skip") {
         skippedShows++;
       } else {

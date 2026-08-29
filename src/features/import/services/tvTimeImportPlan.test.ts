@@ -1158,10 +1158,13 @@ describe("Alpha 10 episode reconciliation", () => {
 
     const result = await executeTvTimeImportPlan(plan);
 
+    // The unknown show is unmatched, which counts as skippedShows — it is a
+    // deliberate skip, not an execution failure. failedShows stays 0 because
+    // no execution error occurred.
     expect(result).toEqual({
       importedShows: 1,
-      skippedShows: 0,
-      failedShows: 1,
+      skippedShows: 1,
+      failedShows: 0,
       importedWatchedEpisodes: 1,
       alreadyWatchedEpisodes: 1,
       missingWatchedEpisodes: 1,
