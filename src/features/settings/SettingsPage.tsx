@@ -1,14 +1,22 @@
 import {
-  buildTvTimeImportPreview,
-  executeTvTimeImport,
+  applyImportResolutions,
+  buildTvTimeImportPlan,
+  executeTvTimeImportPlan,
   type TvTimeImportResult,
 } from "../import/services/tvTimeImportService";
-import type { ValidationResult } from "../import/services/tvTimeValidator";
+import type {
+  TvTimeImportPlan,
+  TvTimeImportProgress,
+  TvTimeImportProgressPhase,
+  TvTimeImportResolutions,
+  TvTimeMatchDecision,
+} from "../import/types/tvTimeImportPlan";
 import {
   AlertTriangle,
   CheckCircle2,
   Download,
   FileJson,
+  LoaderCircle,
   RotateCcw,
   Upload,
   Database,
@@ -21,6 +29,8 @@ import {
   validateAndHydrateBackup,
 } from "../../services/backup/backupValidation";
 import type { WatchLogBackupV1 } from "../../services/backup/backupTypes";
+
+import TvTimeImportPreview from "./components/TvTimeImportPreview";
 
 interface SelectedBackup {
   backup: WatchLogBackupV1;
@@ -76,6 +86,50 @@ function getErrorMessage(error: unknown): string {
   return "An unexpected backup error occurred.";
 }
 
+function getTvTimePlanningMessage(error: unknown): string {
+  return error instanceof Error
+    ? error.message
+    : "Unable to read this TV Time export.";
+}
+
+function pluralizeCount(count: number, singular: string): string {
+  return `${count} ${singular}${count === 1 ? "" : "s"}`;
+}
+
+function getTvTimeImportLabel(plan: TvTimeImportPlan): string {
+  // Counts reflect post-resolution reality: skipped shows and unattributable
+  // watched rows are excluded so the button never promises more than the
+  // executor will do.
+  const newShows = plan.shows.filter(
+    (show) => show.kind === "new" && show.resolution?.decision !== "skip",
+  ).length;
+
+  const watchedEpisodes = pluralizeCount(
+    plan.watchedEpisodes.filter((episode) => !episode.skippedReason).length,
+    "watched episode",
+  );
+
+  if (newShows === 0) {
+    return `Import ${watchedEpisodes}`;
+  }
+
+  return `Import ${pluralizeCount(newShows, "new show")} · ${watchedEpisodes}`;
+}
+
+function getTvTimePhaseLabel(phase: TvTimeImportProgressPhase): string {
+  return phase === "shows"
+    ? "Importing shows"
+    : "Applying watched episodes";
+}
+
+function getTvTimeQuartile(progress: TvTimeImportProgress): number {
+  if (progress.total <= 0 || progress.current >= progress.total) {
+    return 4;
+  }
+
+  return Math.floor((progress.current / progress.total) * 4);
+}
+
 export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tvTimeInputRef = useRef<HTMLInputElement>(null);
@@ -89,16 +143,38 @@ export default function SettingsPage() {
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [tvTimeFileName, setTvTimeFileName] = useState<string | null>(null);
-  const [validationResult, setValidationResult] =
-    useState<ValidationResult | null>(null);
+  const [isTvTimePlanning, setIsTvTimePlanning] = useState(false);
+  const [tvTimePlanningError, setTvTimePlanningError] = useState<string | null>(
+    null,
+  );
 
-  const [tvShowCount, setTvShowCount] = useState<number | null>(null);
-  const [progressCount, setProgressCount] = useState<number | null>(null);
-  const [tvTimeImportFile, setTvTimeImportFile] = useState<File | null>(null);
+  const [tvTimeExecutionError, setTvTimeExecutionError] =
+    useState<string | null>(null);
+
+  const [tvTimePlan, setTvTimePlan] = useState<TvTimeImportPlan | null>(null);
+
+  const [tvTimeResolutions, setTvTimeResolutions] =
+    useState<TvTimeImportResolutions>({});
+
+  // Identity guard so a stale ZIP resolution can never overwrite the plan of
+  // a newer selection (or of a cancelled preview).
+  const tvTimeSelectedFileRef = useRef<File | null>(null);
+
   const [isTvTimeImporting, setIsTvTimeImporting] = useState(false);
+
+  const [tvTimeProgress, setTvTimeProgress] =
+    useState<TvTimeImportProgress | null>(null);
+
+  // Last coarse milestone announced to assistive technology. Updated only on
+  // phase transitions / quartiles so live regions are not flooded per row.
+  const [tvTimeAnnouncement, setTvTimeAnnouncement] = useState("");
+
+  const tvTimeMilestoneRef = useRef<{ phase: string; step: number }>({
+    phase: "",
+    step: -1,
+  });
   const [tvTimeImportResult, setTvTimeImportResult] =
     useState<TvTimeImportResult | null>(null);
-  //const [tvTimeZip, setTvTimeZip] = useState<TvTimeZipData | null>(null);
   async function handleExportBackup(): Promise<void> {
     try {
       setIsExporting(true);
@@ -181,6 +257,29 @@ export default function SettingsPage() {
     tvTimeInputRef.current?.click();
   }
 
+  function handleCancelTvTimePreview(): void {
+    tvTimeSelectedFileRef.current = null;
+
+    setTvTimeFileName(null);
+    setTvTimePlan(null);
+    setTvTimeResolutions({});
+    setTvTimePlanningError(null);
+    setTvTimeExecutionError(null);
+    setTvTimeImportResult(null);
+    setTvTimeProgress(null);
+    setIsTvTimePlanning(false);
+  }
+
+  function handleResolveTvTimeMatch(
+    tvTimeShowId: string,
+    decision: TvTimeMatchDecision,
+  ): void {
+    setTvTimeResolutions((current) => ({
+      ...current,
+      [tvTimeShowId]: decision,
+    }));
+  }
+
   async function handleTvTimeFileSelected(
     event: ChangeEvent<HTMLInputElement>,
   ): Promise<void> {
@@ -190,46 +289,118 @@ export default function SettingsPage() {
       return;
     }
 
+    // Planning is read-only, but it is asynchronous: guard against a stale
+    // resolution overwriting the plan of a newer/cancelled selection.
+    tvTimeSelectedFileRef.current = file;
+
     setTvTimeFileName(file.name);
+    setTvTimePlan(null);
+    setTvTimeResolutions({});
+    setTvTimePlanningError(null);
+    setTvTimeExecutionError(null);
+    setTvTimeImportResult(null);
+    setTvTimeProgress(null);
+    setIsTvTimePlanning(true);
+
+    event.target.value = "";
 
     try {
-      const preview = await buildTvTimeImportPreview(file);
+      const plan = await buildTvTimeImportPlan(file);
 
-      setValidationResult(preview.validation);
-
-      if (!preview.valid) {
-        setTvShowCount(null);
-        setProgressCount(null);
+      if (tvTimeSelectedFileRef.current !== file) {
         return;
       }
 
-      setTvShowCount(preview.tvShows);
-      setProgressCount(preview.tvShowData);
-      setTvTimeImportFile(file);
+      setTvTimePlan(plan);
     } catch (error) {
-      console.error("Failed to preview TV Time export:", error);
+      console.error("Failed to plan TV Time export:", error);
+
+      if (tvTimeSelectedFileRef.current !== file) {
+        return;
+      }
+
+      setTvTimePlanningError(getTvTimePlanningMessage(error));
     } finally {
-      event.target.value = "";
+      if (tvTimeSelectedFileRef.current === file) {
+        setIsTvTimePlanning(false);
+      }
     }
   }
   async function handleTvTimeImport(): Promise<void> {
-    if (!tvTimeImportFile) {
+    if (!tvTimePlan || isTvTimePlanning || isTvTimeImporting) {
+      return;
+    }
+
+    // Belt-and-braces alongside the disabled button: refuse to execute while
+    // any reviewed show still lacks an explicit decision.
+    const unresolvedReviewCount = tvTimePlan.shows.filter(
+      (show) => show.review && !show.resolution,
+    ).length;
+
+    if (unresolvedReviewCount > 0) {
       return;
     }
 
     setIsTvTimeImporting(true);
+    setTvTimeExecutionError(null);
+    setTvTimeProgress(null);
+    setTvTimeAnnouncement("");
+    tvTimeMilestoneRef.current = { phase: "", step: -1 };
 
     try {
-      const result = await executeTvTimeImport(tvTimeImportFile);
+      const resolvedPlan = applyImportResolutions(
+        tvTimePlan,
+        tvTimeResolutions,
+      );
+
+      const result = await executeTvTimeImportPlan(resolvedPlan, {
+        onProgress: (progress) => {
+          setTvTimeProgress(progress);
+
+          // Announce phase transitions and quartiles only; individual rows
+          // would make screen-reader output unusable.
+          const step = getTvTimeQuartile(progress);
+
+          if (
+            tvTimeMilestoneRef.current.phase !== progress.phase ||
+            step > tvTimeMilestoneRef.current.step
+          ) {
+            tvTimeMilestoneRef.current = { phase: progress.phase, step };
+
+            setTvTimeAnnouncement(
+              `${getTvTimePhaseLabel(progress.phase)}: ` +
+                `${progress.current} of ${progress.total}`,
+            );
+          }
+        },
+      });
 
       setTvTimeImportResult(result);
-      setTvTimeImportFile(null);
+      setTvTimePlan(null);
+      setTvTimeResolutions({});
     } catch (error) {
       console.error("Failed to import TV Time export:", error);
+
+      setTvTimeExecutionError(
+        error instanceof Error
+          ? error.message
+          : "The TV Time import failed unexpectedly.",
+      );
     } finally {
       setIsTvTimeImporting(false);
+      setTvTimeProgress(null);
     }
   }
+  const pendingTvTimeReviewCount = tvTimePlan
+    ? tvTimePlan.shows.filter((show) => show.review && !show.resolution).length
+    : 0;
+
+  const canImportTvTime =
+    tvTimePlan !== null &&
+    !isTvTimePlanning &&
+    !isTvTimeImporting &&
+    pendingTvTimeReviewCount === 0;
+
   return (
     <div className="space-y-10">
       <div>
@@ -475,135 +646,197 @@ export default function SettingsPage() {
                 <span>{tvTimeFileName}</span>
               </div>
             )}
-            {validationResult && (
-              <div className="mt-5 rounded-lg border border-border bg-app-bg/60 p-4">
-                <h3 className="mb-3 font-medium text-primary">
-                  TV Time Export Validation
-                </h3>
+            {isTvTimePlanning && (
+              <p
+                aria-live="polite"
+                className="mt-4 flex items-center gap-2 text-sm text-muted"
+              >
+                <LoaderCircle
+                  aria-hidden="true"
+                  className="h-4 w-4 animate-spin"
+                />
+                Analyzing TV Time export...
+              </p>
+            )}
 
-                <div className="space-y-2">
-                  {validationResult.found.map((file) => (
-                    <div
-                      key={file}
-                      className="flex items-center gap-2 text-success"
-                    >
-                      <CheckCircle2 className="h-4 w-4" />
-                      <span>{file}</span>
-                    </div>
-                  ))}
-                </div>
+            {tvTimePlanningError && (
+              <p
+                role="alert"
+                className="mt-4 rounded-lg border border-danger/60 bg-danger/10 px-4 py-3 text-sm text-danger"
+              >
+                {tvTimePlanningError}
+              </p>
+            )}
 
-                {validationResult.valid ? (
-                  <>
-                    {tvShowCount !== null && (
-                      <div className="mt-4 rounded-lg border border-border bg-surface/60 p-3">
-                        <div className="grid gap-4 sm:grid-cols-2">
-                          <div>
-                            <div className="text-sm text-muted">
-                              TV Shows
-                            </div>
+            {tvTimeExecutionError && (
+              <p
+                role="alert"
+                className="mt-4 rounded-lg border border-danger/60 bg-danger/10 px-4 py-3 text-sm text-danger"
+              >
+                {tvTimeExecutionError}
+              </p>
+            )}
 
-                            <div className="mt-1 text-2xl font-bold text-primary">
-                              {tvShowCount}
-                            </div>
-                          </div>
+            {tvTimePlan && (
+              <>
+                <TvTimeImportPreview
+                  fileName={tvTimeFileName ?? undefined}
+                  plan={tvTimePlan}
+                  resolutions={tvTimeResolutions}
+                  onResolve={handleResolveTvTimeMatch}
+                />
 
-                          <div>
-                            <div className="text-sm text-muted">
-                              TV Show Data
-                            </div>
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => void handleTvTimeImport()}
+                    disabled={!canImportTvTime}
+                    className="rounded-lg bg-success px-4 py-2 text-sm font-medium text-inverted transition hover:bg-success/80 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isTvTimeImporting
+                      ? "Importing..."
+                      : getTvTimeImportLabel(tvTimePlan)}
+                  </button>
 
-                            <div className="mt-1 text-2xl font-bold text-primary">
-                              {progressCount ?? "-"}
-                            </div>
-                          </div>
-                        </div>
+                  <button
+                    type="button"
+                    onClick={handleCancelTvTimePreview}
+                    disabled={isTvTimeImporting}
+                    className="rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-muted transition hover:bg-surface-hover hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+
+                  {isTvTimeImporting && (
+                    <div className="w-full rounded-lg border border-border bg-app-bg/60 p-3">
+                      <div className="flex min-w-0 items-center justify-between gap-3">
+                        <span className="min-w-0 break-words text-sm font-medium text-primary">
+                          Importing TV Time export...
+                        </span>
+
+                        {tvTimeProgress && (
+                          <span className="shrink-0 text-xs text-muted">
+                            {getTvTimePhaseLabel(tvTimeProgress.phase)} ·{" "}
+                            {tvTimeProgress.current} of {tvTimeProgress.total}
+                          </span>
+                        )}
                       </div>
-                    )}
 
-                    <div className="mt-4 flex items-center gap-3">
-                      <p className="text-sm text-success">
-                        Ready to import.
+                      {tvTimeProgress && (
+                        <div
+                          role="progressbar"
+                          aria-label="Importing TV Time export"
+                          aria-valuemin={0}
+                          aria-valuemax={tvTimeProgress.total}
+                          aria-valuenow={tvTimeProgress.current}
+                          className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-accent/15"
+                        >
+                          <div
+                            className="h-full rounded-full bg-accent transition-all"
+                            style={{
+                              width: `${
+                                tvTimeProgress.total > 0
+                                  ? Math.round(
+                                      (tvTimeProgress.current /
+                                        tvTimeProgress.total) *
+                                        100,
+                                    )
+                                  : 0
+                              }%`,
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      <p className="sr-only" aria-live="polite">
+                        {tvTimeAnnouncement}
                       </p>
-
-                      <button
-                        type="button"
-                        onClick={handleTvTimeImport}
-                        disabled={!tvTimeImportFile || isTvTimeImporting}
-                        className="rounded-lg bg-success px-4 py-2 text-sm font-medium text-inverted transition hover:bg-success/80 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {isTvTimeImporting ? "Importing..." : "Import"}
-                      </button>
                     </div>
-                    {tvTimeImportResult && (
-                      <div className="mt-5 rounded-lg border border-border bg-surface/60 p-4">
-                        <h3 className="font-medium text-primary">
-                          Import Complete
-                        </h3>
+                  )}
 
-                        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                          <div>
-                            <div className="text-xs text-muted">
-                              Shows imported
-                            </div>
-                            <div className="text-xl font-semibold text-primary">
-                              {tvTimeImportResult.importedShows}
-                            </div>
-                          </div>
+                  {pendingTvTimeReviewCount > 0 && (
+                    <p className="w-full text-sm text-warning">
+                      Resolve all items marked Needs review before importing.
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+            {tvTimeImportResult && (
+              <div className="mt-5 rounded-lg border border-border bg-surface/60 p-4">
+                <h3 className="font-medium text-primary">Import Complete</h3>
 
-                          <div>
-                            <div className="text-xs text-muted">
-                              Shows skipped
-                            </div>
-                            <div className="text-xl font-semibold text-primary">
-                              {tvTimeImportResult.skippedShows}
-                            </div>
-                          </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                  <div>
+                    <div className="text-xs text-muted">Shows imported</div>
 
-                          <div>
-                            <div className="text-xs text-muted">
-                              Shows failed
-                            </div>
-                            <div className="text-xl font-semibold text-primary">
-                              {tvTimeImportResult.failedShows}
-                            </div>
-                          </div>
+                    <div className="mt-1 text-xl font-semibold text-primary">
+                      {tvTimeImportResult.importedShows}
+                    </div>
+                  </div>
 
-                          <div>
-                            <div className="text-xs text-muted">
-                              Watched episodes imported
-                            </div>
-                            <div className="text-xl font-semibold text-primary">
-                              {tvTimeImportResult.importedWatchedEpisodes}
-                            </div>
-                          </div>
+                  <div>
+                    <div className="text-xs text-muted">Shows skipped</div>
 
-                          <div>
-                            <div className="text-xs text-muted">
-                              Watched episodes skipped
-                            </div>
-                            <div className="text-xl font-semibold text-primary">
-                              {tvTimeImportResult.skippedWatchedEpisodes}
-                            </div>
-                          </div>
+                    <div className="mt-1 text-xl font-semibold text-primary">
+                      {tvTimeImportResult.skippedShows}
+                    </div>
+                  </div>
 
-                          <div>
-                            <div className="text-xs text-muted">
-                              Watched episodes failed
-                            </div>
-                            <div className="text-xl font-semibold text-primary">
-                              {tvTimeImportResult.failedWatchedEpisodes}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <p className="mt-4 text-sm text-danger">
-                    Missing required files.
-                  </p>
-                )}
+                  <div>
+                    <div className="text-xs text-muted">Shows failed</div>
+
+                    <div className="mt-1 text-xl font-semibold text-primary">
+                      {tvTimeImportResult.failedShows}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-muted">
+                      Watched episodes imported
+                    </div>
+
+                    <div className="mt-1 text-xl font-semibold text-primary">
+                      {tvTimeImportResult.importedWatchedEpisodes}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-muted">Already watched</div>
+
+                    <div className="mt-1 text-xl font-semibold text-primary">
+                      {tvTimeImportResult.alreadyWatchedEpisodes}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-muted">Missing episodes</div>
+
+                    <div className="mt-1 text-xl font-semibold text-primary">
+                      {tvTimeImportResult.missingWatchedEpisodes}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-muted">
+                      Watched episodes skipped
+                    </div>
+
+                    <div className="mt-1 text-xl font-semibold text-primary">
+                      {tvTimeImportResult.skippedWatchedEpisodes}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-muted">
+                      Watched episodes failed
+                    </div>
+
+                    <div className="mt-1 text-xl font-semibold text-primary">
+                      {tvTimeImportResult.failedWatchedEpisodes}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>

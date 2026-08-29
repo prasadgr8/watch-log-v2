@@ -6,10 +6,15 @@ import { describe, expect, it } from "vitest";
 
 const featureDirectory = dirname(fileURLToPath(import.meta.url));
 
-const settingsSource = readFileSync(
-  join(featureDirectory, "SettingsPage.tsx"),
-  "utf-8",
-);
+const SETTINGS_SOURCES = [
+  "SettingsPage.tsx",
+  "components/TvTimeImportPreview.tsx",
+] as const;
+
+const sources = SETTINGS_SOURCES.map((fileName) => ({
+  fileName,
+  source: readFileSync(join(featureDirectory, fileName), "utf-8"),
+}));
 
 const stylesheet = readFileSync(
   join(featureDirectory, "..", "..", "index.css"),
@@ -109,14 +114,20 @@ const THEME_INVARIANT_TOKENS = ["--color-inverted"] as const;
 
 describe("settings theme conversion", () => {
   it("no longer hard-codes the dark palette or arbitrary colors", () => {
-    for (const pattern of HARD_CODED_DARK_PATTERNS) {
-      expect(settingsSource, pattern).not.toMatch(new RegExp(pattern));
+    for (const { fileName, source } of sources) {
+      for (const pattern of HARD_CODED_DARK_PATTERNS) {
+        expect(source, `${fileName}: ${pattern}`).not.toMatch(
+          new RegExp(pattern),
+        );
+      }
     }
   });
 
   it("styles the settings page through semantic theme utilities", () => {
+    const combined = sources.map((entry) => entry.source).join("\n");
+
     for (const utility of REQUIRED_SEMANTIC_UTILITIES) {
-      expect(settingsSource, utility).toContain(utility);
+      expect(combined, utility).toContain(utility);
     }
   });
 
