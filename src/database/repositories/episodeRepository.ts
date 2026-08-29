@@ -349,6 +349,10 @@ export const episodeRepository = {
     await db.episodes.delete(id);
   },
 
+  async getAll(): Promise<Episode[]> {
+    return db.episodes.toArray();
+  },
+
   async count(): Promise<number> {
     return db.episodes.count();
   },

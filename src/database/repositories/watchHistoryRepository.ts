@@ -31,4 +31,8 @@ export const watchHistoryRepository = {
   async removeByEpisode(episodeId: number): Promise<void> {
     await db.watchHistory.where("episodeId").equals(episodeId).delete();
   },
+
+  async count(): Promise<number> {
+    return db.watchHistory.count();
+  },
 };

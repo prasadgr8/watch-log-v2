@@ -1,57 +1,86 @@
 import { useEffect, useState } from "react";
 import {
+  Activity,
   BarChart3,
-  Library,
-  Film,
-  Tv,
-  Clock3,
-  PlayCircle,
+  CalendarCheck,
+  CalendarDays,
   CheckCircle2,
+  Clock3,
+  EyeOff,
+  Film,
+  Gauge,
+  History,
+  Hourglass,
+  Library,
+  ListVideo,
   PauseCircle,
-  XCircle,
+  Percent,
+  PlayCircle,
   Star,
   StarHalf,
-  Trophy,
+  Timer,
   TrendingUp,
-  Activity,
-  Hourglass,
+  Trophy,
+  Tv,
+  XCircle,
 } from "lucide-react";
-import { mediaRepository } from "../../database/repositories";
 import StatisticCard from "./components/StatisticCard";
+import RecentlyWatchedList from "./components/RecentlyWatchedList";
+import ShowProgressTable from "./components/ShowProgressTable";
 import {
+  calculateEpisodeStatistics,
   calculateLibraryStatistics,
-  type LibraryStatistics,
+  calculateRecentActivity,
+  calculateShowProgress,
+  calculateWatchTimeStatistics,
+  loadStatistics,
+  type StatisticsDashboard,
 } from "./services/statisticsService";
 
+const initialStatistics: StatisticsDashboard = {
+  library: calculateLibraryStatistics([]),
+  episodes: calculateEpisodeStatistics([]),
+  watchTime: calculateWatchTimeStatistics([]),
+  showProgress: calculateShowProgress([], []),
+  recentActivity: calculateRecentActivity([], []),
+  watchEventCount: 0,
+};
+
+function formatWatchDate(date: Date): string {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
 export default function StatisticsPage() {
-  const [stats, setStats] = useState<LibraryStatistics>({
-    total: 0,
-    movies: 0,
-    tvShows: 0,
-    planned: 0,
-    watching: 0,
-    completed: 0,
-    onHold: 0,
-    dropped: 0,
-
-    averageRating: 0,
-    ratedTitles: 0,
-    highestRating: 0,
-
-    completionRate: 0,
-    activeTitles: 0,
-    remainingTitles: 0,
-  });
+  const [stats, setStats] = useState<StatisticsDashboard>(initialStatistics);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadStatistics() {
-      const media = await mediaRepository.getAll();
+    async function loadPage(): Promise<void> {
+      try {
+        setError(null);
 
-      setStats(calculateLibraryStatistics(media));
+        const result = await loadStatistics();
+
+        setStats(result);
+      } catch (loadError) {
+        console.error("Failed to load statistics:", loadError);
+
+        setError("Unable to load statistics.");
+      } finally {
+        setIsLoading(false);
+      }
     }
 
-    void loadStatistics();
+    void loadPage();
   }, []);
+
+  function placeholder(value: number | string): number | string {
+    return isLoading ? "—" : value;
+  }
 
   return (
     <div className="space-y-8">
@@ -66,27 +95,36 @@ export default function StatisticsPage() {
           View insights and statistics about your media library.
         </p>
       </div>
+
+      {error && (
+        <p
+          role="alert"
+          className="rounded-lg border border-danger/60 bg-danger/10 px-4 py-3 text-sm text-danger"
+        >
+          {error}
+        </p>
+      )}
       <div className="border-b border-border pb-2">
         <h2 className="text-xl font-semibold text-primary">Library Overview</h2>
       </div>
       <div className="grid gap-6 md:grid-cols-3">
         <StatisticCard
           title="Total Media"
-          value={stats.total}
+          value={placeholder(stats.library.total)}
           icon={<Library size={24} />}
           iconClassName="text-accent-text"
         />
 
         <StatisticCard
           title="Movies"
-          value={stats.movies}
+          value={placeholder(stats.library.movies)}
           icon={<Film size={24} />}
           iconClassName="text-accent-text"
         />
 
         <StatisticCard
           title="TV Shows"
-          value={stats.tvShows}
+          value={placeholder(stats.library.tvShows)}
           icon={<Tv size={24} />}
           iconClassName="text-accent-text"
         />
@@ -101,23 +139,23 @@ export default function StatisticsPage() {
       <div className="grid gap-6 md:grid-cols-3">
         <StatisticCard
           title="Average Rating"
-          value={stats.averageRating.toFixed(1)}
-          suffix=" / 10"
+          value={placeholder(stats.library.averageRating.toFixed(1))}
+          suffix={isLoading ? undefined : " / 10"}
           icon={<StarHalf size={24} />}
           iconClassName="text-warning"
         />
 
         <StatisticCard
           title="Rated Titles"
-          value={stats.ratedTitles}
+          value={placeholder(stats.library.ratedTitles)}
           icon={<Star size={24} />}
           iconClassName="text-warning"
         />
 
         <StatisticCard
           title="Highest Rating"
-          value={stats.highestRating.toFixed(1)}
-          suffix=" / 10"
+          value={placeholder(stats.library.highestRating.toFixed(1))}
+          suffix={isLoading ? undefined : " / 10"}
           icon={<Trophy size={24} />}
           iconClassName="text-warning"
         />
@@ -128,35 +166,35 @@ export default function StatisticsPage() {
       <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         <StatisticCard
           title="Planned"
-          value={stats.planned}
+          value={placeholder(stats.library.planned)}
           icon={<Clock3 size={24} />}
           iconClassName="text-warning"
         />
 
         <StatisticCard
           title="Watching"
-          value={stats.watching}
+          value={placeholder(stats.library.watching)}
           icon={<PlayCircle size={24} />}
           iconClassName="text-accent-text"
         />
 
         <StatisticCard
           title="Completed"
-          value={stats.completed}
+          value={placeholder(stats.library.completed)}
           icon={<CheckCircle2 size={24} />}
           iconClassName="text-success"
         />
 
         <StatisticCard
           title="On Hold"
-          value={stats.onHold}
+          value={placeholder(stats.library.onHold)}
           icon={<PauseCircle size={24} />}
           iconClassName="text-warning"
         />
 
         <StatisticCard
           title="Dropped"
-          value={stats.dropped}
+          value={placeholder(stats.library.dropped)}
           icon={<XCircle size={24} />}
           iconClassName="text-danger"
         />
@@ -168,26 +206,218 @@ export default function StatisticsPage() {
       <div className="grid gap-6 md:grid-cols-3">
         <StatisticCard
           title="Completion Rate"
-          value={stats.completionRate}
-          suffix="%"
+          value={placeholder(stats.library.completionRate)}
+          suffix={isLoading ? undefined : "%"}
           icon={<TrendingUp size={24} />}
           iconClassName="text-success"
         />
 
         <StatisticCard
           title="Active Titles"
-          value={stats.activeTitles}
+          value={placeholder(stats.library.activeTitles)}
           icon={<Activity size={24} />}
           iconClassName="text-accent-text"
         />
 
         <StatisticCard
           title="Remaining Titles"
-          value={stats.remainingTitles}
+          value={placeholder(stats.library.remainingTitles)}
           icon={<Hourglass size={24} />}
           iconClassName="text-warning"
         />
       </div>
+
+      <div className="border-b border-border pb-2">
+        <h2 className="text-xl font-semibold text-primary">
+          Episode Statistics
+        </h2>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <StatisticCard
+          title="Total Episodes"
+          value={placeholder(stats.episodes.totalEpisodes)}
+          icon={<ListVideo size={24} />}
+          iconClassName="text-accent-text"
+        />
+
+        <StatisticCard
+          title="Watched Episodes"
+          value={placeholder(stats.episodes.watchedEpisodes)}
+          icon={<CheckCircle2 size={24} />}
+          iconClassName="text-success"
+        />
+
+        <StatisticCard
+          title="Unwatched Episodes"
+          value={placeholder(stats.episodes.unwatchedEpisodes)}
+          icon={<EyeOff size={24} />}
+          iconClassName="text-muted"
+        />
+
+        <StatisticCard
+          title="Watched %"
+          value={placeholder(stats.episodes.watchedPercentage)}
+          suffix={isLoading ? undefined : "%"}
+          icon={<Percent size={24} />}
+          iconClassName="text-accent-text"
+        />
+      </div>
+
+      <p className="text-sm text-muted">
+        {stats.episodes.specialEpisodes > 0
+          ? `${stats.episodes.specialEpisodes} Season 0 special${
+              stats.episodes.specialEpisodes === 1 ? "" : "s"
+            } are included in the totals above and excluded from show progress.`
+          : "Season 0 specials are excluded from show progress."}
+      </p>
+
+      <div className="border-b border-border pb-2">
+        <h2 className="text-xl font-semibold text-primary">Watch Time</h2>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-3">
+        <StatisticCard
+          title="Watch Hours"
+          value={placeholder(stats.watchTime.watchedHours)}
+          icon={<Clock3 size={24} />}
+          iconClassName="text-accent-text"
+        />
+
+        <StatisticCard
+          title="Watched Runtime"
+          value={placeholder(stats.watchTime.watchedRuntimeMinutes)}
+          suffix={isLoading ? undefined : " min"}
+          icon={<Timer size={24} />}
+          iconClassName="text-accent-text"
+        />
+
+        <StatisticCard
+          title="Avg Runtime / Watched Episode"
+          value={
+            isLoading ||
+            stats.watchTime.averageRuntimePerWatchedEpisode === null
+              ? "—"
+              : stats.watchTime.averageRuntimePerWatchedEpisode
+          }
+          suffix={
+            isLoading ||
+            stats.watchTime.averageRuntimePerWatchedEpisode === null
+              ? undefined
+              : " min"
+          }
+          icon={<Gauge size={24} />}
+          iconClassName="text-accent-text"
+        />
+      </div>
+
+      <p className="text-sm text-muted">
+        Based on available runtime metadata. Movie runtime is not available.
+      </p>
+
+      <div className="border-b border-border pb-2">
+        <h2 className="text-xl font-semibold text-primary">TV Progress</h2>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <StatisticCard
+          title="Completed"
+          value={placeholder(stats.showProgress.completedShows)}
+          icon={<CheckCircle2 size={24} />}
+          iconClassName="text-success"
+        />
+
+        <StatisticCard
+          title="Partially Watched"
+          value={placeholder(stats.showProgress.partiallyWatchedShows)}
+          icon={<PlayCircle size={24} />}
+          iconClassName="text-accent-text"
+        />
+
+        <StatisticCard
+          title="Unwatched"
+          value={placeholder(stats.showProgress.unwatchedShows)}
+          icon={<EyeOff size={24} />}
+          iconClassName="text-warning"
+        />
+
+        <StatisticCard
+          title="Shows Without Episodes"
+          value={placeholder(stats.showProgress.showsWithoutEpisodes)}
+          icon={<Film size={24} />}
+          iconClassName="text-muted"
+        />
+      </div>
+
+      <p className="text-sm text-muted">
+        Completed shows are derived from every regular episode being watched and
+        are distinct from your library watch status. Season 0 specials are
+        excluded from progress.
+      </p>
+
+      {!isLoading && <ShowProgressTable shows={stats.showProgress.shows} />}
+
+      <div className="border-b border-border pb-2">
+        <h2 className="text-xl font-semibold text-primary">
+          Recently Watched
+        </h2>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-3">
+        <div className="rounded-xl border border-border bg-surface p-6 shadow-sm">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium uppercase tracking-wide text-muted">
+                First Watch Date
+              </p>
+
+              <h3 className="mt-3 text-lg font-semibold text-primary">
+                {isLoading || !stats.recentActivity.firstWatchDate
+                  ? "—"
+                  : formatWatchDate(stats.recentActivity.firstWatchDate)}
+              </h3>
+            </div>
+
+            <div className="text-accent-text">
+              <CalendarDays size={24} />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border bg-surface p-6 shadow-sm">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium uppercase tracking-wide text-muted">
+                Last Watch Date
+              </p>
+
+              <h3 className="mt-3 text-lg font-semibold text-primary">
+                {isLoading || !stats.recentActivity.lastWatchDate
+                  ? "—"
+                  : formatWatchDate(stats.recentActivity.lastWatchDate)}
+              </h3>
+            </div>
+
+            <div className="text-accent-text">
+              <CalendarCheck size={24} />
+            </div>
+          </div>
+        </div>
+
+        <StatisticCard
+          title="Watch Events"
+          value={placeholder(stats.watchEventCount)}
+          icon={<History size={24} />}
+          iconClassName="text-accent-text"
+        />
+      </div>
+
+      <p className="text-sm text-muted">
+        Watch events are raw watch-history rows; re-watching or importing an
+        episode can create more than one event for the same episode.
+      </p>
+
+      {!isLoading && <RecentlyWatchedList activity={stats.recentActivity} />}
     </div>
   );
 }
