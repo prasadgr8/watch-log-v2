@@ -1,12 +1,19 @@
 import Dexie, { type EntityTable, type Table } from "dexie";
 
-import type { AppSetting, Episode, Media, WatchHistory } from "../types";
+import type {
+  AppSetting,
+  Episode,
+  ImportHistory,
+  Media,
+  WatchHistory,
+} from "../types";
 
 export class WatchLogDatabase extends Dexie {
   media!: EntityTable<Media, "id">;
   episodes!: EntityTable<Episode, "id">;
   watchHistory!: Table<WatchHistory, number>;
   settings!: EntityTable<AppSetting, "key">;
+  importHistory!: Table<ImportHistory, number>;
 
   constructor() {
     super("WatchLogV2");
@@ -59,6 +66,16 @@ export class WatchLogDatabase extends Dexie {
           })),
         );
       });
+
+    this.version(4).stores({
+      media:
+        "++id, tmdbId, mediaType, [tmdbId+mediaType], title, userStatus, createdAt, updatedAt",
+      episodes:
+        "++id, showId, tmdbId, [showId+tmdbId], [showId+seasonNumber+episodeNumber], watchedAt, updatedAt",
+      watchHistory: "++id, episodeId, watchedAt, source, [episodeId+watchedAt]",
+      settings: "&key, updatedAt",
+      importHistory: "++id, startedAt, completedAt, status, provider",
+    });
   }
 }
 

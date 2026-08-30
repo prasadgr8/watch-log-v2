@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   Download,
   FileJson,
+  History,
   LoaderCircle,
   RotateCcw,
   Upload,
@@ -30,6 +31,7 @@ import {
 } from "../../services/backup/backupValidation";
 import type { WatchLogBackupV1 } from "../../services/backup/backupTypes";
 
+import ImportHistoryList from "./components/ImportHistoryList";
 import TvTimeImportPreview from "./components/TvTimeImportPreview";
 
 interface SelectedBackup {
@@ -175,6 +177,10 @@ export default function SettingsPage() {
   });
   const [tvTimeImportResult, setTvTimeImportResult] =
     useState<TvTimeImportResult | null>(null);
+
+  // Bumped after every import run (success or failure) so the history list
+  // reloads; both outcomes persist an import-history record.
+  const [importHistoryRefreshToken, setImportHistoryRefreshToken] = useState(0);
   async function handleExportBackup(): Promise<void> {
     try {
       setIsExporting(true);
@@ -389,6 +395,7 @@ export default function SettingsPage() {
     } finally {
       setIsTvTimeImporting(false);
       setTvTimeProgress(null);
+      setImportHistoryRefreshToken((token) => token + 1);
     }
   }
   const pendingTvTimeReviewCount = tvTimePlan
@@ -839,6 +846,27 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-border bg-surface p-6">
+        <div className="flex items-start gap-4">
+          <div className="rounded-lg bg-accent/15 p-3 text-accent-text">
+            <History className="h-6 w-6" />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <h2 className="text-xl font-semibold text-primary">
+              Import history
+            </h2>
+
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+              Past TV Time imports with their outcome and summary. History is
+              stored locally in your browser and never leaves this device.
+            </p>
+
+            <ImportHistoryList refreshToken={importHistoryRefreshToken} />
           </div>
         </div>
       </section>

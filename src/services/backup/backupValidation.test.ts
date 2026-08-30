@@ -141,6 +141,27 @@ describe("validateAndHydrateBackup", () => {
       "Unsupported backup database version.",
     );
   });
+  it("accepts the current database version 4", () => {
+    const backup = createValidBackup() as Record<string, unknown>;
+
+    backup.databaseVersion = 4;
+
+    const validated = validateAndHydrateBackup(backup);
+
+    expect(validated.media).toHaveLength(1);
+    expect(validated.episodes).toHaveLength(1);
+  });
+
+  it("accepts backups exported before importHistory (database version 3)", () => {
+    const backup = createValidBackup() as Record<string, unknown>;
+
+    backup.databaseVersion = 3;
+
+    const validated = validateAndHydrateBackup(backup);
+
+    expect(validated.media).toHaveLength(1);
+    expect(validated.episodes).toHaveLength(1);
+  });
 
   it("rejects malformed store collections", () => {
     const backup = createValidBackup();

@@ -354,7 +354,9 @@ export function validateAndHydrateBackup(value: unknown): ValidatedRestoreData {
     "databaseVersion",
   );
 
-  if (databaseVersion !== 3) {
+  // Accept the current schema version and the previous one: backups exported
+  // before importHistory existed (v3) must remain restorable.
+  if (databaseVersion !== 3 && databaseVersion !== 4) {
     fail("Unsupported backup database version.");
   }
 

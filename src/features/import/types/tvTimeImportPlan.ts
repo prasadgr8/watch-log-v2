@@ -144,6 +144,10 @@ export interface TvTimeImportPlanSummary {
 export interface TvTimeImportPlan {
   provider: "tv-time";
 
+  /** Name of the ZIP the user selected; absent only when a plan was not built
+   * from a File (e.g. hand-rolled test plans). */
+  sourceFileName?: string;
+
   validation: ValidationResult;
 
   /** Resolved export timezone used to interpret watched timestamps. */
