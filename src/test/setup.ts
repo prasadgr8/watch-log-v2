@@ -13,12 +13,14 @@ async function clearDatabase(): Promise<void> {
     db.episodes,
     db.watchHistory,
     db.settings,
+    db.importHistory,
     async () => {
       await Promise.all([
         db.media.clear(),
         db.episodes.clear(),
         db.watchHistory.clear(),
         db.settings.clear(),
+        db.importHistory.clear(),
       ]);
     },
   );

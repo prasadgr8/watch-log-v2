@@ -60,7 +60,7 @@ describe("backupService", () => {
     expect(backup).toMatchObject({
       format: WATCH_LOG_BACKUP_FORMAT,
       version: WATCH_LOG_BACKUP_VERSION,
-      databaseVersion: 3,
+      databaseVersion: 4,
     });
 
     expect(new Date(backup.exportedAt).toISOString()).toBe(backup.exportedAt);
@@ -117,7 +117,7 @@ describe("backupService", () => {
     expect(backup).toMatchObject({
       format: WATCH_LOG_BACKUP_FORMAT,
       version: WATCH_LOG_BACKUP_VERSION,
-      databaseVersion: 3,
+      databaseVersion: 4,
       data: {
         media: [],
         episodes: [],

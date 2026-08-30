@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "../../../database/db";
 import {
   episodeRepository,
+  importHistoryRepository,
   mediaRepository,
   watchHistoryRepository,
 } from "../../../database/repositories";
@@ -17,6 +18,7 @@ import {
 import {
   applyImportResolutions,
   buildTvTimeImportPlan,
+  executeTvTimeImport,
   executeTvTimeImportPlan,
 } from "./tvTimeImportService";
 import type { TvTimeImportPlan } from "../types/tvTimeImportPlan";
@@ -1431,5 +1433,560 @@ describe("Phase 3F execution progress", () => {
     );
 
     expect(observerLogs).toHaveLength(emissions);
+  });
+});
+
+describe("Phase 3H import history end-to-end", () => {
+  beforeEach(async () => {
+    await Promise.all([
+      db.media.clear(),
+      db.episodes.clear(),
+      db.watchHistory.clear(),
+      db.importHistory.clear(),
+    ]);
+    vi.restoreAllMocks();
+  });
+
+  it("persists a completed history record for a successful file import", async () => {
+    prepareSuccessfulTmdbMocks();
+
+    const blob = await createTvTimeZip({
+      timeZone: "America/New_York",
+      seenCreatedAt: "2021-01-14 10:00:00",
+    });
+
+    const result = await executeTvTimeImport(createZipFile(blob));
+
+    expect(result).toEqual({
+      importedShows: 1,
+      skippedShows: 0,
+      failedShows: 0,
+      importedWatchedEpisodes: 1,
+      alreadyWatchedEpisodes: 0,
+      missingWatchedEpisodes: 0,
+      skippedWatchedEpisodes: 0,
+      failedWatchedEpisodes: 0,
+    });
+
+    const [record] = await importHistoryRepository.list();
+
+    expect(record).toMatchObject({
+      provider: "tv-time",
+      sourceFileName: "tvtime-export.zip",
+      timezone: "America/New_York",
+      status: "completed",
+      totalShows: 1,
+      newShows: 1,
+      existingShows: 0,
+      unmatchedShows: 0,
+      plannedWatchedEpisodes: 1,
+      warnings: [],
+      importedShows: 1,
+      skippedShows: 0,
+      failedShows: 0,
+      importedWatchedEpisodes: 1,
+      alreadyWatchedEpisodes: 0,
+      missingWatchedEpisodes: 0,
+      skippedWatchedEpisodes: 0,
+      failedWatchedEpisodes: 0,
+    });
+
+    // Only genuinely failed runs carry an errorMessage.
+    expect(record?.errorMessage).toBeUndefined();
+
+    // Date fields survive the IndexedDB round-trip as hydrated Dates.
+    const startedAtTime = record?.startedAt.getTime() ?? 0;
+    const completedAtTime = record?.completedAt.getTime() ?? 0;
+
+    expect(record?.startedAt).toBeInstanceOf(Date);
+    expect(record?.completedAt).toBeInstanceOf(Date);
+    expect(startedAtTime).toBeLessThanOrEqual(completedAtTime);
+    expect(record?.durationMs).toBe(completedAtTime - startedAtTime);
+    expect(record?.durationMs).toBeGreaterThanOrEqual(0);
+
+    // Read-back by id rehydrates the same instants.
+    const readBack =
+      record?.id !== undefined
+        ? await importHistoryRepository.getById(record.id)
+        : undefined;
+
+    expect(readBack?.startedAt).toBeInstanceOf(Date);
+    expect(readBack?.startedAt.getTime()).toBe(startedAtTime);
+    expect(readBack?.completedAt.getTime()).toBe(completedAtTime);
+  });
+
+  it("persists a partial history record when a show fails mid-execution", async () => {
+    const lostTvResult = createTmdbTvResult({
+      id: 4608,
+      name: "Lost",
+      original_name: "Lost",
+      first_air_date: "2004-09-22",
+      popularity: 95,
+    });
+
+    vi.spyOn(tmdbSearchService, "searchTvShows").mockImplementation(
+      async (query: string) => {
+        if (query.includes("Breaking")) {
+          return {
+            page: 1,
+            results: [createTmdbTvResult()],
+            total_pages: 1,
+            total_results: 1,
+          };
+        }
+
+        if (query.includes("Lost")) {
+          return {
+            page: 1,
+            results: [lostTvResult],
+            total_pages: 1,
+            total_results: 1,
+          };
+        }
+
+        return {
+          page: 1,
+          results: [],
+          total_pages: 0,
+          total_results: 0,
+        };
+      },
+    );
+
+    vi.spyOn(tmdbTvService, "getTvDetails").mockImplementation(
+      async (tmdbId: number) => ({
+        ...createTmdbTvDetails(),
+        id: tmdbId,
+        name: tmdbId === 1396 ? "Breaking Bad" : "Lost",
+      }),
+    );
+
+    vi.spyOn(tmdbTvService, "getSeasonDetails").mockImplementation(
+      async (tmdbId: number) => {
+        if (tmdbId === 4608) {
+          throw new Error("Simulated TMDB season failure");
+        }
+
+        return createTmdbTvSeasonDetails();
+      },
+    );
+
+    const blob = await createTvTimeZip({
+      shows: [
+        { id: "tvtime-breaking-bad", title: "Breaking Bad (2008)" },
+        { id: "tvtime-lost", title: "Lost (2004)" },
+      ],
+      seenEpisodes: [
+        { title: "Breaking Bad (2008)", season: 1, episode: 1 },
+        { title: "Lost (2004)", season: 1, episode: 1 },
+      ],
+    });
+
+    const result = await executeTvTimeImportPlan(
+      await buildTvTimeImportPlan(createZipFile(blob)),
+    );
+
+    // The first show imported; the second failed and was rolled back. Its
+    // watched row then finds no episode → EPISODE_MISSING.
+    expect(result.importedShows).toBe(1);
+    expect(result.failedShows).toBe(1);
+    expect(result.importedWatchedEpisodes).toBe(1);
+    expect(result.missingWatchedEpisodes).toBe(1);
+
+    expect(await mediaRepository.getByTmdbId(1396, "tv")).toBeDefined();
+    expect(await mediaRepository.getByTmdbId(4608, "tv")).toBeUndefined();
+
+    const [record] = await importHistoryRepository.list();
+
+    // Execution COMPLETED with failures → "partial", never "failed".
+    expect(record).toMatchObject({
+      provider: "tv-time",
+      status: "partial",
+      timezone: "Asia/Kolkata",
+      totalShows: 2,
+      newShows: 2,
+      existingShows: 0,
+      unmatchedShows: 0,
+      plannedWatchedEpisodes: 2,
+      importedShows: 1,
+      skippedShows: 0,
+      failedShows: 1,
+      importedWatchedEpisodes: 1,
+      alreadyWatchedEpisodes: 0,
+      missingWatchedEpisodes: 1,
+      skippedWatchedEpisodes: 0,
+      failedWatchedEpisodes: 0,
+    });
+
+    expect(record?.errorMessage).toBeUndefined();
+  });
+
+  it("records failed history with zeroed execution counters when the whole execution throws", async () => {
+    const plan = await buildAmbiguousPlan();
+
+    // Defense-in-depth: an unresolved review aborts the whole execution.
+    await expect(executeTvTimeImportPlan(plan)).rejects.toThrow(
+      /Unresolved TV Time match review/,
+    );
+
+    // Nothing reached the library.
+    expect(await db.media.count()).toBe(0);
+    expect(await db.episodes.count()).toBe(0);
+    expect(await db.watchHistory.count()).toBe(0);
+
+    expect(await importHistoryRepository.count()).toBe(1);
+
+    const [record] = await importHistoryRepository.list();
+
+    expect(record).toMatchObject({
+      provider: "tv-time",
+      status: "failed",
+      // Plan context is preserved even though execution never ran.
+      totalShows: 1,
+      newShows: 1,
+      existingShows: 0,
+      unmatchedShows: 0,
+      plannedWatchedEpisodes: 1,
+      // A null result zeroes every execution counter.
+      importedShows: 0,
+      skippedShows: 0,
+      failedShows: 0,
+      importedWatchedEpisodes: 0,
+      alreadyWatchedEpisodes: 0,
+      missingWatchedEpisodes: 0,
+      skippedWatchedEpisodes: 0,
+      failedWatchedEpisodes: 0,
+    });
+  });
+
+  it("captures the escaped error message on the failed history record", async () => {
+    const plan = await buildAmbiguousPlan();
+
+    let thrownError: unknown;
+
+    try {
+      await executeTvTimeImportPlan(plan);
+    } catch (error) {
+      thrownError = error;
+    }
+
+    expect(thrownError).toBeInstanceOf(Error);
+    expect((thrownError as Error).message).toMatch(
+      /Unresolved TV Time match review/,
+    );
+
+    const records = await importHistoryRepository.list();
+
+    // Exactly one record: the failure record, with no completed duplicates.
+    expect(records).toHaveLength(1);
+    expect(records[0]?.status).toBe("failed");
+    expect(records[0]?.errorMessage).toBe((thrownError as Error).message);
+  });
+
+  it("records user-skipped shows and their unattributed watched rows in history", async () => {
+    prepareSuccessfulTmdbMocksWithRivals();
+
+    const blob = await createTvTimeZip();
+    const plan = await buildTvTimeImportPlan(createZipFile(blob));
+
+    const resolved = applyImportResolutions(plan, {
+      "tvtime-breaking-bad": { decision: "skip" },
+    });
+
+    const result = await executeTvTimeImportPlan(resolved);
+
+    expect(result.importedShows).toBe(0);
+    expect(result.skippedShows).toBe(1);
+    expect(result.importedWatchedEpisodes).toBe(0);
+    expect(result.skippedWatchedEpisodes).toBe(1);
+
+    expect(await db.media.count()).toBe(0);
+
+    const [record] = await importHistoryRepository.list();
+
+    expect(record).toMatchObject({
+      status: "completed",
+      totalShows: 1,
+      newShows: 1,
+      importedShows: 0,
+      skippedShows: 1,
+      failedShows: 0,
+      plannedWatchedEpisodes: 1,
+      importedWatchedEpisodes: 0,
+      skippedWatchedEpisodes: 1,
+    });
+
+    expect(record?.errorMessage).toBeUndefined();
+  });
+
+  it("records unmatched shows as skipped without failing the import history", async () => {
+    // Breaking Bad matches; the unknown title never matches TMDB.
+    vi.spyOn(tmdbSearchService, "searchTvShows").mockImplementation(
+      async (query: string) => {
+        if (query.includes("Breaking")) {
+          return {
+            page: 1,
+            results: [createTmdbTvResult()],
+            total_pages: 1,
+            total_results: 1,
+          };
+        }
+
+        return {
+          page: 1,
+          results: [],
+          total_pages: 0,
+          total_results: 0,
+        };
+      },
+    );
+
+    vi.spyOn(tmdbTvService, "getTvDetails").mockResolvedValue(
+      createTmdbTvDetails(),
+    );
+
+    vi.spyOn(tmdbTvService, "getSeasonDetails").mockResolvedValue(
+      createTmdbTvSeasonDetails(),
+    );
+
+    const blob = await createTvTimeZip({
+      shows: [
+        { id: "tvtime-breaking-bad", title: "Breaking Bad (2008)" },
+        { id: "tvtime-unknown", title: "Totally Unknown Show 123" },
+      ],
+      seenEpisodes: [{ title: "Breaking Bad (2008)", season: 1, episode: 1 }],
+    });
+
+    const result = await executeTvTimeImportPlan(
+      await buildTvTimeImportPlan(createZipFile(blob)),
+    );
+
+    expect(result.importedShows).toBe(1);
+    expect(result.skippedShows).toBe(1);
+    expect(result.failedShows).toBe(0);
+
+    // Only the matched show reached the library.
+    expect(await db.media.count()).toBe(1);
+
+    const [record] = await importHistoryRepository.list();
+
+    expect(record).toMatchObject({
+      status: "completed",
+      totalShows: 2,
+      newShows: 1,
+      unmatchedShows: 1,
+      importedShows: 1,
+      skippedShows: 1,
+      failedShows: 0,
+      plannedWatchedEpisodes: 1,
+      importedWatchedEpisodes: 1,
+    });
+
+    expect(record?.errorMessage).toBeUndefined();
+  });
+
+  it("accounts for EPISODE_MISSING watched rows in history without failing the import", async () => {
+    prepareSuccessfulTmdbMocks();
+
+    const blob = await createTvTimeZip({
+      seenEpisodes: [
+        { title: "Breaking Bad (2008)", season: 1, episode: 1 },
+        { title: "Breaking Bad (2008)", season: 1, episode: 5 },
+      ],
+    });
+
+    const result = await executeTvTimeImportPlan(
+      await buildTvTimeImportPlan(createZipFile(blob)),
+    );
+
+    expect(result.importedWatchedEpisodes).toBe(1);
+    expect(result.missingWatchedEpisodes).toBe(1);
+
+    // The missing episode is never created and never receives watch history.
+    expect(await db.episodes.count()).toBe(1);
+    expect(await db.watchHistory.count()).toBe(1);
+
+    const [record] = await importHistoryRepository.list();
+
+    // A missing episode is an explicit, auditable outcome — not a failure.
+    expect(record).toMatchObject({
+      status: "completed",
+      plannedWatchedEpisodes: 2,
+      importedWatchedEpisodes: 1,
+      missingWatchedEpisodes: 1,
+      failedWatchedEpisodes: 0,
+      failedShows: 0,
+    });
+
+    expect(record?.errorMessage).toBeUndefined();
+  });
+
+  it("appends a second history record for a re-import and orders records newest first", async () => {
+    prepareSuccessfulTmdbMocks();
+
+    const blob = await createTvTimeZip({
+      seenCreatedAt: "2021-01-14 10:00:00",
+    });
+
+    const plan = await buildTvTimeImportPlan(createZipFile(blob));
+
+    const firstResult = await executeTvTimeImportPlan(plan);
+
+    expect(firstResult.importedShows).toBe(1);
+    expect(firstResult.importedWatchedEpisodes).toBe(1);
+
+    const secondResult = await executeTvTimeImportPlan(plan);
+
+    // Idempotent: the show now exists and the episode is already watched.
+    expect(secondResult.importedShows).toBe(0);
+    expect(secondResult.skippedShows).toBe(1);
+    expect(secondResult.importedWatchedEpisodes).toBe(0);
+    expect(secondResult.alreadyWatchedEpisodes).toBe(1);
+
+    // No duplicate library data was created by the second run.
+    expect(await db.media.count()).toBe(1);
+    expect(await db.episodes.count()).toBe(1);
+    expect(await db.watchHistory.count()).toBe(1);
+
+    const records = await importHistoryRepository.list();
+
+    expect(records).toHaveLength(2);
+
+    // Newest first: the re-import record leads.
+    expect(records[0]).toMatchObject({
+      status: "completed",
+      importedShows: 0,
+      skippedShows: 1,
+      importedWatchedEpisodes: 0,
+      alreadyWatchedEpisodes: 1,
+    });
+
+    expect(records[1]).toMatchObject({
+      status: "completed",
+      importedShows: 1,
+      skippedShows: 0,
+      importedWatchedEpisodes: 1,
+      alreadyWatchedEpisodes: 0,
+    });
+
+    expect(records[0]?.completedAt.getTime()).toBeGreaterThanOrEqual(
+      records[1]?.completedAt.getTime() ?? 0,
+    );
+  });
+
+  it("preserves local watch state and records the already-watched outcome in history", async () => {
+    prepareSuccessfulTmdbMocks();
+
+    // First import watches S01E01 at the TV Time timestamp.
+    const firstBlob = await createTvTimeZip({
+      timeZone: "America/New_York",
+      seenCreatedAt: "2021-01-14 10:00:00",
+    });
+
+    await executeTvTimeImportPlan(
+      await buildTvTimeImportPlan(createZipFile(firstBlob)),
+    );
+
+    // A second export reports the same episode watched at a DIFFERENT time.
+    const secondBlob = await createTvTimeZip({
+      timeZone: "America/New_York",
+      seenCreatedAt: "2022-06-01 12:00:00",
+    });
+
+    const secondResult = await executeTvTimeImportPlan(
+      await buildTvTimeImportPlan(createZipFile(secondBlob)),
+    );
+
+    expect(secondResult.alreadyWatchedEpisodes).toBe(1);
+    expect(secondResult.importedWatchedEpisodes).toBe(0);
+
+    // LOCAL WATCH STATE ALWAYS WINS: the original watchedAt and the single
+    // history event survive the re-import untouched.
+    const media = await mediaRepository.getByTmdbId(1396, "tv");
+
+    const episode =
+      media?.id !== undefined
+        ? await episodeRepository.getByShowSeasonAndEpisode(media.id, 1, 1)
+        : undefined;
+
+    expect(episode?.watchedAt?.toISOString()).toBe("2021-01-14T15:00:00.000Z");
+    expect(await db.watchHistory.count()).toBe(1);
+
+    const [latestRecord] = await importHistoryRepository.list();
+
+    expect(latestRecord).toMatchObject({
+      status: "completed",
+      alreadyWatchedEpisodes: 1,
+      importedWatchedEpisodes: 0,
+    });
+
+    expect(latestRecord?.errorMessage).toBeUndefined();
+  });
+
+  it("persists the resolved export timezone that interpreted the watched timestamps", async () => {
+    prepareSuccessfulTmdbMocks();
+
+    const blob = await createTvTimeZip({
+      timeZone: "Asia/Kolkata",
+      seenCreatedAt: "2020-01-01 05:00:00",
+    });
+
+    await executeTvTimeImport(createZipFile(blob));
+
+    const media = await mediaRepository.getByTmdbId(1396, "tv");
+
+    const episode =
+      media?.id !== undefined
+        ? await episodeRepository.getByShowSeasonAndEpisode(media.id, 1, 1)
+        : undefined;
+
+    // The watched instant was interpreted through the export timezone.
+    expect(episode?.watchedAt?.toISOString()).toBe("2019-12-31T23:30:00.000Z");
+
+    const [record] = await importHistoryRepository.list();
+
+    // History persists the same timezone that performed the interpretation.
+    expect(record?.timezone).toBe("Asia/Kolkata");
+  });
+
+  it("keeps the import successful when persisting history fails", async () => {
+    prepareSuccessfulTmdbMocks();
+
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    vi.spyOn(importHistoryRepository, "add").mockRejectedValue(
+      new Error("IndexedDB unavailable"),
+    );
+
+    const blob = await createTvTimeZip({
+      seenCreatedAt: "2021-01-14 10:00:00",
+    });
+
+    const result = await executeTvTimeImportPlan(
+      await buildTvTimeImportPlan(createZipFile(blob)),
+    );
+
+    // The import itself is unaffected: full success counters, real writes.
+    expect(result).toEqual({
+      importedShows: 1,
+      skippedShows: 0,
+      failedShows: 0,
+      importedWatchedEpisodes: 1,
+      alreadyWatchedEpisodes: 0,
+      missingWatchedEpisodes: 0,
+      skippedWatchedEpisodes: 0,
+      failedWatchedEpisodes: 0,
+    });
+
+    expect(await db.media.count()).toBe(1);
+    expect(await db.episodes.count()).toBe(1);
+    expect(await db.watchHistory.count()).toBe(1);
+
+    // History stayed empty; the failure was logged, never propagated.
+    expect(await db.importHistory.count()).toBe(0);
+    expect(errorSpy).toHaveBeenCalledWith(
+      "Failed to persist import history",
+      expect.any(Error),
+    );
   });
 });

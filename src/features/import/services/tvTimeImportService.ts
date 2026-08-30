@@ -12,6 +12,7 @@ import {
   resolveTvTimeMatch,
 } from "./tvdbMatcher";
 import { synchronizeTvTimeShowEpisodes } from "./tvTimeEpisodeImporter";
+import { persistTvTimeImportHistory } from "./tvTimeImportHistoryService";
 import { parseTvTimeDate, resolveTvTimeZone } from "./tvTimeZone";
 import type {
   TvTimeImportCallbacks,
@@ -238,6 +239,7 @@ export async function buildTvTimeImportPlan(
 
   return {
     provider: "tv-time",
+    sourceFileName: file.name,
     validation,
     timezone,
     shows: plannedShows,
@@ -310,6 +312,46 @@ export function applyImportResolutions(
 }
 
 /**
+ * Public mutation boundary for a TV Time import. Delegates the real work to
+ * executeTvTimeImportPlanCore and records a durable import-history entry for
+ * every run, capturing completion status (completed / partial / failed) and,
+ * on failure, the error that escaped the core executor.
+ *
+ * History persistence is best-effort and isolated: a failure to record history
+ * never alters the returned result and never masks an import error, mirroring
+ * the existing progress-observer isolation contract.
+ */
+export async function executeTvTimeImportPlan(
+  plan: TvTimeImportPlan,
+  callbacks?: TvTimeImportCallbacks,
+): Promise<TvTimeImportResult> {
+  const startedAt = new Date();
+
+  try {
+    const result = await executeTvTimeImportPlanCore(plan, callbacks);
+
+    await persistTvTimeImportHistory({
+      plan,
+      result,
+      startedAt,
+      completedAt: new Date(),
+    });
+
+    return result;
+  } catch (error) {
+    await persistTvTimeImportHistory({
+      plan,
+      result: null,
+      startedAt,
+      completedAt: new Date(),
+      error: error as Error,
+    });
+
+    throw error;
+  }
+}
+
+/**
  * Mutation boundary for a TV Time import. Consumes a plan that already
  * contains resolved TMDB matches and never re-runs matching. An optional
  * callbacks object receives real-work progress; omitting it preserves the
@@ -317,7 +359,7 @@ export function applyImportResolutions(
  * swallowed: reporting can never abort execution, trigger rollback, or
  * alter counters or the returned result.
  */
-export async function executeTvTimeImportPlan(
+async function executeTvTimeImportPlanCore(
   plan: TvTimeImportPlan,
   callbacks?: TvTimeImportCallbacks,
 ): Promise<TvTimeImportResult> {

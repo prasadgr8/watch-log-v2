@@ -1,7 +1,7 @@
 import Dexie, { type Table } from "dexie";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { Episode, Media, WatchHistory } from "../types";
+import type { Episode, ImportHistory, Media, WatchHistory } from "../types";
 
 interface TestSetting {
   key: string;
@@ -110,6 +110,72 @@ class VersionThreeDatabase extends Dexie {
           })),
         );
       });
+  }
+}
+
+class VersionFourDatabase extends Dexie {
+  media!: Table<Media, number>;
+  episodes!: Table<Episode, number>;
+  watchHistory!: Table<WatchHistory, number>;
+  importHistory!: Table<ImportHistory, number>;
+  settings!: Table<TestSetting, string>;
+
+  constructor(databaseName: string) {
+    super(databaseName);
+
+    this.version(1).stores({
+      media: "++id, tmdbId, mediaType, userStatus, [tmdbId+mediaType]",
+      episodes: "++id, showId, watched, [showId+seasonNumber+episodeNumber]",
+      settings: "key",
+    });
+
+    this.version(2).stores({
+      media: "++id, tmdbId, mediaType, userStatus, [tmdbId+mediaType]",
+      episodes:
+        "++id, showId, tmdbId, watched, [showId+tmdbId], [showId+seasonNumber+episodeNumber]",
+      settings: "key",
+    });
+
+    this.version(3)
+      .stores({
+        media: "++id, tmdbId, mediaType, userStatus, [tmdbId+mediaType]",
+        episodes:
+          "++id, showId, tmdbId, watched, [showId+tmdbId], [showId+seasonNumber+episodeNumber]",
+        watchHistory:
+          "++id, episodeId, watchedAt, source, [episodeId+watchedAt]",
+        settings: "key",
+      })
+      .upgrade(async (transaction) => {
+        const watchedEpisodes = await transaction
+          .table<Episode, number>("episodes")
+          .filter(
+            (episode) =>
+              episode.watched &&
+              episode.watchedAt !== undefined &&
+              episode.id !== undefined,
+          )
+          .toArray();
+
+        const migrationCreatedAt = new Date();
+
+        await transaction.table<WatchHistory, number>("watchHistory").bulkAdd(
+          watchedEpisodes.map((episode) => ({
+            episodeId: episode.id as number,
+            watchedAt: episode.watchedAt as Date,
+            source: "manual",
+            createdAt: migrationCreatedAt,
+          })),
+        );
+      });
+
+    this.version(4).stores({
+      media: "++id, tmdbId, mediaType, userStatus, [tmdbId+mediaType]",
+      episodes:
+        "++id, showId, tmdbId, watched, [showId+tmdbId], [showId+seasonNumber+episodeNumber]",
+      watchHistory: "++id, episodeId, watchedAt, source, [episodeId+watchedAt]",
+      settings: "key",
+      importHistory: "++id, startedAt, completedAt, status, provider",
+    });
   }
 }
 
@@ -316,5 +382,69 @@ describe("WatchLogDatabase schema migration", () => {
     ).toBe(true);
 
     versionThreeDatabase.close();
+  });
+
+  it("upgrades a version 3 database to version 4 and creates the importHistory store", async () => {
+    const databaseName = createTestDatabaseName();
+
+    const versionThreeDatabase = new VersionThreeDatabase(databaseName);
+
+    await versionThreeDatabase.open();
+
+    expect(versionThreeDatabase.verno).toBe(3);
+
+    const now = new Date("2026-07-15T00:00:00.000Z");
+
+    await versionThreeDatabase.media.add({
+      tmdbId: 1396,
+      mediaType: "tv",
+      title: "Breaking Bad",
+      userStatus: "watching",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await versionThreeDatabase.settings.put({
+      key: "theme",
+      value: "dark",
+    });
+
+    versionThreeDatabase.close();
+
+    const versionFourDatabase = new VersionFourDatabase(databaseName);
+
+    await versionFourDatabase.open();
+
+    expect(versionFourDatabase.verno).toBe(4);
+
+    expect(await versionFourDatabase.media.count()).toBe(1);
+    const storedMedia = await versionFourDatabase.media
+      .where("tmdbId")
+      .equals(1396)
+      .and((media) => media.mediaType === "tv")
+      .first();
+    expect(storedMedia).toMatchObject({ title: "Breaking Bad" });
+
+    expect(await versionFourDatabase.watchHistory.count()).toBe(0);
+    expect(await versionFourDatabase.settings.count()).toBe(1);
+
+    expect(await versionFourDatabase.importHistory.count()).toBe(0);
+
+    const importHistorySchema = versionFourDatabase.importHistory.schema;
+
+    expect(
+      importHistorySchema.indexes.some((index) => index.name === "startedAt"),
+    ).toBe(true);
+    expect(
+      importHistorySchema.indexes.some((index) => index.name === "completedAt"),
+    ).toBe(true);
+    expect(
+      importHistorySchema.indexes.some((index) => index.name === "status"),
+    ).toBe(true);
+    expect(
+      importHistorySchema.indexes.some((index) => index.name === "provider"),
+    ).toBe(true);
+
+    versionFourDatabase.close();
   });
 });

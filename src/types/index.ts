@@ -17,3 +17,9 @@ export type {
   WatchHistory,
   WatchHistorySource,
 } from "./watchHistory";
+
+export type {
+  ImportHistory,
+  ImportHistoryStatus,
+  PersistedImportHistory,
+} from "./importHistory";
