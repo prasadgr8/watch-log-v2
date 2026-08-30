@@ -118,14 +118,14 @@ Future cloud synchronization must be optional.
 
 ## Backup and Recovery
 
-Project Orion will support:
+Project Orion supports:
 
-- JSON export
-- JSON import
+- JSON backup export
+- JSON backup restore with replace semantics
 - Backup validation
 - Schema version detection
 
-Backup and restore functionality will be implemented before the stable v2.0.0 release.
+Backup and recovery shipped in v2.0.0-beta.1. The backup envelope contains the `media`, `episodes`, `watchHistory`, and `settings` stores. The `importHistory` store is intentionally excluded from the backup envelope because import history is a diagnostic log of import runs, not user watch-state data. Backup validation accepts the current database schema version 4 as well as the previous version 3, so backups exported before import history existed remain restorable.
 
 ## Data Access Architecture
 
@@ -138,6 +138,8 @@ Current repositories include:
 - `mediaRepository`
 - `episodeRepository`
 - `settingsRepository`
+- `watchHistoryRepository`
+- `importHistoryRepository`
 
 The intended data access flow is:
 
@@ -237,7 +239,7 @@ Runtime minutes are converted to hours and displayed with one decimal place.
 
 The IndexedDB data layer is tested with Vitest and fake-indexeddb.
 
-Repository tests run against the shared Dexie database instance in a Node test environment backed by fake-indexeddb. The media, episodes, and settings stores are cleared before and after each test to provide deterministic test isolation.
+Repository tests run against the shared Dexie database instance in a Node test environment backed by fake-indexeddb. The media, episodes, watch history, import history, and settings stores are cleared before and after each test to provide deterministic test isolation.
 
 Automated coverage includes:
 
@@ -301,3 +303,42 @@ Watch-state changes are transactional across the `episodes` and `watchHistory` s
 TV show deletion is transactional across `media`, `episodes`, and `watchHistory`. Related episode IDs are resolved first, related watch history is deleted, then the episodes and media record are removed.
 
 This prevents orphan watch history records for deleted episodes while preserving data belonging to unrelated shows.
+
+## Import History
+
+Database schema version 4 introduces a dedicated `importHistory` store.
+
+An import history record is a diagnostic log entry describing one TV Time import run:
+
+- `id` — generated local import history identifier
+- `provider` — import source identity, currently `tv-time`
+- `sourceFileName` — name of the imported ZIP file
+- `timezone` — resolved export timezone used to interpret watched timestamps
+- `status` — `completed`, `partial`, or `failed`
+- `startedAt` — timestamp when the import run started
+- `completedAt` — timestamp when the import run finished
+- `durationMs` — wall-clock duration of the execution phase
+- `totalShows`, `newShows`, `existingShows`, `unmatchedShows`, `plannedWatchedEpisodes`, `warnings` — import plan context
+- `importedShows`, `skippedShows`, `failedShows`, `importedWatchedEpisodes`, `alreadyWatchedEpisodes`, `missingWatchedEpisodes`, `skippedWatchedEpisodes`, `failedWatchedEpisodes` — execution outcome counters
+- `errorMessage` — present only when the status is `failed`
+
+The import history store uses the following indexes:
+
+- `startedAt`
+- `completedAt`
+- `status`
+- `provider`
+
+### Metadata-Only Semantics
+
+Import history is a diagnostic log, not a watch-state source of truth. It stores no foreign keys into `media`, `episodes`, or `watchHistory`, and its counters are summary metadata. The `Media`, `Episode`, and `WatchHistory` stores remain the only sources of watch-state truth.
+
+History persistence is best-effort: a failed history write is logged and never fails or blocks the import itself.
+
+### Version 3 to Version 4 Migration
+
+The version 4 schema adds the `importHistory` store. The migration is additive: it creates the empty store and changes no existing records, so version 3 data requires no backfill.
+
+### Backup Exclusion
+
+The `importHistory` store is intentionally excluded from the backup envelope. Backups continue to contain only `media`, `episodes`, `watchHistory`, and `settings`. Backup validation accepts database schema version 4 as well as version 3, so backups exported before import history existed remain restorable.

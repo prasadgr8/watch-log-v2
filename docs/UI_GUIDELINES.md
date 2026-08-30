@@ -109,7 +109,7 @@ Mobile navigation will use a responsive drawer or equivalent compact navigation 
 
 Dark mode is the initial application theme.
 
-Light theme support is planned for a future milestone.
+The light theme foundation shipped in v2.0.0-alpha.6.7.
 
 Theme implementation should use centralized application theme configuration.
 

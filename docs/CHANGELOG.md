@@ -1,5 +1,53 @@
 # Changelog
 
+## v2.0.0-alpha.12 — Import History and Coverage
+
+Delivered to `main` as squash merge commit `d0cab3c` (PR #75).
+
+### Added
+
+- Added a persistent import history domain model recording each TV Time import run with provider, source file name, export timezone, completed/partial/failed status, start and completion timestamps, duration, plan-context counters, execution outcome counters, and an error message for failed runs.
+- Added the `importHistory` IndexedDB store in database schema version 4 with `startedAt`, `completedAt`, `status`, and `provider` indexes.
+- Added a version 3 to version 4 migration that creates the import history store without modifying existing data.
+- Added an import history repository for add, get-by-id, newest-first list with limit, clear, and count operations.
+- Added import history record building and best-effort persistence at the import mutation boundary: each run persists exactly one history record, status is derived from the execution result, and a history write failure is logged and isolated so it never fails or blocks the import.
+- Added an Import History section and list to the Settings page showing each run's outcome, summary counters, timezone, and duration.
+- Added backup validation acceptance for database schema version 4 while remaining compatible with pre-importHistory version 3 backups.
+
+### Changed
+
+- Updated TV Time import execution so every run persists exactly one import history record, including runs that were refused or failed.
+- Updated test database cleanup to include the import history store.
+
+### Quality
+
+- Added import history repository coverage for persistence, retrieval, Date hydration, newest-first ordering, limit, count, and clear.
+- Added import history service coverage for status classification, counter mapping, and history-write failure isolation.
+- Added Phase 3H end-to-end coverage for completed, partial, and failed history persistence; skipped and unmatched shows; EPISODE_MISSING; re-import idempotency with a second history record; newest-first ordering; local watch-state preservation; timezone persistence; read-back Date hydration; and history-write failure isolation.
+- Expanded the automated suite to 218 tests across 24 test files.
+
+## v2.0.0-alpha.10 — Safe Import Execution
+
+Delivered to `main` as squash merge commit `933d166` (PR #73).
+
+### Added
+
+- Added read-only TV Time import planning that separates ZIP reading, CSV parsing, validation, timezone resolution, candidate building, TMDB matching, and watched-episode planning from execution without mutating IndexedDB.
+- Added a real dry-run import preview in Settings replacing the basic validation preview.
+- Added TMDB match ranking with ambiguity detection and explicit use/skip match resolutions.
+- Added a single import mutation boundary with per-show rollback when episode synchronization fails.
+- Added watched-episode outcome classification with explicit imported, already-watched, missing, skipped, and failed counters.
+- Added explicit partial-failure behavior that preserves local watch state during import.
+- Added real-work import progress reporting for the shows and watched-episodes phases.
+
+### Changed
+
+- Updated the Settings import workflow to build a plan first and execute the approved plan so matching happens exactly once, during planning.
+
+### Quality
+
+- Added automated coverage for import planning, match resolution, safe execution, rollback, watched-episode outcomes, and progress reporting.
+
 ## v2.0.0-alpha.6.7 — Media Editing, Statistics Dashboard, Theme and Import Foundation
 
 Delivered to `main` as squash merge commit `ec2364d` (PR #71). The individual
