@@ -252,6 +252,8 @@ Automated coverage includes:
 - watched and unwatched episode transitions
 - settings storage, retrieval, overwrite, and removal
 - IndexedDB schema migration from version 1 to version 2
+- episode retrieval across all shows via the episode repository read-all query
+- watch-history event counting via the watch-history repository
 
 Season synchronization tests enforce an important data ownership rule: provider metadata may be refreshed from TMDB, but user-owned watch state must be preserved.
 

@@ -1,5 +1,30 @@
 # Changelog
 
+## v2.0.0-alpha.11 — Statistics Dashboard Enhancement
+
+Delivered to `main` as squash merge commit `1879894` (PR #77).
+
+### Added
+
+- Added episode statistics derived from persisted episodes: total, Season 0 special, regular, watched, unwatched, and watched percentages.
+- Added watch-time statistics derived from watched episode runtime, including watched hours and a null-safe average per watched episode.
+- Added per-show and per-season progress classification with Season 0 specials excluded from regular progress and shows grouped into completed, partially watched, unwatched, and without-episodes buckets.
+- Added recently watched episode activity with first and last watch dates derived from the episode watch-state cache.
+- Added a read-only statistics facade that loads media, episodes, and the watch-history event count once per page view.
+- Added `episodeRepository.getAll()` and `watchHistoryRepository.count()` repository reads.
+- Added a Recently Watched list, an expandable per-season show progress table, and a reusable accessible progress bar component.
+
+### Changed
+
+- Reworked the Statistics page around Episodes, Watch Time, TV Progress, and Recently Watched sections.
+- Added loading placeholders and an error alert consistent with the Dashboard.
+
+### Quality
+
+- Added 30 statistics service tests covering empty and edge-case libraries, Season 0 handling, missing runtime, show and season classification, ordering, duplicate watch events, and the loading facade.
+- Added repository coverage for the new episode and watch-history reads and theme coverage for the new components.
+- Expanded the automated suite to 248 tests across 25 test files.
+
 ## v2.0.0-alpha.12 — Import History and Coverage
 
 Delivered to `main` as squash merge commit `d0cab3c` (PR #75).
