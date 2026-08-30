@@ -194,6 +194,35 @@ Status: Complete (shipped on `main` via squash merge commit `ec2364d`, PR #71)
 Numbered 6.7 because it completes the Alpha 6 media editing workstream; the
 v2.0.0-alpha.7 number remains assigned to the Data Layer Test Foundation.
 
+## v2.0.0-alpha.10 — Safe Import Execution
+
+Status: Complete (shipped on `main` via squash merge commit `933d166`, PR #73)
+
+- Read-only import planning separated from execution: ZIP reading, CSV parsing, validation, timezone resolution, candidate building, TMDB matching, and watched-episode planning never mutate IndexedDB
+- Real dry-run import preview in Settings replacing the basic validation preview
+- TMDB match ranking with ambiguity detection and explicit use/skip match resolutions
+- Single mutation boundary for import execution with per-show rollback when episode synchronization fails
+- Watched-episode outcome classification with explicit imported, already-watched, missing, skipped, and failed counters
+- Explicit partial-failure behavior with local watch state preserved during import
+- Real-work import progress reporting for the shows and watched-episodes phases
+- Automated plan, execution, rollback, outcome, and progress coverage
+
+## v2.0.0-alpha.12 — Import History & Coverage
+
+Status: Complete (shipped on `main` via squash merge commit `d0cab3c`, PR #75)
+
+- Persistent import history: the `importHistory` IndexedDB store in database schema version 4
+- Import history repository for add, get-by-id, newest-first list, count, and clear operations
+- Import history record building from the import plan and execution result with completed/partial/failed status derivation and an error message only for failed runs
+- Best-effort history persistence that never fails or blocks an import and never masks an import error
+- Import History section and list in Settings showing each run's outcome, summary counters, timezone, and duration
+- Phase 3H expanded end-to-end import coverage: completed, partial, and failed history persistence; skipped and unmatched shows; EPISODE_MISSING; re-import idempotency with a second history record; newest-first ordering; local watch-state preservation; timezone persistence; Date hydration on read-back; and history-write failure isolation
+- Backup validation accepts database schema version 4 and pre-importHistory version 3 backups
+
+Numbered alpha.12 per the planned milestone; it shipped before
+v2.0.0-alpha.11, which remains assigned to the Statistics Dashboard
+Enhancement and is still planned.
+
 ## Future Milestones
 
 Planned or exploratory features include:
@@ -225,22 +254,19 @@ A TV Time GDPR ZIP import foundation shipped in v2.0.0-alpha.6.7:
 - TV Time timezone conversion
 - Import preview and import workflow in Settings
 
-### Not yet shipped (side branch only)
+The remaining import phases shipped on `main` as follows:
 
-The following work exists on the unmerged `feature/alpha6-media-editing`
-workstream and must not be treated as shipped on `main`:
+- Phase 3B — Import Plan / Dry-Run Architecture: shipped in v2.0.0-alpha.10 (PR #73); read-only planning separated from execution
+- Phase 3C — Real Import Preview: shipped in v2.0.0-alpha.10 (PR #73); real dry-run preview replacing the basic validation preview
+- Phase 3D — Conflict Resolution: show-level review/select/skip shipped in v2.0.0-alpha.10 (PR #73)
+- Phase 3E — Safe Import Execution: shipped in v2.0.0-alpha.10 (PR #73); single mutation boundary, per-show rollback, partial-failure behavior, and EPISODE_MISSING / already-watched reconciliation with local watch-state preservation
+- Phase 3F — Import Progress & Results: shipped in v2.0.0-alpha.10 (PR #73); real progress reporting and the full set of outcome counters
+- Phase 3G — Import History: shipped in v2.0.0-alpha.12 (PR #75); persistent import history in the `importHistory` store, database schema version 4
+- Phase 3H — Full Import Test Coverage: shipped in v2.0.0-alpha.12 (PR #75); expanded end-to-end import coverage
 
-- Phase 3B — Import Plan / Dry-Run Architecture: implementation exists on the side branch (read-only planning separated from execution)
-- Phase 3C — Real Import Preview: implementation exists on the side branch (real dry-run preview replacing the basic validation preview)
-- Phase 3D — Conflict Resolution: implementation exists on the side branch (show-level review/select/skip); Replace/Merge outcomes remain deferred
-- Phase 3E — Safe Import Execution: partially implemented on the side branch (import outcome classification); EPISODE_EXISTS / EPISODE_MISSING reconciliation semantics remain unfinished
-- Phase 3F — Import Progress & Results: partially implemented on the side branch (import progress reporting); the full result summary remains open
-- Phase 3G — Import History: not implemented
-- Phase 3H — Full Import Test Coverage: not implemented
+### Deferred
 
-The detailed import roadmap for these phases is maintained on the
-`feature/alpha6-media-editing` workstream and will be reconciled into this
-document when that work lands on `main`.
+- Replace/Merge conflict outcomes for Phase 3D remain deferred pending explicit product approval.
 
 ---
 
@@ -249,20 +275,12 @@ document when that work lands on `main`.
 These milestones are planned. They are not completed and are not recorded in
 the changelog until shipped.
 
-### v2.0.0-alpha.10 — Safe Import Execution
-
-Next implementation milestone. Purpose: complete the remaining safe import
-execution and reconciliation work:
-
-- Episode-level reconciliation for EPISODE_EXISTS and EPISODE_MISSING scenarios
-- Explicit partial-failure behavior for import execution
-- Preservation of local watch state during import reconciliation
-- Landing the unmerged Phase 3B–3F import work from `feature/alpha6-media-editing` onto `main`
-
-Replace/Merge conflict outcomes remain deferred pending explicit product
-approval.
-
 ### v2.0.0-alpha.11 — Statistics Dashboard Enhancement
+
+Next implementation milestone. The alpha.11 number remains assigned to this
+milestone; v2.0.0-alpha.12 shipped before it, mirroring the
+v2.0.0-alpha.6.7 numbering precedent. Alpha 11 has not shipped and is not
+recorded in the changelog.
 
 Enhance the shipped Statistics Dashboard MVP:
 
@@ -271,8 +289,3 @@ Enhance the shipped Statistics Dashboard MVP:
 - Loading and error states consistent with the Dashboard
 
 Advanced analytics remain deferred in `future-enhhancements.md`.
-
-### v2.0.0-alpha.12 — Import History & Coverage
-
-- Persistent import history (Phase 3G)
-- Expanded import test coverage (Phase 3H)
