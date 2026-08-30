@@ -9,6 +9,7 @@ const featureDirectory = dirname(fileURLToPath(import.meta.url));
 const LIBRARY_SOURCES = [
   "LibraryPage.tsx",
   "components/MediaCard.tsx",
+  "components/MediaListItem.tsx",
   "components/AddMediaForm.tsx",
   "components/EditMediaModal.tsx",
   "components/EpisodeList.tsx",

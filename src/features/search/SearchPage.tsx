@@ -2,6 +2,10 @@ import { type FormEventHandler, useState } from "react";
 import { Search } from "lucide-react";
 
 import { mediaRepository } from "../../database/repositories";
+
+import { SEARCH_VIEW_MODE_SETTING_KEY, useViewMode } from "../../app/viewMode";
+import ViewModeToggle from "../../components/ui/ViewModeToggle";
+
 import { libraryService } from "../library/services/libraryService";
 import {
   mapTmdbResultToMedia,
@@ -13,6 +17,7 @@ import {
 import type { MediaType } from "../../types";
 
 import TmdbSearchResultCard from "./components/TmdbSearchResultCard";
+import TmdbSearchResultListItem from "./components/TmdbSearchResultListItem";
 
 function isMediaResult(
   result: TmdbMultiSearchResult,
@@ -38,6 +43,8 @@ export default function SearchPage() {
   const [libraryKeys, setLibraryKeys] = useState<Set<string>>(() => new Set());
 
   const [addingKey, setAddingKey] = useState<string | null>(null);
+
+  const { viewMode, setViewMode } = useViewMode(SEARCH_VIEW_MODE_SETTING_KEY);
 
   const handleSubmit: FormEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault();
@@ -185,12 +192,16 @@ export default function SearchPage() {
 
       {hasSearched && !error && (
         <section>
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
             <h2 className="text-xl font-semibold text-primary">Search Results</h2>
 
-            <span className="text-sm text-muted">
-              {results.length} {results.length === 1 ? "result" : "results"}
-            </span>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-muted">
+                {results.length} {results.length === 1 ? "result" : "results"}
+              </span>
+
+              <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
+            </div>
           </div>
 
           {results.length === 0 ? (
@@ -204,6 +215,23 @@ export default function SearchPage() {
               <p className="mt-2 text-muted">
                 Try searching with a different title.
               </p>
+            </div>
+          ) : viewMode === "list" ? (
+            <div className="space-y-3">
+              {results.map((result) => {
+                const mediaType = getMediaType(result);
+                const mediaKey = getMediaKey(result.id, mediaType);
+
+                return (
+                  <TmdbSearchResultListItem
+                    key={mediaKey}
+                    result={result}
+                    isInLibrary={libraryKeys.has(mediaKey)}
+                    isAdding={addingKey === mediaKey}
+                    onAdd={handleAddToLibrary}
+                  />
+                );
+              })}
             </div>
           ) : (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

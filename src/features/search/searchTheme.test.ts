@@ -9,6 +9,7 @@ const featureDirectory = dirname(fileURLToPath(import.meta.url));
 const SEARCH_SOURCES = [
   "SearchPage.tsx",
   "components/TmdbSearchResultCard.tsx",
+  "components/TmdbSearchResultListItem.tsx",
 ] as const;
 
 const sources = SEARCH_SOURCES.map((fileName) => ({
