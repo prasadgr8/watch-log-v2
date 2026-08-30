@@ -3,6 +3,9 @@ import { Film } from "lucide-react";
 
 import { mediaRepository } from "../../database/repositories";
 
+import { LIBRARY_VIEW_MODE_SETTING_KEY, useViewMode } from "../../app/viewMode";
+import ViewModeToggle from "../../components/ui/ViewModeToggle";
+
 import { filterLibrary, type MediaTypeFilter } from "./services/libraryFilter";
 
 import type {
@@ -14,6 +17,7 @@ import type {
 
 import AddMediaForm from "./components/AddMediaForm";
 import MediaCard from "./components/MediaCard";
+import MediaListItem from "./components/MediaListItem";
 import EditMediaModal from "./components/EditMediaModal";
 
 import { sortLibrary, type LibrarySort } from "./services/librarySort";
@@ -46,6 +50,8 @@ export default function LibraryPage() {
 
   const [status, setStatus] = useState<WatchStatus | "all">("all");
   const [sort, setSort] = useState<LibrarySort>("recent");
+
+  const { viewMode, setViewMode } = useViewMode(LIBRARY_VIEW_MODE_SETTING_KEY);
 
   async function loadMedia(): Promise<void> {
     try {
@@ -252,12 +258,16 @@ export default function LibraryPage() {
       )}
 
       <section>
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
           <h2 className="text-xl font-semibold text-primary">Your Media</h2>
 
-          <span className="text-sm text-muted">
-            {visibleMedia.length} {visibleMedia.length === 1 ? "item" : "items"}
-          </span>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-muted">
+              {visibleMedia.length} {visibleMedia.length === 1 ? "item" : "items"}
+            </span>
+
+            <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
+          </div>
         </div>
 
         {isLoading ? (
@@ -275,6 +285,17 @@ export default function LibraryPage() {
             <p className="mt-2 text-muted">
               Add your first TV show or movie using the form above.
             </p>
+          </div>
+        ) : viewMode === "list" ? (
+          <div className="space-y-3">
+            {visibleMedia.map((item) => (
+              <MediaListItem
+                key={item.id}
+                media={item}
+                onDelete={handleDelete}
+                onEdit={handleEdit}
+              />
+            ))}
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
