@@ -221,7 +221,24 @@ Status: Complete (shipped on `main` via squash merge commit `d0cab3c`, PR #75)
 
 Numbered alpha.12 per the planned milestone; it shipped before
 v2.0.0-alpha.11, which remains assigned to the Statistics Dashboard
-Enhancement and is still planned.
+Enhancement and has since shipped.
+
+## v2.0.0-alpha.11 — Statistics Dashboard Enhancement
+
+Status: Complete (shipped on `main` via squash merge commit `1879894`, PR #77)
+
+- Statistics derived from episodes and watch history: episode totals, watched and unwatched counts, and watched percentages with Season 0 handling
+- Watch-time statistics from watched episode runtime, including watched hours and a null-safe average per watched episode
+- Per-show and per-season progress classification (completed, partially watched, unwatched, without episodes) with Season 0 specials excluded from regular progress
+- Recently watched episodes with first and last watch dates, derived from the episode watch-state cache per the documented Continue Watching convention, plus a raw watch-history event count
+- Read-only statistics facade that loads media, episodes, and the watch-history count once; no separate statistics store and no writes back to domain records
+- New repository reads: `episodeRepository.getAll()` and `watchHistoryRepository.count()`
+- Reworked Statistics page with Episodes, Watch Time, TV Progress, and Recently Watched sections
+- Loading placeholders and an error alert consistent with the Dashboard
+- New ProgressBar, ShowProgressTable, and RecentlyWatchedList components styled with semantic theme tokens and accessible progress attributes
+- 30 new statistics service tests plus repository and theme coverage
+
+Advanced analytics remain deferred in `future-enhhancements.md`.
 
 ## Future Milestones
 
@@ -230,7 +247,7 @@ Planned or exploratory features include:
 - Progressive Web App support
 - Offline installation
 - Optional Google Drive synchronization
-- Advanced statistics and analytics (the basic Statistics Dashboard shipped in v2.0.0-alpha.6.7)
+- Advanced statistics and analytics (the Statistics Dashboard shipped in v2.0.0-alpha.6.7 and enhanced in v2.0.0-alpha.11)
 - Dark and light themes
 - Responsive mobile experience (responsive/mobile work exists on the unmerged `feature/alpha6-media-editing` workstream; it is not shipped on `main`)
 - Additional personal media tracking categories
@@ -272,20 +289,6 @@ The remaining import phases shipped on `main` as follows:
 
 ## Planned Milestones
 
-These milestones are planned. They are not completed and are not recorded in
-the changelog until shipped.
-
-### v2.0.0-alpha.11 — Statistics Dashboard Enhancement
-
-Next implementation milestone. The alpha.11 number remains assigned to this
-milestone; v2.0.0-alpha.12 shipped before it, mirroring the
-v2.0.0-alpha.6.7 numbering precedent. Alpha 11 has not shipped and is not
-recorded in the changelog.
-
-Enhance the shipped Statistics Dashboard MVP:
-
-- Statistics derived from episodes and watch history (watched episodes, watch hours)
-- Automated coverage for the statistics service
-- Loading and error states consistent with the Dashboard
-
-Advanced analytics remain deferred in `future-enhhancements.md`.
+No further milestones are currently defined. The most recently shipped
+milestone is v2.0.0-alpha.11. Exploratory work is tracked under Future
+Milestones below and in `future-enhhancements.md`.

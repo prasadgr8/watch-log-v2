@@ -57,7 +57,9 @@ Statistics are derived at read time from existing persisted data.
 - There is no parallel watch-state source of truth; statistics never persist derived values back into domain records.
 - Statistics computation sits above the repository/data layer: statistics services are pure derivations over records returned by the existing repositories.
 - Statistics remain offline-first; every displayed value is computed from local IndexedDB data.
-- The Dashboard and the Statistics page are different projections of the same underlying data. The Dashboard exposes watched-episode counts, watch hours, and Continue Watching progress; the Statistics page exposes library composition, rating, watch-status, and progress aggregates.
+- The Dashboard and the Statistics page are different projections of the same underlying data. The Dashboard exposes watched-episode counts, watch hours, and Continue Watching progress; the Statistics page exposes library composition, rating, watch-status, and progress aggregates together with episode totals and watched percentages, watch-time totals derived from watched episode runtime, per-show and per-season progress, recently watched activity with first and last watch dates, and the raw watch-history event count.
+
+The Statistics page is loaded through a read-only statistics facade that calls `mediaRepository.getAll()`, `episodeRepository.getAll()`, and `watchHistoryRepository.count()` once in parallel per page view. Per-show progress and recently watched activity derive from the `Episode` watch-state cache (the hybrid model), while the `WatchHistory` store contributes the raw event count; re-watching or importing an episode can create multiple events for one episode without altering progress aggregates.
 
 ## Backup and Recovery
 

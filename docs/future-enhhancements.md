@@ -57,9 +57,11 @@ post-MVP.
 
 ## Advanced Statistics
 
-The basic Statistics Dashboard is already shipped on `main`
-(v2.0.0-alpha.6.7): library overview, rating statistics, watch status, and
-progress cards derived from the media library.
+The Statistics Dashboard is already shipped on `main`: the basic dashboard
+shipped in v2.0.0-alpha.6.7 with library overview, rating statistics, watch
+status, and progress cards, and v2.0.0-alpha.11 added episode, watch-time,
+per-show progress, and recently watched sections derived from episodes and
+watch history.
 
 Advanced analytics remain deferred post-MVP work:
 
