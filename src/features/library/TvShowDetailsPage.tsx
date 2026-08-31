@@ -23,6 +23,9 @@ import {
 
 import type { PersistedEpisode, PersistedMedia } from "../../types";
 
+import { EPISODES_VIEW_MODE_SETTING_KEY, useViewMode } from "../../app/viewMode";
+import ViewModeToggle from "../../components/ui/ViewModeToggle";
+
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 import EpisodeList from "./components/EpisodeList";
@@ -75,6 +78,8 @@ export default function TvShowDetailsPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [seasonError, setSeasonError] = useState<string | null>(null);
+
+  const { viewMode, setViewMode } = useViewMode(EPISODES_VIEW_MODE_SETTING_KEY);
 
   useEffect(() => {
     let isCancelled = false;
@@ -482,18 +487,33 @@ export default function TvShowDetailsPage() {
 
       {selectedSeasonNumber !== null && (
         <section className="space-y-4">
-          <div>
-            <h2 className="text-2xl font-semibold text-primary">
-              {selectedSeasonNumber === 0
-                ? "Specials"
-                : `Season ${selectedSeasonNumber}`}{" "}
-              Episodes
-            </h2>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-semibold text-primary">
+                {selectedSeasonNumber === 0
+                  ? "Specials"
+                  : `Season ${selectedSeasonNumber}`}{" "}
+                Episodes
+              </h2>
 
-            <p className="mt-2 text-muted">
-              Episode metadata is synchronized with your local Watch Log
-              database.
-            </p>
+              <p className="mt-2 text-muted">
+                Episode metadata is synchronized with your local Watch Log
+                database.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-muted">
+                {episodes.length}{" "}
+                {episodes.length === 1 ? "episode" : "episodes"}
+              </span>
+
+              <ViewModeToggle
+                viewMode={viewMode}
+                onChange={setViewMode}
+                label="Episode view"
+              />
+            </div>
           </div>
 
           {isLoadingSeason ? (
@@ -570,6 +590,7 @@ export default function TvShowDetailsPage() {
 
               <EpisodeList
                 episodes={episodes}
+                viewMode={viewMode}
                 updatingEpisodeId={updatingEpisodeId}
                 onToggleWatched={handleToggleWatched}
               />
