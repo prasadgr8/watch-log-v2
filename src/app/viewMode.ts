@@ -8,6 +8,8 @@ export const LIBRARY_VIEW_MODE_SETTING_KEY = "library-view-mode";
 
 export const SEARCH_VIEW_MODE_SETTING_KEY = "search-view-mode";
 
+export const EPISODES_VIEW_MODE_SETTING_KEY = "episodes-view-mode";
+
 export const DEFAULT_VIEW_MODE: ViewMode = "grid";
 
 export const VIEW_MODES: readonly ViewMode[] = ["grid", "list"];

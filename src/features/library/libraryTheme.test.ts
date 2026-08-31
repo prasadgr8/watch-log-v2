@@ -13,6 +13,8 @@ const LIBRARY_SOURCES = [
   "components/AddMediaForm.tsx",
   "components/EditMediaModal.tsx",
   "components/EpisodeList.tsx",
+  "components/EpisodeCard.tsx",
+  "components/EpisodeListItem.tsx",
 ] as const;
 
 const sources = LIBRARY_SOURCES.map((fileName) => ({

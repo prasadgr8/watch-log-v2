@@ -4,6 +4,7 @@ import { settingsRepository } from "../database/repositories";
 
 import {
   DEFAULT_VIEW_MODE,
+  EPISODES_VIEW_MODE_SETTING_KEY,
   isViewMode,
   LIBRARY_VIEW_MODE_SETTING_KEY,
   loadViewMode,
@@ -59,6 +60,34 @@ describe("view mode preference persistence", () => {
       await settingsRepository.get<string>(LIBRARY_VIEW_MODE_SETTING_KEY),
     ).toBe("list");
     expect(await loadViewMode(LIBRARY_VIEW_MODE_SETTING_KEY)).toBe("list");
+  });
+
+  it("persists and loads the grid view mode for episodes through settingsRepository", async () => {
+    await saveViewMode(EPISODES_VIEW_MODE_SETTING_KEY, "grid");
+
+    expect(
+      await settingsRepository.get<string>(EPISODES_VIEW_MODE_SETTING_KEY),
+    ).toBe("grid");
+    expect(await loadViewMode(EPISODES_VIEW_MODE_SETTING_KEY)).toBe("grid");
+  });
+
+  it("persists and loads the list view mode for episodes through settingsRepository", async () => {
+    await saveViewMode(EPISODES_VIEW_MODE_SETTING_KEY, "list");
+
+    expect(
+      await settingsRepository.get<string>(EPISODES_VIEW_MODE_SETTING_KEY),
+    ).toBe("list");
+    expect(await loadViewMode(EPISODES_VIEW_MODE_SETTING_KEY)).toBe("list");
+  });
+
+  it("keeps the episodes, library, and search view mode preferences independent", async () => {
+    await saveViewMode(LIBRARY_VIEW_MODE_SETTING_KEY, "list");
+    await saveViewMode(SEARCH_VIEW_MODE_SETTING_KEY, "grid");
+    await saveViewMode(EPISODES_VIEW_MODE_SETTING_KEY, "list");
+
+    expect(await loadViewMode(LIBRARY_VIEW_MODE_SETTING_KEY)).toBe("list");
+    expect(await loadViewMode(SEARCH_VIEW_MODE_SETTING_KEY)).toBe("grid");
+    expect(await loadViewMode(EPISODES_VIEW_MODE_SETTING_KEY)).toBe("list");
   });
 
   it("keeps the library and search view mode preferences independent", async () => {
