@@ -116,6 +116,10 @@ The application must clearly communicate where user data is stored.
 
 Future cloud synchronization must be optional.
 
+IndexedDB and Dexie remain the authoritative local store for user and watch data. The PWA service worker uses the browser's separate Cache Storage area only for static PWA assets (the precached application shell) and public TMDB images from `image.tmdb.org`.
+
+Personal watch data is not placed into the service-worker cache. Library records, watch state, watch history, settings, and import history continue to live exclusively in the IndexedDB stores documented in this file.
+
 ## Backup and Recovery
 
 Project Orion supports:

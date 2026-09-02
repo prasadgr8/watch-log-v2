@@ -117,7 +117,7 @@ metadata
 
 - Expanded automated tests
 - Performance optimizations
-- Better caching
+- Better caching (the service worker now precaches the offline application shell and bounds TMDB image caching as of v2.0.0-alpha.13; broader caching improvements remain deferred here)
 - Improved accessibility
 - Internationalization
 - Theme customization

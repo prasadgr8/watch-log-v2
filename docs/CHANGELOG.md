@@ -1,5 +1,27 @@
 # Changelog
 
+## v2.0.0-alpha.13 — PWA & Offline Hardening
+
+### Added
+
+- Added local-first TV show details loading: saved media, derived season summaries, and saved episodes render immediately from IndexedDB, and TMDB metadata enrichment runs afterward when the user is online.
+- Added local-first season episode loading: locally persisted episodes render first and a TMDB refresh runs afterward when online, replacing them only when synchronization succeeds. Local watch state stays preserved through synchronization, and a failed refresh keeps the already displayed local episodes.
+- Added an offline notice with a retry control on the TV show details page while it shows saved data because TMDB is unreachable, and a friendly notice when a season has no saved episodes offline.
+- Added a header offline status indicator through a new `useOnlineStatus` hook that reacts to browser online/offline events.
+- Added bounded runtime caching for public TMDB images only (`image.tmdb.org`): a CacheFirst strategy writing to a `tmdb-images` cache capped at 150 entries with 30-day expiration.
+
+### Changed
+
+- The PWA service worker is registered with the `autoUpdate` strategy and serves the precached application shell with a navigation fallback to `/index.html` for SPA routes.
+- The web app manifest declares a stable application identity (`id: "/"`).
+- TMDB API JSON responses are not runtime-cached; API requests always go to the network.
+
+### Quality
+
+- Added 12 TV show details service tests covering offline and online details and season loading, local-first rendering, TMDB refresh fallback, watch-state preservation, and the offline notice states.
+- Added 5 PWA configuration assertions covering autoUpdate, the SPA navigation fallback, the manifest identity, and the bounded image-only runtime cache.
+- Expanded the automated suite to 296 tests across 31 test files.
+
 ## v2.0.0-alpha.11 — Statistics Dashboard Enhancement
 
 Delivered to `main` as squash merge commit `1879894` (PR #77).

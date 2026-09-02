@@ -15,6 +15,7 @@ export default defineConfig({
         description:
           "Watch Log V2 is a personal media tracker that helps you track movies and TV shows, manage watch progress, and maintain your viewing history.",
         start_url: "/",
+        id: "/",
         display: "standalone",
         background_color: "#0F172A",
         theme_color: "#0F172A",
@@ -42,6 +43,22 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,png,webmanifest}"],
         navigateFallback: "/index.html",
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/image\.tmdb\.org\/.*/,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "tmdb-images",
+              expiration: {
+                maxEntries: 150,
+                maxAgeSeconds: 30 * 24 * 60 * 60,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+        ],
       },
       devOptions: {
         enabled: false,
