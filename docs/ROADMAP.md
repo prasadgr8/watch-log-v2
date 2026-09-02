@@ -240,12 +240,29 @@ Status: Complete (shipped on `main` via squash merge commit `1879894`, PR #77)
 
 Advanced analytics remain deferred in `future-enhhancements.md`.
 
+## v2.0.0-alpha.13 — PWA & Offline Hardening
+
+Status: Complete (shipped)
+
+- PWA service worker generated at build time by `vite-plugin-pwa` (Workbox `generateSW` mode)
+- `autoUpdate` service-worker registration so updated precaches activate without a manual update prompt
+- Precached static application shell with SPA navigation fallback to `/index.html`
+- Stable web app manifest identity (`id: "/"`)
+- Bounded runtime caching for public TMDB images only: CacheFirst strategy, `tmdb-images` cache, 150 entries, 30-day expiration
+- TMDB API JSON responses are not runtime-cached
+- Local-first TV show details loading from IndexedDB, including derived season summaries from saved episodes when TMDB is unreachable
+- Local-first season episode loading: saved episodes render first and an online TMDB refresh runs afterward; `synchronizeSeason` continues to preserve local watch state
+- TMDB refresh failures retain the already displayed local episodes instead of surfacing an error
+- Offline notice with retry on TV show details while saved data is shown
+- Header offline status indicator backed by a new `useOnlineStatus` hook
+- Service coverage for offline and online details/season loading plus PWA configuration assertions (17 tests)
+
 ## Future Milestones
 
 Planned or exploratory features include:
 
-- Progressive Web App support
-- Offline installation
+- Progressive Web App support (the service worker, offline application shell, bounded TMDB image caching, and local-first details/season loading shipped in v2.0.0-alpha.13)
+- Offline installation (install prompts remain out of scope for v2.0.0-alpha.13)
 - Optional Google Drive synchronization
 - Advanced statistics and analytics (the Statistics Dashboard shipped in v2.0.0-alpha.6.7 and enhanced in v2.0.0-alpha.11)
 - Dark and light themes
@@ -290,5 +307,5 @@ The remaining import phases shipped on `main` as follows:
 ## Planned Milestones
 
 No further milestones are currently defined. The most recently shipped
-milestone is v2.0.0-alpha.11. Exploratory work is tracked under Future
+milestone is v2.0.0-alpha.13. Exploratory work is tracked under Future
 Milestones below and in `future-enhhancements.md`.

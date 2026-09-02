@@ -1,10 +1,14 @@
 import { Bell, Moon, Search, Sun } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
+import { useOnlineStatus } from "../../app/useOnlineStatus";
+
 import { useTheme } from "../../app/theme";
 
 export default function Header() {
   const { resolvedTheme, setPreference } = useTheme();
+
+  const isOnline = useOnlineStatus();
 
   const isDark = resolvedTheme === "dark";
 
@@ -17,7 +21,11 @@ export default function Header() {
       <div>
         <h2 className="text-xl font-semibold text-primary">Welcome Back 👋</h2>
 
-        <p className="text-sm text-muted">Track your TV Shows & Movies</p>
+        <p className="text-sm text-muted">
+          {isOnline
+            ? "Track your TV Shows & Movies"
+            : "Offline — showing saved data"}
+        </p>
       </div>
 
       <div className="flex items-center gap-4">

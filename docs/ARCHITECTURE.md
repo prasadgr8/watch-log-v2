@@ -22,6 +22,36 @@ The public-facing application name remains **Watch Log V2**.
 
 Architecture documentation for Watch Log V2 will be maintained in this document as Project Orion evolves.
 
+## PWA and Offline Architecture
+
+Watch Log V2 ships as a Progressive Web App. The service worker is generated at build time by `vite-plugin-pwa` (Workbox `generateSW` mode) and is registered with the `autoUpdate` strategy, so when a new version is deployed the updated precache is activated automatically without a manual update prompt.
+
+### Static Shell and Navigation Fallback
+
+The build precaches the static application shell: JavaScript, CSS, HTML, icons, and the web app manifest. The manifest declares a stable application identity (`id: "/"`).
+
+SPA navigations use `navigateFallback: "/index.html"`, so client-side routes are served from the precached application shell when the network is unavailable.
+
+### Runtime Caching
+
+Runtime caching is intentionally narrow:
+
+- Only public TMDB image responses from `image.tmdb.org` are runtime-cached, using a CacheFirst strategy.
+- The `tmdb-images` cache is bounded to 150 entries with a 30-day expiration and only caches successful image responses.
+- TMDB API JSON responses are not runtime-cached. API requests always go to the network and are never served from Cache Storage.
+
+### Local-First TV Details and Season Loading
+
+TV show details and season episodes load offline-first through the TV show details service, with IndexedDB as the source for saved data:
+
+- Saved media, derived season summaries, and locally persisted episodes are read from IndexedDB and rendered first, so offline use is never blocked.
+- When the user is online, a TMDB refresh runs afterward and the UI is updated with the synchronized episodes when it succeeds.
+- Season synchronization continues to preserve locally owned watch state.
+- If the TMDB refresh fails, the already displayed local episodes are retained and no error replaces them.
+- When a season has no saved episodes and the user is offline, the page shows a friendly notice asking to go online.
+
+While saved data is shown, the TV show details page displays an offline notice with a retry control, and the header reflects the browser's online status with an "Offline — showing saved data" message.
+
 ## Continue Watching Projection
 
 Continue Watching is implemented as derived feature state rather than persisted media state.

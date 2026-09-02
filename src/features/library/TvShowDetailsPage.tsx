@@ -9,17 +9,11 @@ import {
 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 
-import {
-  episodeRepository,
-  mediaRepository,
-} from "../../database/repositories";
+import { episodeRepository } from "../../database/repositories";
 
-import {
-  mapTmdbEpisodeToEpisode,
-  tmdbConfig,
-  tmdbTvService,
-  type TmdbTvDetails,
-} from "../../services/tmdb";
+import { tmdbConfig, type TmdbTvDetails } from "../../services/tmdb";
+
+import type { TmdbTvSeasonSummary } from "../../services/tmdb/tmdbTvTypes";
 
 import type { PersistedEpisode, PersistedMedia } from "../../types";
 
@@ -34,9 +28,15 @@ import { getUnwatchedPreviousInSeason } from "./services/episodeWatchOrder";
 
 import { deriveSeasonStatus } from "./services/seasonStatus";
 
+import {
+  loadSeasonEpisodes,
+  loadTvShowDetails,
+  type TvShowLocalSeason,
+} from "./services/tvShowDetailsService";
+
 interface TvShowDetailsState {
   media: PersistedMedia;
-  tvDetails: TmdbTvDetails;
+  tvDetails: TmdbTvDetails | null;
 }
 
 function getPosterUrl(posterPath: string | null): string | null {
@@ -79,14 +79,21 @@ export default function TvShowDetailsPage() {
   const [error, setError] = useState<string | null>(null);
   const [seasonError, setSeasonError] = useState<string | null>(null);
 
+  const [showOfflineNotice, setShowOfflineNotice] = useState(false);
+  const [seasonSummaries, setSeasonSummaries] = useState<TvShowLocalSeason[]>(
+    [],
+  );
+  const [reloadToken, setReloadToken] = useState(0);
+
   const { viewMode, setViewMode } = useViewMode(EPISODES_VIEW_MODE_SETTING_KEY);
 
   useEffect(() => {
     let isCancelled = false;
 
-    async function loadTvShowDetails(): Promise<void> {
+    async function loadDetails(): Promise<void> {
       try {
         setError(null);
+        setShowOfflineNotice(false);
 
         const parsedMediaId = Number(mediaId);
 
@@ -94,30 +101,34 @@ export default function TvShowDetailsPage() {
           throw new Error("Invalid Library media ID.");
         }
 
-        const storedMedia = await mediaRepository.getById(parsedMediaId);
+        const result = await loadTvShowDetails(parsedMediaId, {
+          onLocalData: (localResult) => {
+            if (isCancelled) {
+              return;
+            }
 
-        if (!storedMedia || storedMedia.id === undefined) {
-          throw new Error("TV show was not found in the Library.");
-        }
+            setDetails({
+              media: localResult.media,
+              tvDetails: null,
+            });
 
-        if (storedMedia.mediaType !== "tv") {
-          throw new Error("The selected Library item is not a TV show.");
-        }
-
-        if (storedMedia.tmdbId === undefined) {
-          throw new Error("This TV show does not have TMDB metadata.");
-        }
-
-        const tvDetails = await tmdbTvService.getTvDetails(storedMedia.tmdbId);
+            setSeasonSummaries(localResult.seasonSummaries);
+            setIsLoading(false);
+          },
+        });
 
         if (isCancelled) {
           return;
         }
 
         setDetails({
-          media: storedMedia as PersistedMedia,
-          tvDetails,
+          media: result.media,
+          tvDetails: result.tvDetails,
         });
+
+        setSeasonSummaries(result.seasonSummaries);
+        setShowOfflineNotice(result.fromLocal);
+        setIsLoading(false);
       } catch (loadError) {
         console.error("Failed to load TV show details:", loadError);
 
@@ -135,12 +146,12 @@ export default function TvShowDetailsPage() {
       }
     }
 
-    void loadTvShowDetails();
+    void loadDetails();
 
     return () => {
       isCancelled = true;
     };
-  }, [mediaId]);
+  }, [mediaId, reloadToken]);
 
   async function handleSelectSeason(seasonNumber: number): Promise<void> {
     if (!details) {
@@ -153,29 +164,33 @@ export default function TvShowDetailsPage() {
       setIsLoadingSeason(true);
       setSeasonError(null);
 
-      const seasonDetails = await tmdbTvService.getSeasonDetails(
-        details.tvDetails.id,
-        seasonNumber,
-      );
+      const result = await loadSeasonEpisodes(details.media.id, seasonNumber, {
+        onLocalData: (localResult) => {
+          setEpisodes(
+            localResult.episodes.filter(
+              (loadedEpisode): loadedEpisode is PersistedEpisode =>
+                loadedEpisode.id !== undefined,
+            ),
+          );
+        },
+      });
 
-      const now = new Date();
+      // Locally sourced results were already rendered through onLocalData;
+      // only results refreshed from TMDB need to replace them.
+      if (!result.fromLocal) {
+        setEpisodes(
+          result.episodes.filter(
+            (loadedEpisode): loadedEpisode is PersistedEpisode =>
+              loadedEpisode.id !== undefined,
+          ),
+        );
+      }
 
-      const mappedEpisodes = seasonDetails.episodes.map((episode) =>
-        mapTmdbEpisodeToEpisode(episode, details.media.id, now),
-      );
-
-      const synchronizedEpisodes = await episodeRepository.synchronizeSeason(
-        details.media.id,
-        seasonNumber,
-        mappedEpisodes,
-      );
-
-      setEpisodes(
-        [...synchronizedEpisodes].sort(
-          (firstEpisode, secondEpisode) =>
-            firstEpisode.episodeNumber - secondEpisode.episodeNumber,
-        ),
-      );
+      if (result.needsOnlineNotice) {
+        setSeasonError(
+          "No saved episode data for this season yet. Connect to the internet to load it.",
+        );
+      }
     } catch (loadSeasonError) {
       console.error("Failed to load season details:", loadSeasonError);
 
@@ -367,7 +382,30 @@ export default function TvShowDetailsPage() {
   }
 
   const { tvDetails } = details;
-  const posterUrl = getPosterUrl(tvDetails.poster_path);
+
+  const posterUrl = getPosterUrl(
+    tvDetails?.poster_path ?? details.media.posterPath ?? null,
+  );
+
+  const showStatus =
+    details.media.mediaType === "tv" ? details.media.showStatus : undefined;
+
+  const firstAirDate =
+    details.media.mediaType === "tv" ? details.media.firstAirDate : undefined;
+
+  const seasons: TmdbTvSeasonSummary[] =
+    tvDetails !== null
+      ? tvDetails.seasons
+      : seasonSummaries.map((summary) => ({
+          air_date: null,
+          episode_count: summary.episodeCount,
+          id: -1 - summary.seasonNumber,
+          name: summary.name,
+          overview: "",
+          poster_path: null,
+          season_number: summary.seasonNumber,
+          vote_average: 0,
+        }));
 
   const seasonStatus =
     selectedSeasonNumber === null ? null : deriveSeasonStatus(episodes);
@@ -382,13 +420,31 @@ export default function TvShowDetailsPage() {
         Back to Library
       </Link>
 
+      {showOfflineNotice && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4">
+          <p className="text-sm text-muted">
+            You are offline or TMDB is unreachable. Showing saved data from
+            your Library.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => setReloadToken((token) => token + 1)}
+            className="inline-flex items-center gap-2 rounded-lg bg-surface-elevated px-4 py-2 text-sm font-medium text-primary transition hover:bg-surface-hover"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Retry
+          </button>
+        </div>
+      )}
+
       <section className="overflow-hidden rounded-xl border border-border bg-surface">
         <div className="grid md:grid-cols-[240px_1fr]">
           <div className="aspect-[2/3] bg-app-bg md:aspect-auto">
             {posterUrl ? (
               <img
                 src={posterUrl}
-                alt={`${tvDetails.name} poster`}
+                alt={`${details.media.title} poster`}
                 className="h-full w-full object-cover"
               />
             ) : (
@@ -406,33 +462,37 @@ export default function TvShowDetailsPage() {
               </span>
 
               <span className="rounded-full bg-surface-elevated px-3 py-1 text-xs font-medium text-muted">
-                {tvDetails.status}
+                {tvDetails?.status ?? showStatus ?? "Status unavailable"}
               </span>
             </div>
 
             <h1 className="mt-5 text-3xl font-bold text-primary md:text-4xl">
-              {tvDetails.name}
+              {tvDetails?.name ?? details.media.title}
             </h1>
 
             <div className="mt-4 flex flex-wrap gap-x-6 gap-y-3 text-sm text-muted">
               <span className="inline-flex items-center gap-2">
                 <CalendarDays className="h-4 w-4" />
-                {tvDetails.first_air_date || "Air date unavailable"}
+                {tvDetails?.first_air_date ||
+                  firstAirDate ||
+                  "Air date unavailable"}
               </span>
 
               <span>
-                {tvDetails.number_of_seasons}{" "}
-                {tvDetails.number_of_seasons === 1 ? "season" : "seasons"}
+                {tvDetails?.number_of_seasons ?? "—"}{" "}
+                {tvDetails?.number_of_seasons === 1 ? "season" : "seasons"}
               </span>
 
               <span>
-                {tvDetails.number_of_episodes}{" "}
-                {tvDetails.number_of_episodes === 1 ? "episode" : "episodes"}
+                {tvDetails?.number_of_episodes ?? "—"}{" "}
+                {tvDetails?.number_of_episodes === 1 ? "episode" : "episodes"}
               </span>
             </div>
 
             <p className="mt-6 max-w-4xl leading-7 text-muted">
-              {tvDetails.overview || "No overview available."}
+              {tvDetails?.overview ||
+                details.media.overview ||
+                "No overview available."}
             </p>
           </div>
         </div>
@@ -448,7 +508,7 @@ export default function TvShowDetailsPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {tvDetails.seasons.map((season) => {
+          {seasons.map((season) => {
             const isSelected = selectedSeasonNumber === season.season_number;
 
             return (
