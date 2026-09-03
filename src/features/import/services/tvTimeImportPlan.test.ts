@@ -407,6 +407,7 @@ describe("executeTvTimeImportPlan", () => {
       missingWatchedEpisodes: 0,
       skippedWatchedEpisodes: 0,
       failedWatchedEpisodes: 0,
+      shows: expect.any(Array),
     });
     expect(searchSpy.mock.calls.length).toBe(searchCallsAfterPlanning);
 
@@ -1009,6 +1010,7 @@ describe("Alpha 10 episode reconciliation", () => {
       missingWatchedEpisodes: 1,
       skippedWatchedEpisodes: 0,
       failedWatchedEpisodes: 0,
+      shows: expect.any(Array),
     });
 
     // The missing episode is NOT created and receives NO watch history; the
@@ -1172,6 +1174,7 @@ describe("Alpha 10 episode reconciliation", () => {
       missingWatchedEpisodes: 1,
       skippedWatchedEpisodes: 1,
       failedWatchedEpisodes: 1,
+      shows: expect.any(Array),
     });
 
     // Only the synchronized episode exists; no fabricated rows or duplicate
@@ -1406,6 +1409,7 @@ describe("Phase 3F execution progress", () => {
       missingWatchedEpisodes: 0,
       skippedWatchedEpisodes: 0,
       failedWatchedEpisodes: 0,
+      shows: expect.any(Array),
     });
 
     // The import really executed despite the observer throwing constantly.
@@ -1466,6 +1470,7 @@ describe("Phase 3H import history end-to-end", () => {
       missingWatchedEpisodes: 0,
       skippedWatchedEpisodes: 0,
       failedWatchedEpisodes: 0,
+      shows: expect.any(Array),
     });
 
     const [record] = await importHistoryRepository.list();
@@ -1976,6 +1981,7 @@ describe("Phase 3H import history end-to-end", () => {
       missingWatchedEpisodes: 0,
       skippedWatchedEpisodes: 0,
       failedWatchedEpisodes: 0,
+      shows: expect.any(Array),
     });
 
     expect(await db.media.count()).toBe(1);

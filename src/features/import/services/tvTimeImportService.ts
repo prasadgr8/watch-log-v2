@@ -61,6 +61,39 @@ export interface TvTimeImportResult {
   skippedWatchedEpisodes: number;
   /** Watched rows rejected during planning or failing during execution. */
   failedWatchedEpisodes: number;
+  /**
+   * Per-show outcome detail captured during execution. One entry is produced
+   * for each planned show that reaches classification. Transient only:
+   * ImportHistory remains aggregate/metadata-only.
+   */
+  shows: TvTimeImportShowOutcome[];
+}
+
+/**
+ * Granular per-show outcome for the detailed import report. Exactly one
+ * entry is emitted per planned show that reaches execution classification.
+ */
+export interface TvTimeImportShowOutcome {
+  /** Stable TV Time show id from the export. */
+  tvTimeShowId: string;
+  /** TV Time display title (as it appeared in the export). */
+  title: string;
+  /** Matched TMDB show id, when a match was resolved. */
+  tmdbId?: number;
+  /** Matched TMDB show name, when a match was resolved. */
+  tmdbName?: string;
+  /** The show-level classification captured during execution. */
+  outcome:
+    | "imported"
+    | "already-existed"
+    | "skipped"
+    | "unmatched"
+    | "failed";
+  /**
+   * Human-readable reason for skipped/unmatched/failed outcomes where the
+   * existing execution path provides one. No raw stack traces are exposed.
+   */
+  reason?: string;
 }
 
 /**
@@ -387,6 +420,9 @@ async function executeTvTimeImportPlanCore(
   let failedShows = 0;
   let processedShows = 0;
 
+  // Per-show outcome detail for the detailed import report (transient only).
+  const showOutcomes: TvTimeImportShowOutcome[] = [];
+
   for (const entry of plan.shows) {
     // Defense-in-depth: an unresolved review must never reach execution.
     // Thrown OUTSIDE the per-entry handler on purpose — a caller that
@@ -412,8 +448,21 @@ async function executeTvTimeImportPlanCore(
         // is skipped. This is not an execution failure; failedShows stays
         // reserved for thrown errors (database, synchronization, creation).
         skippedShows++;
+        showOutcomes.push({
+          tvTimeShowId: entry.candidate.tvTimeShowId,
+          title: entry.candidate.title,
+          outcome: "unmatched",
+          reason: "No confident TMDB match found during planning",
+        });
       } else if (entry.resolution?.decision === "skip") {
         skippedShows++;
+        showOutcomes.push({
+          tvTimeShowId: entry.candidate.tvTimeShowId,
+          title: entry.candidate.title,
+          tmdbId: entry.tmdbShow.id,
+          tmdbName: entry.tmdbShow.name,
+          outcome: "skipped",
+        });
       } else {
         const tmdbId =
           entry.kind === "new" ? entry.tmdbShow.id : entry.existingTmdbId;
@@ -455,14 +504,40 @@ async function executeTvTimeImportPlanCore(
 
         if (isNewlyCreated) {
           importedShows++;
+          showOutcomes.push({
+            tvTimeShowId: entry.candidate.tvTimeShowId,
+            title: entry.candidate.title,
+            tmdbId: entry.tmdbShow.id,
+            tmdbName: entry.tmdbShow.name,
+            outcome: "imported",
+          });
         } else {
           skippedShows++;
+          showOutcomes.push({
+            tvTimeShowId: entry.candidate.tvTimeShowId,
+            title: entry.candidate.title,
+            tmdbId: entry.tmdbShow.id,
+            tmdbName: entry.tmdbShow.name,
+            outcome: "already-existed",
+          });
         }
       }
     } catch (error) {
       console.error(`Failed to import TV Time show: ${entry.candidate.title}`, error);
 
       failedShows++;
+      showOutcomes.push({
+        tvTimeShowId: entry.candidate.tvTimeShowId,
+        title: entry.candidate.title,
+        ...(entry.kind !== "unmatched"
+          ? {
+              tmdbId: entry.tmdbShow.id,
+              tmdbName: entry.tmdbShow.name,
+            }
+          : {}),
+        outcome: "failed",
+        reason: "Import failed during execution",
+      });
     }
 
     processedShows += 1;
@@ -560,6 +635,7 @@ async function executeTvTimeImportPlanCore(
     missingWatchedEpisodes,
     skippedWatchedEpisodes,
     failedWatchedEpisodes,
+    shows: showOutcomes,
   };
 }
 
