@@ -116,9 +116,9 @@ metadata
 # Technical Improvements
 
 - Expanded automated tests
-- Performance optimizations
+- Performance optimizations (route-level code splitting with lazy page routes shipped in v2.0.0-alpha.14; further optimizations remain deferred here)
 - Better caching (the service worker now precaches the offline application shell and bounds TMDB image caching as of v2.0.0-alpha.13; broader caching improvements remain deferred here)
-- Improved accessibility
+- Improved accessibility (dialog, keyboard focus, skip link, landmark, and progress-bar accessibility shipped in v2.0.0-alpha.14; further accessibility work remains deferred here)
 - Internationalization
 - Theme customization
 

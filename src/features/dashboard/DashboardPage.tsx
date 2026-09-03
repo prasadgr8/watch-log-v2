@@ -7,6 +7,8 @@ import {
   mediaRepository,
 } from "../../database/repositories";
 
+import ProgressBar from "../statistics/components/ProgressBar";
+
 import {
   continueWatchingService,
   type ContinueWatchingItem,
@@ -200,12 +202,10 @@ export default function DashboardPage() {
                   </span>
                 </div>
 
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface-elevated">
-                  <div
-                    className="h-full rounded-full bg-accent-hover transition-all"
-                    style={{
-                      width: `${item.progressPercentage}%`,
-                    }}
+                <div className="mt-4">
+                  <ProgressBar
+                    value={item.progressPercentage}
+                    label={`${item.media.title} progress`}
                   />
                 </div>
 

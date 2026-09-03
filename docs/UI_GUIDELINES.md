@@ -86,16 +86,16 @@ Icons should:
 
 Reusable UI components should be created when the same interaction or visual pattern appears in multiple features.
 
-Planned reusable components include:
+Shipped reusable components include:
 
-- StatCard
-- MediaCard
-- ProgressBar
-- EmptyState
-- EpisodeRow
-- SeasonAccordion
-- SearchResult
-- Dialog
+- StatisticCard
+- MediaCard and MediaListItem
+- ProgressBar (also reused by the Dashboard Continue Watching cards)
+- ViewModeToggle
+- ConfirmDialog
+- EpisodeList, EpisodeCard, and EpisodeListItem
+
+`EmptyState` remains a planned component; current empty states are rendered inline by each page.
 
 ## Responsive Design
 
@@ -118,7 +118,15 @@ Theme implementation should use centralized application theme configuration.
 Interactive elements should:
 
 - Be keyboard accessible
-- Provide visible focus states
+- Provide visible focus states (through `focus-visible` ring styles)
 - Use meaningful labels
 - Maintain sufficient contrast
 - Avoid relying only on color to communicate state
+
+Established accessibility conventions:
+
+- Modals use `role="dialog"` with `aria-modal`, an accessible name and description, Escape and backdrop cancellation while no operation is running, initial focus inside the dialog, and focus restoration on close (`ConfirmDialog` and the Edit Progress modal).
+- Page content is reachable through a keyboard-only "Skip to content" link that targets a stable, focusable `main` landmark.
+- Progress bars expose `role="progressbar"` with accessible names and value attributes through the shared `ProgressBar` component.
+- Asynchronous status text (such as the online/offline indicator) is announced through `role="status"`.
+- Decorative icons that have no behavior are marked `aria-hidden` and do not present interactive affordances.

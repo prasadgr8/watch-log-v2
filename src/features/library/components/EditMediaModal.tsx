@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { RefObject } from "react";
+
 import type { PersistedMedia } from "../../../types/media";
 
 interface EditMediaModalProps {
@@ -18,8 +20,15 @@ interface EditMediaFormProps {
   isSaving: boolean;
   onClose: () => void;
   onSave: EditMediaModalProps["onSave"];
+  statusSelectRef: RefObject<HTMLSelectElement | null>;
 }
 
+/*
+ * Dependency-free edit dialog. Mirrors the established ConfirmDialog
+ * behavior: a modal scrim, Escape and backdrop cancellation while a save is
+ * not running, initial focus on the status control, and focus restoration
+ * to the previously focused element when the dialog closes.
+ */
 export default function EditMediaModal({
   media,
   isOpen,
@@ -27,6 +36,45 @@ export default function EditMediaModal({
   onClose,
   onSave,
 }: EditMediaModalProps) {
+  const statusSelectRef = useRef<HTMLSelectElement | null>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+
+  const isSavingRef = useRef(isSaving);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    isSavingRef.current = isSaving;
+    onCloseRef.current = onClose;
+  });
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    previouslyFocusedRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+
+    statusSelectRef.current?.focus();
+
+    function handleDocumentKeyDown(event: KeyboardEvent): void {
+      if (event.key === "Escape" && !isSavingRef.current) {
+        onCloseRef.current();
+      }
+    }
+
+    document.addEventListener("keydown", handleDocumentKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleDocumentKeyDown);
+
+      previouslyFocusedRef.current?.focus();
+      previouslyFocusedRef.current = null;
+    };
+  }, [isOpen]);
+
   if (!isOpen || media === null) {
     return null;
   }
@@ -38,6 +86,7 @@ export default function EditMediaModal({
       isSaving={isSaving}
       onClose={onClose}
       onSave={onSave}
+      statusSelectRef={statusSelectRef}
     />
   );
 }
@@ -47,20 +96,50 @@ function EditMediaForm({
   isSaving,
   onClose,
   onSave,
+  statusSelectRef,
 }: EditMediaFormProps) {
   const [status, setStatus] = useState(media.userStatus);
   const [rating, setRating] = useState(media.rating ?? 0);
   const [notes, setNotes] = useState(media.notes ?? "");
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-full max-w-lg rounded-xl bg-surface p-6 shadow-xl">
-        <h2 className="text-xl font-semibold text-primary">Edit Progress</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        aria-hidden="true"
+        onClick={() => {
+          if (!isSaving) {
+            onClose();
+          }
+        }}
+        className="absolute inset-0 bg-black/60"
+      ></div>
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-media-modal-title"
+        aria-describedby="edit-media-modal-media-title edit-media-modal-media-type"
+        className="relative w-full max-w-lg rounded-xl bg-surface p-6 shadow-xl"
+      >
+        <h2
+          id="edit-media-modal-title"
+          className="text-xl font-semibold text-primary"
+        >
+          Edit Progress
+        </h2>
 
         <div className="mt-5 border-b border-border pb-4">
-          <h3 className="text-lg font-semibold text-primary">{media.title}</h3>
+          <h3
+            id="edit-media-modal-media-title"
+            className="text-lg font-semibold text-primary"
+          >
+            {media.title}
+          </h3>
 
-          <p className="mt-1 text-sm text-muted">
+          <p
+            id="edit-media-modal-media-type"
+            className="mt-1 text-sm text-muted"
+          >
             {media.mediaType === "movie" ? "Movie" : "TV Show"}
           </p>
         </div>
@@ -75,6 +154,7 @@ function EditMediaForm({
 
           <select
             id="status"
+            ref={statusSelectRef}
             value={status}
             onChange={(event) => setStatus(event.target.value as typeof status)}
             className="mt-2 w-full rounded-lg border border-border bg-input-bg px-3 py-2 text-primary focus:border-accent-hover focus:outline-none"

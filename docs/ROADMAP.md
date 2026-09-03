@@ -257,17 +257,35 @@ Status: Complete (shipped)
 - Header offline status indicator backed by a new `useOnlineStatus` hook
 - Service coverage for offline and online details/season loading plus PWA configuration assertions (17 tests)
 
+## v2.0.0-alpha.14 — Production Hardening & UX Quality
+
+Status: Complete (shipped)
+
+- Edit Progress modal hardened with dialog semantics, Escape and backdrop cancellation guarded by the save state, initial focus, and focus restoration
+- Visible `focus-visible` keyboard indicators across the sidebar and header navigation and the theme toggle, with hover styling preserved
+- Keyboard-accessible "Skip to content" link targeting a stable, focusable `main` landmark
+- Header online/offline status announced through `role="status"`
+- Header notification bell made explicitly decorative (`aria-hidden`) because notifications do not exist
+- Dashboard Continue Watching progress bars reuse the accessible Statistics `ProgressBar`, exposing `role="progressbar"` with value attributes and a per-show accessible name
+- Page-level routes load through `React.lazy` with a Suspense fallback; the application shell stays eager and every emitted chunk remains precached by the PWA service worker
+- Initial JavaScript chunk reduced from 633.41 kB (gzip 188.66 kB) to 398.35 kB (gzip 127.09 kB) without raising Vite's chunk warning threshold
+- 40 source-assertion accessibility and route-splitting regression tests added across four focused suites
+
 ## Future Milestones
 
 Planned or exploratory features include:
 
-- Progressive Web App support (the service worker, offline application shell, bounded TMDB image caching, and local-first details/season loading shipped in v2.0.0-alpha.13)
-- Offline installation (install prompts remain out of scope for v2.0.0-alpha.13)
+- Offline installation (install prompts remain out of scope; the offline application shell itself shipped in v2.0.0-alpha.13)
 - Optional Google Drive synchronization
-- Advanced statistics and analytics (the Statistics Dashboard shipped in v2.0.0-alpha.6.7 and enhanced in v2.0.0-alpha.11)
-- Dark and light themes
+- Advanced statistics and analytics, such as watch-history trends, time-series visualizations, and charts (the shipped Statistics Dashboard provides the library, episode, watch-time, progress, and recently-watched views as of v2.0.0-alpha.11)
 - Responsive mobile experience (responsive/mobile work exists on the unmerged `feature/alpha6-media-editing` workstream; it is not shipped on `main`)
 - Additional personal media tracking categories
+
+Progressive Web App support (the service worker, offline application shell,
+bounded TMDB image caching, and local-first details/season loading) shipped in
+v2.0.0-alpha.13 and is no longer a future milestone. Dark and light themes
+shipped with the light theme foundation in v2.0.0-alpha.6.7; deeper theme
+customization remains a future idea in `future-enhhancements.md`.
 
 Future features must be evaluated against the Project Orion product vision before implementation.
 
@@ -307,5 +325,5 @@ The remaining import phases shipped on `main` as follows:
 ## Planned Milestones
 
 No further milestones are currently defined. The most recently shipped
-milestone is v2.0.0-alpha.13. Exploratory work is tracked under Future
-Milestones below and in `future-enhhancements.md`.
+milestone is v2.0.0-alpha.14. Exploratory work is tracked under Future
+Milestones above and in `future-enhhancements.md`.

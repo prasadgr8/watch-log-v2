@@ -20,7 +20,7 @@ export default function Sidebar() {
     <aside className="w-64 border-r border-border bg-surface p-5">
       <NavLink
         to="/"
-        className="mb-8 block text-2xl font-bold text-primary transition-all duration-200 hover:scale-105 hover:text-accent"
+        className="mb-8 block rounded-lg text-2xl font-bold text-primary transition-all duration-200 hover:scale-105 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-hover/40"
       >
         📺 Watch Log
       </NavLink>
@@ -34,7 +34,7 @@ export default function Sidebar() {
               key={item.name}
               to={item.path}
               className={({ isActive }) =>
-                `flex items-center gap-3 rounded-lg px-3 py-2 transition ${
+                `flex items-center gap-3 rounded-lg px-3 py-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-hover/40 ${
                   isActive
                     ? "bg-accent text-inverted"
                     : "hover:bg-surface-hover"
