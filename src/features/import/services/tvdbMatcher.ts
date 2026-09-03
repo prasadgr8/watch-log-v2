@@ -388,6 +388,47 @@ export async function resolveTvTimeMatch(
     };
   }
 
+  // Canonical-identity fallback: the best match's tmdbId is not in the
+  // library, but another TMDB result might be. Title variations
+  // (punctuation, subtitles, year suffixes, capitalization) can cause the
+  // scorer to rank a different result first even when the library already
+  // holds the canonical tmdbId. Check every result by [tmdbId+mediaType]
+  // before treating the show as new, so an existing item is never
+  // duplicated under a slightly different title.
+  for (const result of results) {
+    if (result.id === best.tmdbShow.id) {
+      continue;
+    }
+
+    const candidateMedia = mapTmdbResultToMedia(result, {
+      userStatus: candidate.watchStatus,
+    });
+
+    if (candidateMedia.tmdbId === undefined) {
+      continue;
+    }
+
+    const existing = await mediaRepository.getByTmdbId(
+      candidateMedia.tmdbId,
+      candidateMedia.mediaType,
+    );
+
+    if (existing) {
+      console.log(
+        "Already in library (canonical fallback), skipping:",
+        candidateMedia.title,
+      );
+
+      return {
+        tmdbShow: result,
+        bestScore: best.score,
+        rankedCandidates,
+        media: candidateMedia,
+        existingMedia: existing as PersistedMedia,
+      };
+    }
+  }
+
   return {
     tmdbShow: best.tmdbShow,
     bestScore: best.score,
