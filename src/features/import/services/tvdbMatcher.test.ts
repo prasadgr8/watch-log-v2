@@ -10,6 +10,7 @@ import {
   getTvTimeMatchReview,
   resolveTvTimeMatch,
 } from "./tvdbMatcher";
+import type { MediaType } from "../../../types";
 
 function createTmdbTvResult(
   overrides: Partial<TmdbTvSearchResult> = {},
@@ -192,5 +193,201 @@ describe("getTvTimeMatchReview", () => {
 
   it("ignores single or below-threshold candidate sets", () => {
     expect(getTvTimeMatchReview([scored(1396, 30)])).toBeNull();
+  });
+});
+
+describe("resolveTvTimeMatch canonical-identity duplicate detection", () => {
+  let duplicateSearchMock: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(async () => {
+    await Promise.all([
+      db.media.clear(),
+      db.episodes.clear(),
+      db.watchHistory.clear(),
+    ]);
+    vi.restoreAllMocks();
+
+    duplicateSearchMock = vi.spyOn(tmdbSearchService, "searchTvShows");
+  });
+
+  function candidate(overrides: Partial<{
+    tvTimeShowId: string;
+    title: string;
+    watchStatus: "planned" | "watching" | "completed";
+  }> = {}) {
+    return {
+      tvTimeShowId: "tvtime-breaking-bad-2008",
+      title: "Breaking Bad (2008)",
+      followed: true,
+      episodesSeen: 1,
+      favorite: false,
+      watchStatus: "watching" as const,
+      ...overrides,
+    };
+  }
+
+  async function seedExistingMedia(
+    tmdbId: number,
+    title: string,
+    mediaType: MediaType = "tv",
+  ): Promise<number> {
+    return mediaRepository.add({
+      tmdbId,
+      title,
+      mediaType,
+      userStatus: "watching",
+      overview: "Existing library item",
+      posterPath: "/existing.jpg",
+      firstAirDate: "2008-01-20",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
+
+  it("detects an existing item by exact TMDB ID + media type", async () => {
+    const existingId = await seedExistingMedia(1396, "Breaking Bad");
+
+    duplicateSearchMock.mockResolvedValue({
+      page: 1,
+      results: [createTmdbTvResult({ id: 1396, name: "Breaking Bad" })],
+      total_pages: 1,
+      total_results: 1,
+    });
+
+    const resolution = await resolveTvTimeMatch(candidate());
+
+    expect(resolution?.existingMedia).toBeDefined();
+    expect(resolution?.existingMedia?.id).toBe(existingId);
+    expect(resolution?.existingMedia?.tmdbId).toBe(1396);
+    expect(resolution?.tmdbShow.id).toBe(1396);
+  });
+
+  it("detects an existing item when the local title differs from the TV Time title", async () => {
+    const existingId = await seedExistingMedia(1396, "Breaking Bad: The Complete Series");
+
+    duplicateSearchMock.mockResolvedValue({
+      page: 1,
+      results: [createTmdbTvResult({ id: 1396, name: "Breaking Bad" })],
+      total_pages: 1,
+      total_results: 1,
+    });
+
+    const resolution = await resolveTvTimeMatch(candidate());
+
+    expect(resolution?.existingMedia).toBeDefined();
+    expect(resolution?.existingMedia?.id).toBe(existingId);
+    expect(resolution?.existingMedia?.tmdbId).toBe(1396);
+  });
+
+  it("falls back to canonical identity when the best match is a different result", async () => {
+    const existingId = await seedExistingMedia(1396, "Breaking Bad");
+
+    duplicateSearchMock.mockResolvedValue({
+      page: 1,
+      results: [
+        createTmdbTvResult({ id: 2222, name: "Breaking Bad: The Animated Series", first_air_date: "2025-01-01" }),
+        createTmdbTvResult({ id: 1396, name: "Breaking Bad", first_air_date: "2008-01-20" }),
+      ],
+      total_pages: 1,
+      total_results: 2,
+    });
+
+    const resolution = await resolveTvTimeMatch(candidate());
+
+    expect(resolution?.existingMedia).toBeDefined();
+    expect(resolution?.existingMedia?.id).toBe(existingId);
+    expect(resolution?.existingMedia?.tmdbId).toBe(1396);
+    expect(resolution?.tmdbShow.id).toBe(1396);
+  });
+
+  it("does NOT treat the same TMDB ID with a different media type as the same item", async () => {
+    await seedExistingMedia(1396, "Breaking Bad", "movie");
+
+    duplicateSearchMock.mockResolvedValue({
+      page: 1,
+      results: [createTmdbTvResult({ id: 1396, name: "Breaking Bad", media_type: "tv" })],
+      total_pages: 1,
+      total_results: 1,
+    });
+
+    const resolution = await resolveTvTimeMatch(candidate());
+
+    expect(resolution?.existingMedia).toBeUndefined();
+    expect(resolution?.tmdbShow.id).toBe(1396);
+  });
+
+  it("does NOT match a different TMDB ID with a similar title", async () => {
+    await seedExistingMedia(1396, "Breaking Bad");
+
+    duplicateSearchMock.mockResolvedValue({
+      page: 1,
+      results: [
+        createTmdbTvResult({ id: 7777, name: "Breaking Bad: The Prequel", first_air_date: "2020-01-01" }),
+      ],
+      total_pages: 1,
+      total_results: 1,
+    });
+
+    // Use a title without a year suffix so the substring match scores above
+    // the acceptance threshold. The different tmdbId must NOT match the
+    // existing tmdbId 1396.
+    const resolution = await resolveTvTimeMatch(
+      candidate({ title: "Breaking Bad" }),
+    );
+
+    expect(resolution?.existingMedia).toBeUndefined();
+    expect(resolution?.tmdbShow.id).toBe(7777);
+  });
+
+  it("preserves current matching behavior when no existing TMDB identity is found", async () => {
+    duplicateSearchMock.mockResolvedValue({
+      page: 1,
+      results: [createTmdbTvResult({ id: 1396, name: "Breaking Bad" })],
+      total_pages: 1,
+      total_results: 1,
+    });
+
+    const resolution = await resolveTvTimeMatch(candidate());
+
+    expect(resolution?.existingMedia).toBeUndefined();
+    expect(resolution?.tmdbShow.id).toBe(1396);
+    expect(resolution?.bestScore).toBeGreaterThan(0);
+  });
+
+  it("preserves needs-review behavior when no existing item is found", async () => {
+    duplicateSearchMock.mockResolvedValue({
+      page: 1,
+      results: [
+        createTmdbTvResult({ id: 1396, name: "Breaking Bad" }),
+        createTmdbTvResult({ id: 1397, name: "Breaking Bad", popularity: 90 }),
+      ],
+      total_pages: 1,
+      total_results: 2,
+    });
+
+    const resolution = await resolveTvTimeMatch(candidate());
+
+    expect(resolution?.existingMedia).toBeUndefined();
+    expect(resolution?.rankedCandidates.length).toBe(2);
+  });
+
+  it("preserves unmatched behavior when TMDB returns no acceptable match", async () => {
+    duplicateSearchMock.mockResolvedValue({
+      page: 1,
+      results: [
+        createTmdbTvResult({
+          id: 9999,
+          name: "Completely Different Show",
+          original_name: "Completely Different Show",
+          first_air_date: "2008-05-01",
+        }),
+      ],
+      total_pages: 1,
+      total_results: 1,
+    });
+
+    const resolution = await resolveTvTimeMatch(candidate());
+
+    expect(resolution).toBeNull();
   });
 });
