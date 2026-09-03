@@ -10,6 +10,7 @@ import type {
   TvTimeImportProgressPhase,
   TvTimeImportResolutions,
   TvTimeMatchDecision,
+  TvTimePlannedShow,
 } from "../import/types/tvTimeImportPlan";
 import {
   AlertTriangle,
@@ -284,6 +285,39 @@ export default function SettingsPage() {
       ...current,
       [tvTimeShowId]: decision,
     }));
+
+    // Manual match for an unmatched show: convert it to a "new" show with the
+    // selected TMDB result so it can be imported.
+    if (decision.decision === "use" && decision.tmdbShow && tvTimePlan) {
+      const unmatchedIndex = tvTimePlan.shows.findIndex(
+        (show) =>
+          show.candidate.tvTimeShowId === tvTimeShowId &&
+          show.kind === "unmatched",
+      );
+
+      if (unmatchedIndex !== -1) {
+        const unmatchedShow = tvTimePlan.shows[unmatchedIndex];
+
+        const matchedShow: TvTimePlannedShow = {
+          kind: "new",
+          candidate: unmatchedShow.candidate,
+          tmdbShow: decision.tmdbShow,
+        };
+
+        const updatedShows = [...tvTimePlan.shows];
+        updatedShows[unmatchedIndex] = matchedShow;
+
+        setTvTimePlan({
+          ...tvTimePlan,
+          shows: updatedShows,
+          summary: {
+            ...tvTimePlan.summary,
+            newShows: tvTimePlan.summary.newShows + 1,
+            unmatchedShows: tvTimePlan.summary.unmatchedShows - 1,
+          },
+        });
+      }
+    }
   }
 
   async function handleTvTimeFileSelected(

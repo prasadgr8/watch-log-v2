@@ -1,4 +1,5 @@
-import { AlertTriangle } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, Search } from "lucide-react";
 
 import type {
   TvTimeImportPlan,
@@ -7,6 +8,8 @@ import type {
   TvTimePlannedShow,
   TvTimePlannedWatchedEpisode,
 } from "../../import/types/tvTimeImportPlan";
+
+import ManualMatchSearch from "./ManualMatchSearch";
 
 interface TvTimeImportPreviewProps {
   plan: TvTimeImportPlan;
@@ -98,6 +101,8 @@ export default function TvTimeImportPreview({
   resolutions,
   onResolve,
 }: TvTimeImportPreviewProps) {
+  const [manualMatchShowId, setManualMatchShowId] = useState<string | null>(null);
+
   const watchedByTitle = groupWatchedEpisodesByTitle(plan.watchedEpisodes);
 
   const plannedShowTitles = new Set(
@@ -309,6 +314,31 @@ export default function TvTimeImportPreview({
                       </p>
                     ))}
                   </div>
+
+                  {show.kind === "unmatched" &&
+                    !isSkippedByResolution &&
+                    onResolve &&
+                    (manualMatchShowId === show.candidate.tvTimeShowId ? (
+                      <ManualMatchSearch
+                        showTitle={show.candidate.title}
+                        tvTimeShowId={show.candidate.tvTimeShowId}
+                        onResolve={onResolve}
+                        onCancel={() => setManualMatchShowId(null)}
+                      />
+                    ) : (
+                      <div className="mt-3">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setManualMatchShowId(show.candidate.tvTimeShowId)
+                          }
+                          className="inline-flex items-center gap-2 rounded-lg bg-accent/15 px-3 py-1.5 text-xs font-medium text-accent-text transition hover:bg-accent/25"
+                        >
+                          <Search className="h-3 w-3" />
+                          Find match
+                        </button>
+                      </div>
+                    ))}
                 </details>
               </li>
             );
