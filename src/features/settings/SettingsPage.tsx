@@ -3,6 +3,7 @@ import {
   buildTvTimeImportPlan,
   executeTvTimeImportPlan,
   type TvTimeImportResult,
+  type TvTimeImportShowOutcome,
 } from "../import/services/tvTimeImportService";
 import type {
   TvTimeImportPlan,
@@ -133,6 +134,113 @@ function getTvTimeQuartile(progress: TvTimeImportProgress): number {
   return Math.floor((progress.current / progress.total) * 4);
 }
 
+/**
+ * Outcome groups for the transient post-import report. Only groups that
+ * actually contain items are rendered.
+ */
+const IMPORT_OUTCOME_GROUPS: Array<{
+  outcome: TvTimeImportShowOutcome["outcome"];
+  label: string;
+  badgeClass: string;
+}> = [
+  {
+    outcome: "imported",
+    label: "Imported",
+    badgeClass: "bg-success/10 text-success",
+  },
+  {
+    outcome: "already-existed",
+    label: "Already in Library",
+    badgeClass: "bg-accent/15 text-accent-text",
+  },
+  {
+    outcome: "skipped",
+    label: "Skipped",
+    badgeClass: "bg-surface-elevated text-muted",
+  },
+  {
+    outcome: "unmatched",
+    label: "Not Matched",
+    badgeClass: "bg-warning/10 text-warning",
+  },
+  {
+    outcome: "failed",
+    label: "Failed",
+    badgeClass: "bg-danger/10 text-danger",
+  },
+];
+
+/**
+ * Collapsible per-show breakdown shown after an import. Uses a native
+ * <details>/<summary> pair so the toggle is keyboard- and screen-reader
+ * accessible without adding a dialog abstraction. Renders nothing when there
+ * are no show outcomes to report.
+ */
+function ImportDetailsSection({
+  shows,
+}: {
+  shows: TvTimeImportShowOutcome[];
+}) {
+  const groups = IMPORT_OUTCOME_GROUPS.map((group) => ({
+    ...group,
+    items: shows.filter((show) => show.outcome === group.outcome),
+  })).filter((group) => group.items.length > 0);
+
+  if (groups.length === 0) {
+    return null;
+  }
+
+  return (
+    <details className="mt-4">
+      <summary className="inline-flex cursor-pointer select-none items-center gap-2 rounded-md font-medium text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-hover/40">
+        Import Details
+        <span className="text-xs font-normal text-muted">
+          ({shows.length} shows)
+        </span>
+      </summary>
+
+      <div className="mt-3 space-y-4">
+        {groups.map((group) => (
+          <div key={group.outcome}>
+            <h4 className="flex items-center gap-2 text-sm font-medium text-primary">
+              <span
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${group.badgeClass}`}
+              >
+                {group.label}
+              </span>
+              <span className="text-xs text-muted">{group.items.length}</span>
+            </h4>
+
+            <ul className="mt-2 space-y-1">
+              {group.items.map((show) => (
+                <li
+                  key={show.tvTimeShowId}
+                  className="flex flex-wrap items-baseline gap-x-2 text-sm"
+                >
+                  <span className="text-primary">
+                    {show.tmdbName ?? show.title}
+                  </span>
+
+                  {show.tmdbId !== undefined && (
+                    <span className="text-xs text-muted">
+                      TMDB {show.tmdbId}
+                    </span>
+                  )}
+
+                  {show.reason && (
+                    <span className="text-xs text-muted">
+                      {show.reason}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+}
 export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tvTimeInputRef = useRef<HTMLInputElement>(null);
@@ -878,6 +986,8 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 </div>
+
+                <ImportDetailsSection shows={tvTimeImportResult.shows} />
               </div>
             )}
           </div>

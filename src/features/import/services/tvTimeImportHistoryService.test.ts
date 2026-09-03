@@ -47,6 +47,7 @@ function createResult(
     missingWatchedEpisodes: 0,
     skippedWatchedEpisodes: 0,
     failedWatchedEpisodes: 0,
+    shows: [],
     ...overrides,
   };
 }
