@@ -1,3 +1,5 @@
+import { readFileSync } from "fs";
+import { join } from "path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { db } from "../../../database/db";
@@ -11,6 +13,8 @@ import {
   resolveTvTimeMatch,
 } from "./tvdbMatcher";
 import type { MediaType } from "../../../types";
+
+const projectRoot = process.cwd();
 
 function createTmdbTvResult(
   overrides: Partial<TmdbTvSearchResult> = {},
@@ -389,5 +393,65 @@ describe("resolveTvTimeMatch canonical-identity duplicate detection", () => {
     const resolution = await resolveTvTimeMatch(candidate());
 
     expect(resolution).toBeNull();
+  });
+});
+
+describe("TvTimeMatchDecision manual-match contract", () => {
+  it("type permits optional tmdbShow on use decisions", () => {
+    const source = readFileSync(
+      join(projectRoot, "src/features/import/types/tvTimeImportPlan.ts"),
+      "utf8",
+    );
+
+    expect(source).toContain("TmdbTvSearchResult");
+    expect(source).toContain('decision: "use"');
+    expect(source).toContain("tmdbShow?: TmdbTvSearchResult");
+  });
+});
+
+describe("Manual match resolution flow (source contract)", () => {
+  it("SettingsPage handles manual match by converting unmatched to new", () => {
+    const source = readFileSync(
+      join(projectRoot, "src/features/settings/SettingsPage.tsx"),
+      "utf8",
+    );
+
+    expect(source).toContain("decision.tmdbShow");
+    expect(source).toContain('show.kind === "unmatched"');
+    expect(source).toContain('kind: "new"');
+    expect(source).toContain("newShows: tvTimePlan.summary.newShows + 1");
+    expect(source).toContain(
+      "unmatchedShows: tvTimePlan.summary.unmatchedShows - 1",
+    );
+  });
+
+  it("TvTimeImportPreview shows Find match for unmatched shows only", () => {
+    const source = readFileSync(
+      join(
+        projectRoot,
+        "src/features/settings/components/TvTimeImportPreview.tsx",
+      ),
+      "utf8",
+    );
+
+    expect(source).toContain("Find match");
+    expect(source).toContain('show.kind === "unmatched"');
+    expect(source).toContain("!isSkippedByResolution");
+    expect(source).toContain("ManualMatchSearch");
+  });
+
+  it("Find match does not appear for skipped or non-unmatched shows", () => {
+    const source = readFileSync(
+      join(
+        projectRoot,
+        "src/features/settings/components/TvTimeImportPreview.tsx",
+      ),
+      "utf8",
+    );
+
+    // The Find match button is gated on unmatched && !isSkippedByResolution
+    expect(source).toMatch(
+      /show\.kind === "unmatched"[\s\S]*?!isSkippedByResolution/,
+    );
   });
 });

@@ -70,7 +70,7 @@ export interface TvTimeMatchReview {
 
 /** An explicit user decision for a show flagged for review. */
 export type TvTimeMatchDecision =
-  | { decision: "use"; tmdbId: number }
+  | { decision: "use"; tmdbId: number; tmdbShow?: TmdbTvSearchResult }
   | { decision: "skip" };
 
 /** Review decisions keyed by the stable TV Time show id. */
