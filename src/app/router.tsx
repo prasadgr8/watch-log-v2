@@ -1,16 +1,47 @@
+import { lazy, Suspense } from "react";
+import type { ReactNode } from "react";
+
 import { createBrowserRouter } from "react-router-dom";
 
 import AppLayout from "../components/layout/AppLayout";
 
-import DashboardPage from "../features/dashboard/DashboardPage";
-import LibraryPage from "../features/library/LibraryPage";
-import TvShowDetailsPage from "../features/library/TvShowDetailsPage";
-import SearchPage from "../features/search/SearchPage";
-import SettingsPage from "../features/settings/SettingsPage";
-import StatisticsPage from "../features/statistics/StatisticsPage";
+/*
+ * Page-level routes are lazily loaded so the initial application shell
+ * (layout, sidebar, header) does not download every feature at once. Every
+ * emitted chunk is precached by the PWA service worker, so offline behavior
+ * and deep links are unchanged. The Movies stub stays eager because splitting
+ * it would provide no meaningful reduction.
+ */
+const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage"));
+const LibraryPage = lazy(() => import("../features/library/LibraryPage"));
+const TvShowDetailsPage = lazy(
+  () => import("../features/library/TvShowDetailsPage"),
+);
+const SearchPage = lazy(() => import("../features/search/SearchPage"));
+const SettingsPage = lazy(() => import("../features/settings/SettingsPage"));
+const StatisticsPage = lazy(
+  () => import("../features/statistics/StatisticsPage"),
+);
 
 function MoviesPage() {
   return <h1 className="text-3xl font-bold">🎬 Movies</h1>;
+}
+
+/*
+ * Route-level loading fallback shown while a lazily loaded page chunk is
+ * fetched. Uses the same muted loading-text convention as the feature-level
+ * loading states.
+ */
+function RouteLoadingFallback() {
+  return (
+    <div className="flex h-full items-center justify-center p-8 text-muted">
+      <p>Loading...</p>
+    </div>
+  );
+}
+
+function suspended(element: ReactNode) {
+  return <Suspense fallback={<RouteLoadingFallback />}>{element}</Suspense>;
 }
 
 export const router = createBrowserRouter([
@@ -20,19 +51,19 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <DashboardPage />,
+        element: suspended(<DashboardPage />),
       },
       {
         path: "library",
-        element: <LibraryPage />,
+        element: suspended(<LibraryPage />),
       },
       {
         path: "library/tv/:mediaId",
-        element: <TvShowDetailsPage />,
+        element: suspended(<TvShowDetailsPage />),
       },
       {
         path: "search",
-        element: <SearchPage />,
+        element: suspended(<SearchPage />),
       },
       {
         path: "movies",
@@ -40,11 +71,11 @@ export const router = createBrowserRouter([
       },
       {
         path: "statistics",
-        element: <StatisticsPage />,
+        element: suspended(<StatisticsPage />),
       },
       {
         path: "settings",
-        element: <SettingsPage />,
+        element: suspended(<SettingsPage />),
       },
     ],
   },

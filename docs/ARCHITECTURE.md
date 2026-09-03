@@ -40,6 +40,12 @@ Runtime caching is intentionally narrow:
 - The `tmdb-images` cache is bounded to 150 entries with a 30-day expiration and only caches successful image responses.
 - TMDB API JSON responses are not runtime-cached. API requests always go to the network and are never served from Cache Storage.
 
+### Route-Level Code Splitting
+
+Page-level routes (Dashboard, Library, TV show details, Search, Statistics, and Settings) are loaded through `React.lazy` inside a `Suspense` boundary that shows a muted "Loading..." fallback. The application shell — layout, sidebar, and header — remains eagerly loaded.
+
+Every emitted route and shared chunk is covered by the Workbox `globPatterns` precache, so lazily loaded routes work offline exactly like the application shell, and deep links keep resolving through the `/index.html` navigation fallback.
+
 ### Local-First TV Details and Season Loading
 
 TV show details and season episodes load offline-first through the TV show details service, with IndexedDB as the source for saved data:

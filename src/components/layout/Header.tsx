@@ -21,7 +21,7 @@ export default function Header() {
       <div>
         <h2 className="text-xl font-semibold text-primary">Welcome Back 👋</h2>
 
-        <p className="text-sm text-muted">
+        <p role="status" className="text-sm text-muted">
           {isOnline
             ? "Track your TV Shows & Movies"
             : "Offline — showing saved data"}
@@ -35,21 +35,26 @@ export default function Header() {
           title="Search media"
           className={({ isActive }) =>
             isActive
-              ? "text-accent"
-              : "text-primary transition hover:text-accent"
+              ? "text-accent rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-hover/40"
+              : "text-primary transition hover:text-accent rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-hover/40"
           }
         >
           <Search />
         </NavLink>
 
-        <Bell className="cursor-pointer hover:text-accent" />
+        {/*
+          Decorative placeholder. Notifications do not exist yet, so the bell
+          is hidden from assistive technology and no longer pretends to be an
+          interactive control.
+        */}
+        <Bell aria-hidden="true" />
 
         <button
           type="button"
           onClick={() => setPreference(isDark ? "light" : "dark")}
           aria-label={themeToggleLabel}
           title={themeToggleLabel}
-          className="cursor-pointer hover:text-accent"
+          className="cursor-pointer rounded-md hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-hover/40"
         >
           {isDark ? <Moon /> : <Sun />}
         </button>

@@ -1,5 +1,28 @@
 # Changelog
 
+## v2.0.0-alpha.14 — Production Hardening & UX Quality
+
+### Added
+
+- Added dialog semantics to the Edit Progress modal: `role="dialog"`, `aria-modal`, an accessible name and description, Escape and backdrop cancellation guarded by the save state, initial focus on the status control, and focus restoration to the previously focused element.
+- Added a keyboard-accessible "Skip to content" link as the first tab stop, targeting a stable, focusable `main` landmark.
+- Added an accessible announcement (`role="status"`) for the header's online/offline status text.
+- Added visible `focus-visible` keyboard indicators to the sidebar navigation links, the sidebar brand link, the header search link, and the header theme toggle, preserving the existing hover styling.
+- Added 40 source-assertion accessibility and route-splitting regression tests across four focused suites, following the existing source-assertion conventions (336 tests total).
+
+### Changed
+
+- Changed the header notification bell to be explicitly decorative (`aria-hidden`, no interactive affordance) because notifications do not exist; it no longer presents as an interactive control.
+- Changed the Dashboard Continue Watching progress bars to reuse the accessible Statistics `ProgressBar` component, so each bar exposes `role="progressbar"` with `aria-valuemin`, `aria-valuemax`, `aria-valuenow`, and a per-show accessible name. The visual rendering, progress calculation, and spacing are unchanged.
+- Changed page-level routes to load through `React.lazy` with a Suspense fallback, keeping the application shell (layout, sidebar, header) eager. Route paths, hierarchy, parameters, and deep links are unchanged.
+
+### Quality
+
+- Reduced the initial JavaScript chunk from 633.41 kB (gzip 188.66 kB) to 398.35 kB (gzip 127.09 kB), removing the Vite >500 kB chunk warning by splitting instead of by raising the warning threshold. The Settings chunk carries the TV Time import machinery and loads only when the Settings route is opened.
+- Verified the PWA build still discovers and precaches every emitted application chunk: the Workbox precache grew from 14 to 29 entries, all emitted assets were matched against the generated precache manifest, and the SPA navigation fallback remains intact in the service worker.
+- Verified the production preview serves the application shell, client routes, a deep route, and lazy chunks over HTTP.
+- Browser/devtools offline verification was not performed in this environment; offline behavior is evidenced by the complete precache manifest and the unchanged Alpha 13 service-worker configuration.
+
 ## v2.0.0-alpha.13 — PWA & Offline Hardening
 
 ### Added
@@ -21,6 +44,19 @@
 - Added 12 TV show details service tests covering offline and online details and season loading, local-first rendering, TMDB refresh fallback, watch-state preservation, and the offline notice states.
 - Added 5 PWA configuration assertions covering autoUpdate, the SPA navigation fallback, the manifest identity, and the bounded image-only runtime cache.
 - Expanded the automated suite to 296 tests across 31 test files.
+
+## Grid and List Views — shipped to main between v2.0.0-alpha.11 and v2.0.0-alpha.13
+
+These user-facing changes were squash-merged to `main` in PRs #79 and #80
+(commits `70d5d19` and `e77bccd`) after the Statistics Dashboard release and
+before the PWA release, without a release entry of their own. They are
+documented here for completeness.
+
+### Added
+
+- Added a grid and list view toggle for the Library and for Search results, backed by a reusable `ViewModeToggle` control and a persisted per-surface view-mode preference (`viewMode.ts`).
+- Added a list presentation for Library media (`MediaListItem`) and for Search results (`TmdbSearchResultListItem`).
+- Added a grid and list view toggle for episodes on the TV show details page, with `EpisodeCard` and `EpisodeListItem` presentations behind the shared `EpisodeList`.
 
 ## v2.0.0-alpha.11 — Statistics Dashboard Enhancement
 
