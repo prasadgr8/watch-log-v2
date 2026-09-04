@@ -33,6 +33,8 @@ export const librarySortOptions = [
   { value: "year-desc", label: "Year (Newest)" },
   { value: "year-asc", label: "Year (Oldest)" },
   { value: "rating-desc", label: "Rating" },
+  { value: "progress-desc", label: "Progress (High to Low)" },
+  { value: "progress-asc", label: "Progress (Low to High)" },
 ];
 
 export const libraryRatingFilterOptions = [

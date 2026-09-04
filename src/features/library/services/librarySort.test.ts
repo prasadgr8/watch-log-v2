@@ -133,3 +133,150 @@ describe("sortLibrary - year sorting", () => {
     expect(sorted[0].id).toBe(2);
   });
 });
+
+describe("sortLibrary - progress sorting", () => {
+  it("sorts ascending by progress (lowest first)", () => {
+    const media = [
+      createTvShow({ id: 1, title: "Show 100" }),
+      createTvShow({ id: 2, title: "Show 0" }),
+      createMovie({ id: 3, title: "Movie 50", userStatus: "watching" }),
+      createMovie({ id: 4, title: "Movie 100" }),
+      createTvShow({ id: 5, title: "Show 50" }),
+    ];
+    const progressByMediaId = new Map<number, number>([
+      [1, 100],
+      [2, 0],
+      [3, 50],
+      [4, 100],
+      [5, 50],
+    ]);
+
+    const sorted = sortLibrary(media, "progress-asc", progressByMediaId);
+
+    expect(sorted.map((m) => m.id)).toEqual([2, 3, 5, 1, 4]);
+  });
+
+  it("sorts descending by progress (highest first)", () => {
+    const media = [
+      createTvShow({ id: 1, title: "Show 100" }),
+      createTvShow({ id: 2, title: "Show 0" }),
+      createMovie({ id: 3, title: "Movie 50", userStatus: "watching" }),
+      createMovie({ id: 4, title: "Movie 100" }),
+      createTvShow({ id: 5, title: "Show 50" }),
+    ];
+    const progressByMediaId = new Map<number, number>([
+      [1, 100],
+      [2, 0],
+      [3, 50],
+      [4, 100],
+      [5, 50],
+    ]);
+
+    const sorted = sortLibrary(media, "progress-desc", progressByMediaId);
+
+    expect(sorted.map((m) => m.id)).toEqual([1, 4, 3, 5, 2]);
+  });
+
+  it("places unknown-progress items last in ascending order", () => {
+    const media = [
+      createTvShow({ id: 1, title: "Show 100" }),
+      createTvShow({ id: 2, title: "Show Unknown" }),
+      createMovie({ id: 3, title: "Movie 50", userStatus: "watching" }),
+      createTvShow({ id: 4, title: "Show 0" }),
+    ];
+    const progressByMediaId = new Map<number, number>([
+      [1, 100],
+      [3, 50],
+      [4, 0],
+    ]);
+
+    const sorted = sortLibrary(media, "progress-asc", progressByMediaId);
+
+    expect(sorted.map((m) => m.id)).toEqual([4, 3, 1, 2]);
+  });
+
+  it("places unknown-progress items last in descending order", () => {
+    const media = [
+      createTvShow({ id: 1, title: "Show 100" }),
+      createTvShow({ id: 2, title: "Show Unknown" }),
+      createMovie({ id: 3, title: "Movie 50", userStatus: "watching" }),
+      createTvShow({ id: 4, title: "Show 0" }),
+    ];
+    const progressByMediaId = new Map<number, number>([
+      [1, 100],
+      [3, 50],
+      [4, 0],
+    ]);
+
+    const sorted = sortLibrary(media, "progress-desc", progressByMediaId);
+
+    expect(sorted.map((m) => m.id)).toEqual([1, 3, 4, 2]);
+  });
+
+  it("preserves original order for items with equal progress (stable sort)", () => {
+    const media = [
+      createTvShow({ id: 1, title: "A 50" }),
+      createTvShow({ id: 2, title: "B 50" }),
+      createTvShow({ id: 3, title: "C 50" }),
+    ];
+    const progressByMediaId = new Map<number, number>([
+      [1, 50],
+      [2, 50],
+      [3, 50],
+    ]);
+
+    const sorted = sortLibrary(media, "progress-asc", progressByMediaId);
+
+    expect(sorted.map((m) => m.id)).toEqual([1, 2, 3]);
+  });
+
+  it("sorts mixed TV and movie values as a uniform progress domain", () => {
+    const media = [
+      createTvShow({ id: 1, title: "Show 25" }),
+      createMovie({ id: 2, title: "Movie 100" }),
+      createTvShow({ id: 3, title: "Show 75" }),
+      createMovie({ id: 4, title: "Movie 0", userStatus: "planned" }),
+    ];
+    const progressByMediaId = new Map<number, number>([
+      [1, 25],
+      [2, 100],
+      [3, 75],
+      [4, 0],
+    ]);
+
+    const sorted = sortLibrary(media, "progress-asc", progressByMediaId);
+
+    expect(sorted.map((m) => m.id)).toEqual([4, 1, 3, 2]);
+  });
+
+  it("does not alter existing sorts when a progress map is supplied", () => {
+    const media = [
+      createMovie({ id: 1, title: "The Matrix", rating: 9, releaseDate: "1999-03-31" }),
+      createTvShow({ id: 2, title: "Breaking Bad", rating: 8, firstAirDate: "2008-01-20" }),
+      createMovie({ id: 3, title: "Inception", rating: 7, releaseDate: "2010-07-16" }),
+    ];
+    const progressByMediaId = new Map<number, number>([
+      [1, 100],
+      [2, 50],
+      [3, 0],
+    ]);
+
+    expect(
+      sortLibrary(media, "title-asc", progressByMediaId).map((m) => m.id),
+    ).toEqual(
+      sortLibrary(media, "title-asc").map((m) => m.id),
+    );
+
+    expect(
+      sortLibrary(media, "year-asc", progressByMediaId).map((m) => m.id),
+    ).toEqual(
+      sortLibrary(media, "year-asc").map((m) => m.id),
+    );
+
+    expect(
+      sortLibrary(media, "rating-desc", progressByMediaId).map((m) => m.id),
+    ).toEqual(
+      sortLibrary(media, "rating-desc").map((m) => m.id),
+    );
+  });
+});
