@@ -1,5 +1,30 @@
 # Changelog
 
+## v2.0.0-alpha.16 — Mobile Navigation
+
+### Added
+
+- Added a responsive mobile navigation drawer for small viewports.
+- Added a hamburger menu/open navigation control in the header.
+- Added a labelled mobile close control inside the drawer.
+- Added backdrop dismissal for the mobile drawer.
+- Added Escape-key dismissal for the mobile drawer.
+- Added route-change auto-close so navigating to another page closes the drawer.
+
+### Changed
+
+- The header and application content adapt to the mobile navigation state (responsive paddings and truncation); desktop persistent sidebar behavior remains intact at the responsive breakpoint.
+- Mobile navigation preserves the Alpha 14 accessibility conventions: the skip link, `focus-visible` rings, `role="status"` announcements, and the decorative bell.
+
+### Quality
+
+- Added mobile navigation regression coverage (8 dedicated tests).
+- Updated the layout accessibility coverage for the additional labelled header button.
+- Validation completed with 397 tests passing.
+- TypeScript check passed.
+- ESLint passed with 0 errors and the existing 8 router warnings.
+- Production build passed.
+- `git diff --check` passed.
 ## v2.0.0-alpha.14 — Production Hardening & UX Quality
 
 ### Added
@@ -134,9 +159,11 @@ Delivered to `main` as squash merge commit `933d166` (PR #73).
 ## v2.0.0-alpha.6.7 — Media Editing, Statistics Dashboard, Theme and Import Foundation
 
 Delivered to `main` as squash merge commit `ec2364d` (PR #71). The individual
-development commits for this work remain on the `feature/alpha6-media-editing`
-workstream and were squash-merged rather than merged commit-by-commit. Later
-work on that workstream is not part of this release.
+development commits for this work were squash-merged rather than merged
+commit-by-commit from the former `feature/alpha6-media-editing` workstream
+(branch since deleted); its responsive mobile navigation work was later
+extracted and shipped separately in v2.0.0-alpha.16. Later work on that
+workstream is not part of this release.
 
 This entry is numbered 6.7 because it completes the Alpha 6 media editing
 workstream. The v2.0.0-alpha.7 number remains assigned to the Data Layer Test
