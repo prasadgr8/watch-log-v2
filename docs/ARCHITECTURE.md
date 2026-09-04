@@ -82,6 +82,35 @@ Accessibility:
 - The hamburger and close controls are labelled buttons with visible `focus-visible` keyboard indicators.
 - The drawer keeps exactly one `nav` landmark, and the shell keeps exactly one `main` landmark.
 
+## Library
+
+### Data Flow
+
+```
+IndexedDB → mediaRepository.getAll() → LibraryPage state →
+filterLibrary() → sortLibrary() → visibleMedia → MediaCard/MediaListItem
+```
+
+### Implementation Notes
+
+- All media loads into memory; there is no pagination or virtualization.
+- Filtering and sorting happen in-memory at the UI level.
+- Search matches against the `title` field only.
+- The `createdAt` timestamp supports "recently added" sorting.
+
+### Capabilities
+
+- title search through `filterLibrary()`
+- media type filter (TV / Movie / All)
+- watch status filter
+- sorting by title (A-Z / Z-A), date added (recent first), and rating
+- grid and list view modes with persisted preference
+- empty library and no-results states
+
+### Known Issue
+
+- Year sorting is currently non-functional and returns unsorted results.
+
 ## Continue Watching Projection
 
 Continue Watching is implemented as derived feature state rather than persisted media state.

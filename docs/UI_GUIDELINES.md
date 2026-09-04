@@ -114,6 +114,20 @@ Mobile navigation uses a responsive drawer (shipped in v2.0.0-alpha.16):
 - Styling uses semantic theme tokens; arbitrary Tailwind widths and colors are not introduced.
 - The backdrop is decorative and marked `aria-hidden`.
 
+## Library
+
+The Library supports:
+
+- title search
+- filters: media type (TV / Movie), watch status
+- sorting: title (A-Z / Z-A), date added (recent first), rating
+- view modes: grid and list (persisted)
+- empty states: empty library, no results
+
+### Known Issue
+
+- year sorting is currently non-functional
+
 ## Theme Support
 
 Dark mode is the initial application theme.

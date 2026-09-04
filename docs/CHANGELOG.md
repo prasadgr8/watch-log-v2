@@ -1,5 +1,13 @@
 # Changelog
 
+## September 4, 2026 — Documentation Reconciliation
+
+- Reconciled project documentation with verified implementation
+- Confirmed Library search, filtering, sorting, and empty states are implemented
+- Identified year sorting defect (returns unsorted results)
+- Corrected future work descriptions; only advanced filters and collections remain future work
+- Added verified Library data-flow documentation
+
 ## v2.0.0-alpha.16 — Mobile Navigation
 
 ### Added

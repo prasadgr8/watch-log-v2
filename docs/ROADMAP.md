@@ -343,6 +343,41 @@ The Alpha 15 import refinements shipped on `main` as follows:
 
 ---
 
+## Current Implementation Status
+
+*Reconciled with verified implementation on September 4, 2026.*
+
+Status markers: ✅ Implemented · ⚠️ Known defect · ❌ Not implemented · ⏸️ Deferred · 🔮 Future
+
+### Library
+
+The Library page supports:
+
+- ✅ Title search through `filterLibrary()`
+- ✅ Media type filter (TV/Movie)
+- ✅ Watch status filter
+- ✅ Title sorting (A-Z / Z-A)
+- ✅ Date/recent sorting (by `createdAt`)
+- ✅ Rating sorting
+- ✅ Empty library state
+- ✅ No-results state
+- ✅ Grid/list view with persisted preference
+
+### Known Issues
+
+- ⚠️ Year sorting is currently non-functional (returns unsorted results)
+
+### Gaps
+
+The following Library capabilities are not yet implemented:
+
+- ❌ Rating filter
+- ❌ Progress-based sorting
+- ❌ Genre filtering (requires schema extension)
+- ❌ Custom collections
+
+---
+
 ## Planned Milestones
 
 No further milestones are currently defined. The most recently shipped

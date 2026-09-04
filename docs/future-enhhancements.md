@@ -87,6 +87,8 @@ Advanced analytics remain deferred post-MVP work:
 
 ## Custom Collections
 
+*Note: Library search, filtering, and sorting are already implemented. This section covers organization features that remain future work.*
+
 - User-defined lists
 - Favorites
 - Smart filters
