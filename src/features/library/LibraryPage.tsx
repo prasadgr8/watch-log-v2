@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Film } from "lucide-react";
 
-import { mediaRepository } from "../../database/repositories";
+import { episodeRepository, mediaRepository } from "../../database/repositories";
 
 import { LIBRARY_VIEW_MODE_SETTING_KEY, useViewMode } from "../../app/viewMode";
 import ViewModeToggle from "../../components/ui/ViewModeToggle";
@@ -21,6 +21,7 @@ import MediaListItem from "./components/MediaListItem";
 import EditMediaModal from "./components/EditMediaModal";
 
 import { sortLibrary, type LibrarySort } from "./services/librarySort";
+import { buildLibraryProgressMap } from "./services/libraryProgress";
 
 import {
   libraryRatingFilterOptions,
@@ -55,6 +56,9 @@ export default function LibraryPage() {
   const [status, setStatus] = useState<WatchStatus | "all">("all");
   const [minRating, setMinRating] = useState<number | null>(null);
   const [sort, setSort] = useState<LibrarySort>("recent");
+  const [progressMap, setProgressMap] = useState<
+    ReadonlyMap<number, number> | null
+  >(null);
 
   const { viewMode, setViewMode } = useViewMode(LIBRARY_VIEW_MODE_SETTING_KEY);
 
@@ -65,6 +69,7 @@ export default function LibraryPage() {
       const storedMedia = await mediaRepository.getAll();
 
       setMedia(storedMedia.filter(isPersistedMedia));
+      setProgressMap(null);
     } catch (loadError) {
       console.error("Failed to load media:", loadError);
 
@@ -83,6 +88,7 @@ export default function LibraryPage() {
 
         if (isActive) {
           setMedia(storedMedia.filter(isPersistedMedia));
+          setProgressMap(null);
         }
       } catch (loadError) {
         console.error("Failed to load media:", loadError);
@@ -102,6 +108,37 @@ export default function LibraryPage() {
       isActive = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (sort !== "progress-asc" && sort !== "progress-desc") {
+      return;
+    }
+
+    if (progressMap !== null) {
+      return;
+    }
+
+    let isActive = true;
+
+    async function loadProgress(): Promise<void> {
+      try {
+        const episodes = await episodeRepository.getAll();
+
+        if (isActive) {
+          setProgressMap(buildLibraryProgressMap(media, episodes));
+        }
+      } catch (loadError) {
+        console.error("Failed to load progress:", loadError);
+      }
+    }
+
+    void loadProgress();
+
+    return () => {
+      isActive = false;
+    };
+  }, [sort, media, progressMap]);
+
   const visibleMedia = useMemo(() => {
     const filtered = filterLibrary(media, {
       search,
@@ -110,8 +147,8 @@ export default function LibraryPage() {
       minRating,
     });
 
-    return sortLibrary(filtered, sort);
-  }, [media, search, mediaType, status, minRating, sort]);
+    return sortLibrary(filtered, sort, progressMap ?? undefined);
+  }, [media, search, mediaType, status, minRating, sort, progressMap]);
   async function handleAddMedia(values: AddMediaValues): Promise<boolean> {
     const trimmedTitle = values.title.trim();
 
