@@ -22,7 +22,11 @@ import EditMediaModal from "./components/EditMediaModal";
 
 import { sortLibrary, type LibrarySort } from "./services/librarySort";
 
-import { watchStatusOptions, librarySortOptions } from "./libraryOptions";
+import {
+  libraryRatingFilterOptions,
+  librarySortOptions,
+  watchStatusOptions,
+} from "./libraryOptions";
 
 interface AddMediaValues {
   title: string;
@@ -49,6 +53,7 @@ export default function LibraryPage() {
   const [mediaType, setMediaType] = useState<MediaTypeFilter>("all");
 
   const [status, setStatus] = useState<WatchStatus | "all">("all");
+  const [minRating, setMinRating] = useState<number | null>(null);
   const [sort, setSort] = useState<LibrarySort>("recent");
 
   const { viewMode, setViewMode } = useViewMode(LIBRARY_VIEW_MODE_SETTING_KEY);
@@ -102,10 +107,11 @@ export default function LibraryPage() {
       search,
       mediaType,
       status,
+      minRating,
     });
 
     return sortLibrary(filtered, sort);
-  }, [media, search, mediaType, status, sort]);
+  }, [media, search, mediaType, status, minRating, sort]);
   async function handleAddMedia(values: AddMediaValues): Promise<boolean> {
     const trimmedTitle = values.title.trim();
 
@@ -230,6 +236,22 @@ export default function LibraryPage() {
           <option value="all">All Status</option>
 
           {watchStatusOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+
+        <select
+          aria-label="Minimum rating"
+          value={minRating === null ? "any" : String(minRating)}
+          onChange={(e) => {
+            const value = e.target.value;
+            setMinRating(value === "any" ? null : Number(value));
+          }}
+          className="min-w-[170px] rounded-lg border border-border bg-input-bg px-4 py-2.5 text-primary outline-none transition focus:border-accent-hover focus:ring-2 focus:ring-accent-hover/20"
+        >
+          {libraryRatingFilterOptions.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>

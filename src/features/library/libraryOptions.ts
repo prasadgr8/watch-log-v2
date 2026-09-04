@@ -25,6 +25,7 @@ export const watchStatusOptions: {
     label: "Dropped",
   },
 ];
+
 export const librarySortOptions = [
   { value: "recent", label: "Recently Added" },
   { value: "title-asc", label: "Title (A–Z)" },
@@ -32,4 +33,12 @@ export const librarySortOptions = [
   { value: "year-desc", label: "Year (Newest)" },
   { value: "year-asc", label: "Year (Oldest)" },
   { value: "rating-desc", label: "Rating" },
+];
+
+export const libraryRatingFilterOptions = [
+  { value: "any", label: "Any Rating" },
+  { value: "7", label: "7+" },
+  { value: "8", label: "8+" },
+  { value: "9", label: "9+" },
+  { value: "10", label: "10+" },
 ];

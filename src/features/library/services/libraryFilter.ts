@@ -6,6 +6,7 @@ export interface LibraryFilters {
   search: string;
   mediaType: MediaTypeFilter;
   status: WatchStatus | "all";
+  minRating: number | null;
 }
 
 export function filterLibrary(
@@ -31,6 +32,13 @@ export function filterLibrary(
   if (filters.status !== "all") {
     result = result.filter(
       (item) => item.userStatus === filters.status,
+    );
+  }
+
+  if (filters.minRating !== null) {
+    const minRating = filters.minRating;
+    result = result.filter(
+      (item) => (item.rating ?? 0) >= minRating,
     );
   }
 
