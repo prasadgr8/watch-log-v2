@@ -817,17 +817,28 @@ export default function SettingsPage() {
               </p>
             )}
 
-            {tvTimeExecutionError && (
-              <p
-                role="alert"
-                className="mt-4 rounded-lg border border-danger/60 bg-danger/10 px-4 py-3 text-sm text-danger"
-              >
-                {tvTimeExecutionError}
-              </p>
-            )}
-
             {tvTimePlan && (
-              <>
+              <div className="mt-4 flex flex-col gap-4">
+                {tvTimeExecutionError && (
+                  <div className="flex flex-col items-center gap-3">
+                    <AlertTriangle className="h-5 w-5 text-danger" />
+                    <p
+                      role="alert"
+                      className="text-center text-sm text-danger"
+                    >
+                      {tvTimeExecutionError}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleTvTimeImport}
+                      disabled={isTvTimeImporting}
+                      className="mt-2 inline-flex items-center gap-2 rounded-lg bg-success px-4 py-2 text-sm font-medium text-inverted transition hover:bg-success/80 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isTvTimeImporting ? "Importing..." : "Retry Import"}
+                    </button>
+                  </div>
+                )}
+
                 <TvTimeImportPreview
                   fileName={tvTimeFileName ?? undefined}
                   plan={tvTimePlan}
@@ -835,7 +846,7 @@ export default function SettingsPage() {
                   onResolve={handleResolveTvTimeMatch}
                 />
 
-                <div className="mt-4 flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <button
                     type="button"
                     onClick={() => void handleTvTimeImport()}
@@ -909,7 +920,7 @@ export default function SettingsPage() {
                     </p>
                   )}
                 </div>
-              </>
+              </div>
             )}
             {tvTimeImportResult && (
               <div className="mt-5 rounded-lg border border-border bg-surface/60 p-4">
