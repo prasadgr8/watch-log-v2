@@ -56,7 +56,10 @@ describe("application chrome keyboard visibility", () => {
 
   it("gives the header theme toggle a visible keyboard focus ring", () => {
     const themeToggle =
-      headerSource.match(/<button[\s\S]*?<\/button>/)?.[0] ?? "";
+      headerSource
+        .match(/<button[\s\S]*?<\/button>/g)
+        ?.find((button) => button.includes("aria-label={themeToggleLabel}")) ??
+      "";
 
     expect(themeToggle).toContain('type="button"');
     expect(themeToggle).toContain("aria-label={themeToggleLabel}");
@@ -123,10 +126,16 @@ describe("header bell resolution", () => {
     expect(bellElement).not.toContain("hover:");
   });
 
-  it("keeps the theme toggle as the only real interactive header button", () => {
-    expect(headerSource).toContain("aria-label={themeToggleLabel}");
-    expect(headerSource.match(/<button[\s\S]*?<\/button>/) ?? []).toHaveLength(
-      1,
-    );
+  it("keeps every real interactive header button labelled and keyboard accessible", () => {
+    const buttons = headerSource.match(/<button[\s\S]*?<\/button>/g) ?? [];
+
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0]).toContain('aria-label="Open navigation menu"');
+    expect(buttons[1]).toContain("aria-label={themeToggleLabel}");
+
+    for (const button of buttons) {
+      expect(button).toContain('type="button"');
+      expect(button).toContain(FOCUS_RING);
+    }
   });
 });
