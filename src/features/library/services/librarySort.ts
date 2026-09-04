@@ -1,4 +1,4 @@
-import type { PersistedMedia  } from "../../../types/media";
+import type { PersistedMedia } from "../../../types/media";
 
 export type LibrarySort =
   | "recent"
@@ -7,6 +7,39 @@ export type LibrarySort =
   | "year-desc"
   | "year-asc"
   | "rating-desc";
+
+function getMediaYear(media: PersistedMedia): number | undefined {
+  const dateString =
+    media.mediaType === "tv" ? media.firstAirDate : media.releaseDate;
+
+  if (!dateString || dateString.length < 4) {
+    return undefined;
+  }
+
+  const year = parseInt(dateString.substring(0, 4), 10);
+  return Number.isNaN(year) ? undefined : year;
+}
+
+function compareByYear(
+  a: PersistedMedia,
+  b: PersistedMedia,
+  descending: boolean,
+): number {
+  const yearA = getMediaYear(a);
+  const yearB = getMediaYear(b);
+
+  if (yearA === undefined && yearB === undefined) {
+    return 0;
+  }
+  if (yearA === undefined) {
+    return 1;
+  }
+  if (yearB === undefined) {
+    return -1;
+  }
+
+  return descending ? yearB - yearA : yearA - yearB;
+}
 
 export function sortLibrary(
   media: PersistedMedia[],
@@ -25,9 +58,11 @@ export function sortLibrary(
         b.title.localeCompare(a.title),
       );
 
-case "year-desc":
-case "year-asc":
-  return sorted;
+    case "year-asc":
+      return sorted.sort((a, b) => compareByYear(a, b, false));
+
+    case "year-desc":
+      return sorted.sort((a, b) => compareByYear(a, b, true));
 
     case "rating-desc":
       return sorted.sort(
