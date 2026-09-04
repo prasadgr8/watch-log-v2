@@ -58,6 +58,30 @@ TV show details and season episodes load offline-first through the TV show detai
 
 While saved data is shown, the TV show details page displays an offline notice with a retry control, and the header reflects the browser's online status with an "Offline — showing saved data" message.
 
+## Responsive Navigation
+
+Navigation adapts at the responsive breakpoint (Tailwind `md`, 768px):
+
+Desktop (768px and up):
+
+- Persistent sidebar navigation, unchanged by the mobile drawer.
+
+Below the breakpoint:
+
+- The header owns the hamburger action: a labelled button opens the drawer.
+- `AppLayout` owns the mobile navigation open/closed state as transient React UI state; it is not persisted to IndexedDB.
+- `Sidebar` renders the mobile drawer and the backdrop.
+- The labelled close control inside the drawer closes it.
+- Activating the backdrop closes the drawer; the backdrop is decorative and excluded from the accessibility tree.
+- Pressing Escape closes the drawer; a document-level keydown listener is attached only while the drawer is open and is removed on cleanup.
+- Navigating to another route closes the drawer automatically.
+- While closed, the drawer and backdrop are not rendered, so they are removed from the layout, the tab order, and the accessibility tree, and the desktop sidebar remains a static block column.
+
+Accessibility:
+
+- The hamburger and close controls are labelled buttons with visible `focus-visible` keyboard indicators.
+- The drawer keeps exactly one `nav` landmark, and the shell keeps exactly one `main` landmark.
+
 ## Continue Watching Projection
 
 Continue Watching is implemented as derived feature state rather than persisted media state.

@@ -33,10 +33,19 @@ post-MVP.
 
 ## Import Improvements
 
-- Better duplicate detection
 - Resume interrupted imports
-- Detailed import reports
-- Manual matching for unmatched titles
+
+True checkpoint/resume remains deferred: safe interruption recovery would
+require persistent import-run/checkpoint state and additional
+architecture/schema work beyond the current import pipeline. The shipped
+Alpha 15.5 retry-from-start failure UX re-runs a failed import from the
+beginning; it is not checkpoint/resume.
+
+The following import improvements shipped and are no longer future work:
+
+- Better duplicate detection (shipped in v2.0.0-alpha.15.1)
+- Manual matching for unmatched titles (shipped in v2.0.0-alpha.15.2)
+- Detailed import reports (shipped in v2.0.0-alpha.15.3)
 
 ---
 

@@ -271,6 +271,20 @@ Status: Complete (shipped)
 - Initial JavaScript chunk reduced from 633.41 kB (gzip 188.66 kB) to 398.35 kB (gzip 127.09 kB) without raising Vite's chunk warning threshold
 - 40 source-assertion accessibility and route-splitting regression tests added across four focused suites
 
+## v2.0.0-alpha.16 — Mobile Navigation
+
+Status: Complete (shipped on `main` via squash merge commit `f3be6bd`, PR #87)
+
+- Responsive mobile navigation drawer
+- Hamburger/open navigation control in the header
+- Labelled mobile close control inside the drawer
+- Backdrop dismissal
+- Escape-key dismissal
+- Route-change auto-close
+- Responsive header and content layout adjustments
+- Mobile navigation integrated with the Alpha 14 accessibility work (skip link, `role="status"` announcements, decorative bell, and keyboard-visible focus indicators preserved)
+- Mobile navigation regression coverage (8 dedicated tests; layout accessibility coverage updated for the additional labelled header button)
+
 ## Future Milestones
 
 Planned or exploratory features include:
@@ -278,7 +292,6 @@ Planned or exploratory features include:
 - Offline installation (install prompts remain out of scope; the offline application shell itself shipped in v2.0.0-alpha.13)
 - Optional Google Drive synchronization
 - Advanced statistics and analytics, such as watch-history trends, time-series visualizations, and charts (the shipped Statistics Dashboard provides the library, episode, watch-time, progress, and recently-watched views as of v2.0.0-alpha.11)
-- Responsive mobile experience (responsive/mobile work exists on the unmerged `feature/alpha6-media-editing` workstream; it is not shipped on `main`)
 - Additional personal media tracking categories
 
 Progressive Web App support (the service worker, offline application shell,
@@ -316,6 +329,14 @@ The remaining import phases shipped on `main` as follows:
 - Phase 3G — Import History: shipped in v2.0.0-alpha.12 (PR #75); persistent import history in the `importHistory` store, database schema version 4
 - Phase 3H — Full Import Test Coverage: shipped in v2.0.0-alpha.12 (PR #75); expanded end-to-end import coverage
 
+The Alpha 15 import refinements shipped on `main` as follows:
+
+- v2.0.0-alpha.15.1 — Duplicate detection hardening (PR #83)
+- v2.0.0-alpha.15.2 — Manual matching for unmatched titles (PR #84)
+- v2.0.0-alpha.15.3 — Detailed per-show import reports (PR #85)
+- v2.0.0-alpha.15.4 — Resume interrupted imports: evaluated as NO-GO and deferred (requires persistent import-run/checkpoint state)
+- v2.0.0-alpha.15.5 — Retry-from-start failure UX with the Retry Import control (PR #86)
+
 ### Deferred
 
 - Replace/Merge conflict outcomes for Phase 3D remain deferred pending explicit product approval.
@@ -325,5 +346,5 @@ The remaining import phases shipped on `main` as follows:
 ## Planned Milestones
 
 No further milestones are currently defined. The most recently shipped
-milestone is v2.0.0-alpha.14. Exploratory work is tracked under Future
+milestone is v2.0.0-alpha.16. Exploratory work is tracked under Future
 Milestones above and in `future-enhhancements.md`.

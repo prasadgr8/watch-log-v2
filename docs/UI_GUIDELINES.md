@@ -53,7 +53,7 @@ The desktop application uses:
 - Application header
 - Scrollable main content area
 
-The mobile application will use responsive navigation.
+The mobile application uses a responsive navigation drawer (shipped in v2.0.0-alpha.16).
 
 ## Spacing
 
@@ -101,9 +101,18 @@ Shipped reusable components include:
 
 The application must support desktop and mobile layouts.
 
-Desktop navigation uses a sidebar.
+Desktop navigation uses a persistent sidebar.
 
-Mobile navigation will use a responsive drawer or equivalent compact navigation pattern.
+Mobile navigation uses a responsive drawer (shipped in v2.0.0-alpha.16):
+
+- A labelled hamburger control in the header opens the drawer.
+- A labelled close control inside the drawer closes it.
+- Activating the backdrop dismisses the drawer.
+- Pressing Escape dismisses the drawer.
+- Navigating to another route closes the drawer automatically.
+- Interactive controls expose visible focus states (through `focus-visible` ring styles).
+- Styling uses semantic theme tokens; arbitrary Tailwind widths and colors are not introduced.
+- The backdrop is decorative and marked `aria-hidden`.
 
 ## Theme Support
 
