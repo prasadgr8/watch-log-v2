@@ -345,7 +345,7 @@ The Alpha 15 import refinements shipped on `main` as follows:
 
 ## Current Implementation Status
 
-*Reconciled with verified implementation on September 4, 2026.*
+*Reconciled with verified implementation on September 5, 2026, following v2.0.0-alpha.17.1 and v2.0.0-alpha.17.2.*
 
 Status markers: ✅ Implemented · ⚠️ Known defect · ❌ Not implemented · ⏸️ Deferred · 🔮 Future
 
@@ -359,20 +359,17 @@ The Library page supports:
 - ✅ Title sorting (A-Z / Z-A)
 - ✅ Date/recent sorting (by `createdAt`)
 - ✅ Rating sorting
+- ✅ Year sorting
+- ✅ Minimum-rating filter
+- ✅ Progress sorting (ascending/descending)
 - ✅ Empty library state
 - ✅ No-results state
 - ✅ Grid/list view with persisted preference
-
-### Known Issues
-
-- ⚠️ Year sorting is currently non-functional (returns unsorted results)
 
 ### Gaps
 
 The following Library capabilities are not yet implemented:
 
-- ❌ Rating filter
-- ❌ Progress-based sorting
 - ❌ Genre filtering (requires schema extension)
 - ❌ Custom collections
 
@@ -381,5 +378,5 @@ The following Library capabilities are not yet implemented:
 ## Planned Milestones
 
 No further milestones are currently defined. The most recently shipped
-milestone is v2.0.0-alpha.16. Exploratory work is tracked under Future
+milestone is v2.0.0-alpha.17.2. Exploratory work is tracked under Future
 Milestones above and in `future-enhhancements.md`.

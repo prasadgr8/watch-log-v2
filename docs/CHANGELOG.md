@@ -1,5 +1,28 @@
 # Changelog
 
+## v2.0.0-alpha.17.2 — Library Progress Sorting
+
+### Added
+
+- Added Library progress sorting with ascending and descending order.
+
+### Changed
+
+- TV progress sorting uses regular episodes only; Season 0 is excluded.
+- Movies use binary progress semantics: completed = 100%, otherwise 0%.
+- Entries with unknown progress sort after entries with known progress.
+- Ordering remains stable for entries with equal or unknown progress.
+
+## v2.0.0-alpha.17.1 — Library Discovery Fixes
+
+### Fixed
+
+- Fixed Library year sorting, which previously returned unsorted results.
+
+### Added
+
+- Added minimum-rating filtering to the Library.
+
 ## September 4, 2026 — Documentation Reconciliation
 
 - Reconciled project documentation with verified implementation
