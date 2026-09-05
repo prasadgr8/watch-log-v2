@@ -223,4 +223,94 @@ describe("mediaRepository", () => {
     expect(otherEpisodeWatchHistory).toHaveLength(1);
     expect(otherEpisodeWatchHistory[0]?.episodeId).toBe(otherShowEpisodeId);
   });
+
+  it("removes collection memberships when the media is deleted", async () => {
+    const now = new Date("2026-07-15T00:00:00.000Z");
+
+    const removedShowId = await mediaRepository.add(createTvShow());
+    const otherShowId = await mediaRepository.add(
+      createTvShow({ title: "Other Show" }),
+    );
+
+    const collectionId = (await db.collections.add({
+      name: "Favourites",
+      createdAt: now,
+      updatedAt: now,
+    }))!;
+
+    const otherCollectionId = (await db.collections.add({
+      name: "Survivor",
+      createdAt: now,
+      updatedAt: now,
+    }))!;
+
+    await db.collectionMedia.add({
+      collectionId,
+      mediaId: removedShowId,
+      createdAt: now,
+    });
+
+    await db.collectionMedia.add({
+      collectionId,
+      mediaId: otherShowId,
+      createdAt: now,
+    });
+
+    await db.collectionMedia.add({
+      collectionId: otherCollectionId,
+      mediaId: removedShowId,
+      createdAt: now,
+    });
+
+    await mediaRepository.remove(removedShowId);
+
+    // Memberships referencing the deleted media are gone; the rest remain.
+    expect(
+      await db.collectionMedia
+        .where("[collectionId+mediaId]")
+        .equals([collectionId, removedShowId])
+        .count(),
+    ).toBe(0);
+    expect(
+      await db.collectionMedia
+        .where("[collectionId+mediaId]")
+        .equals([otherCollectionId, removedShowId])
+        .count(),
+    ).toBe(0);
+    expect(
+      await db.collectionMedia
+        .where("[collectionId+mediaId]")
+        .equals([collectionId, otherShowId])
+        .count(),
+    ).toBe(1);
+
+    // Collections themselves are never deleted by a media removal.
+    expect(await db.collections.count()).toBe(2);
+  });
+
+  it("fetches media by ids, skipping missing records", async () => {
+    const firstShowId = await mediaRepository.add(createTvShow());
+    const secondShowId = await mediaRepository.add(
+      createTvShow({ title: "Other Show" }),
+    );
+
+    const result = await mediaRepository.getByIds([
+      secondShowId,
+      99999,
+      firstShowId,
+    ]);
+
+    expect(result.map((media) => media.id)).toEqual([
+      secondShowId,
+      firstShowId,
+    ]);
+    expect(result.map((media) => media.title)).toEqual([
+      "Other Show",
+      "Breaking Bad",
+    ]);
+  });
+
+  it("returns an empty array when asked for no ids", async () => {
+    expect(await mediaRepository.getByIds([])).toEqual([]);
+  });
 });

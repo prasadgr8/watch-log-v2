@@ -9,11 +9,15 @@ async function clearDatabase(): Promise<void> {
 
   await db.transaction(
     "rw",
-    db.media,
-    db.episodes,
-    db.watchHistory,
-    db.settings,
-    db.importHistory,
+    [
+      db.media,
+      db.episodes,
+      db.watchHistory,
+      db.settings,
+      db.importHistory,
+      db.collections,
+      db.collectionMedia,
+    ],
     async () => {
       await Promise.all([
         db.media.clear(),
@@ -21,6 +25,8 @@ async function clearDatabase(): Promise<void> {
         db.watchHistory.clear(),
         db.settings.clear(),
         db.importHistory.clear(),
+        db.collections.clear(),
+        db.collectionMedia.clear(),
       ]);
     },
   );

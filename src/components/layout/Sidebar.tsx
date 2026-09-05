@@ -5,6 +5,7 @@ import {
   Film,
   LayoutDashboard,
   Library,
+  Layers,
   Settings,
   X,
 } from "lucide-react";
@@ -17,6 +18,7 @@ interface SidebarProps {
 const menu = [
   { name: "Dashboard", path: "/", icon: LayoutDashboard },
   { name: "Library", path: "/library", icon: Library },
+  { name: "Collections", path: "/collections", icon: Layers },
   { name: "Movies", path: "/movies", icon: Film },
   { name: "Statistics", path: "/statistics", icon: BarChart3 },
   { name: "Settings", path: "/settings", icon: Settings },

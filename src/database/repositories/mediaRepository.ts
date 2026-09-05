@@ -31,6 +31,23 @@ export const mediaRepository = {
     return db.media.toArray();
   },
 
+  /**
+   * Bulk fetch by primary keys. Missing records are omitted; the result
+   * preserves the order of the requested IDs for present records.
+   */
+  async getByIds(ids: number[]): Promise<Media[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const records = await db.media.bulkGet(ids);
+
+    return records.filter(
+      (record): record is Media =>
+        record !== undefined && record.id !== undefined,
+    );
+  },
+
   async getByType(mediaType: MediaType): Promise<Media[]> {
     return db.media.where("mediaType").equals(mediaType).toArray();
   },
@@ -52,6 +69,7 @@ export const mediaRepository = {
       db.media,
       db.episodes,
       db.watchHistory,
+      db.collectionMedia,
       async () => {
         const episodeKeys = await db.episodes
           .where("showId")
@@ -67,6 +85,11 @@ export const mediaRepository = {
         }
 
         await db.episodes.where("showId").equals(id).delete();
+
+        // Removing media also removes its collection memberships so no
+        // orphaned relationships remain. Collections themselves are kept.
+        await db.collectionMedia.where("mediaId").equals(id).delete();
+
         await db.media.delete(id);
       },
     );

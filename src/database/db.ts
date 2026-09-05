@@ -2,6 +2,8 @@ import Dexie, { type EntityTable, type Table } from "dexie";
 
 import type {
   AppSetting,
+  Collection,
+  CollectionMedia,
   Episode,
   ImportHistory,
   Media,
@@ -14,6 +16,8 @@ export class WatchLogDatabase extends Dexie {
   watchHistory!: Table<WatchHistory, number>;
   settings!: EntityTable<AppSetting, "key">;
   importHistory!: Table<ImportHistory, number>;
+  collections!: EntityTable<Collection, "id">;
+  collectionMedia!: Table<CollectionMedia, number>;
 
   constructor() {
     super("WatchLogV2");
@@ -75,6 +79,22 @@ export class WatchLogDatabase extends Dexie {
       watchHistory: "++id, episodeId, watchedAt, source, [episodeId+watchedAt]",
       settings: "&key, updatedAt",
       importHistory: "++id, startedAt, completedAt, status, provider",
+    });
+
+    // Version 5 is additive-only: it introduces the custom collections stores
+    // and changes no existing records, so no upgrade callback is required.
+    // The unique compound index makes "a collection contains a media item at
+    // most once" a database-level invariant.
+    this.version(5).stores({
+      media:
+        "++id, tmdbId, mediaType, [tmdbId+mediaType], title, userStatus, createdAt, updatedAt",
+      episodes:
+        "++id, showId, tmdbId, [showId+tmdbId], [showId+seasonNumber+episodeNumber], watchedAt, updatedAt",
+      watchHistory: "++id, episodeId, watchedAt, source, [episodeId+watchedAt]",
+      settings: "&key, updatedAt",
+      importHistory: "++id, startedAt, completedAt, status, provider",
+      collections: "++id, createdAt, updatedAt",
+      collectionMedia: "++id, collectionId, mediaId, &[collectionId+mediaId]",
     });
   }
 }

@@ -28,6 +28,11 @@ const LAZY_ROUTES = [
   { name: "SearchPage", module: "../features/search/SearchPage" },
   { name: "SettingsPage", module: "../features/settings/SettingsPage" },
   { name: "StatisticsPage", module: "../features/statistics/StatisticsPage" },
+  { name: "CollectionsPage", module: "../features/collections/CollectionsPage" },
+  {
+    name: "CollectionDetailPage",
+    module: "../features/collections/CollectionDetailPage",
+  },
 ] as const;
 
 /*
@@ -53,7 +58,7 @@ describe("route-level code splitting", () => {
       );
     }
 
-    expect(normalizedRouterSource.match(/=> import\(/g)?.length).toBe(6);
+    expect(normalizedRouterSource.match(/=> import\(/g)?.length).toBe(8);
   });
 
   it("keeps the application shell eager", () => {
@@ -70,7 +75,7 @@ describe("route-level code splitting", () => {
     );
     expect(
       normalizedRouterSource.match(/suspended\(<[A-Z]/g)?.length,
-    ).toBe(6);
+    ).toBe(8);
   });
 
   it("styles the fallback with the muted loading-text convention", () => {
@@ -89,11 +94,13 @@ describe("route-level code splitting", () => {
     expect(normalizedRouterSource).toContain("index: true");
     expect(normalizedRouterSource).toContain('path: "library"');
     expect(normalizedRouterSource).toContain('path: "library/tv/:mediaId"');
+    expect(normalizedRouterSource).toContain('path: "collections"');
+    expect(normalizedRouterSource).toContain('path: "collections/:collectionId"');
     expect(normalizedRouterSource).toContain('path: "search"');
     expect(normalizedRouterSource).toContain('path: "movies"');
     expect(normalizedRouterSource).toContain('path: "statistics"');
     expect(normalizedRouterSource).toContain('path: "settings"');
-    expect(normalizedRouterSource.match(/path: "/g)?.length).toBe(7);
+    expect(normalizedRouterSource.match(/path: "/g)?.length).toBe(9);
   });
 
   it("does not silence the chunk size warning instead of splitting", () => {
