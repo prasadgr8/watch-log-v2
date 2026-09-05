@@ -23,11 +23,22 @@ import {
 } from "./tvTimeImportService";
 import type { TvTimeImportPlan } from "../types/tvTimeImportPlan";
 
+interface TvTimeTrackingEpisodeRow {
+  sId: string;
+  title: string;
+  season: number;
+  episode: number;
+  createdAt: string;
+  bulkType?: string;
+  rewatchCount?: number;
+}
+
 interface TvTimeZipOptions {
   timeZone?: string;
   seenCreatedAt?: string;
   shows?: Array<{ id: string; title: string }>;
   seenEpisodes?: Array<{ title: string; season: number; episode: number }>;
+  trackingEpisodes?: TvTimeTrackingEpisodeRow[];
 }
 
 function createTvTimeZip(options: TvTimeZipOptions = {}): Promise<Blob> {
@@ -72,6 +83,30 @@ function createTvTimeZip(options: TvTimeZipOptions = {}): Promise<Blob> {
       ),
     ].join("\n"),
   );
+
+  if (options.trackingEpisodes) {
+    zip.file(
+      "tracking-prod-records-v2.csv",
+      [
+        "key,series_name,s_id,episode_id,ep_id,season_number,episode_number,created_at,updated_at,rewatch_count,bulk_type",
+        ...options.trackingEpisodes.map((row, index) =>
+          [
+            `watch-episode-${index + 1}`,
+            row.title,
+            row.sId,
+            `ep-${index + 1}`,
+            `e-${index + 1}`,
+            row.season,
+            row.episode,
+            row.createdAt,
+            row.createdAt,
+            row.rewatchCount ?? 0,
+            row.bulkType ?? "",
+          ].join(","),
+        ),
+      ].join("\n"),
+    );
+  }
   zip.file(
     "seen_episode_latest.csv",
     "tv_show_name,episode_season_number,episode_number,seen_date\nBreaking Bad (2008),1,1,2020-01-01 00:00:00",
@@ -726,6 +761,370 @@ describe("duplicate TV Time titles", () => {
       : undefined;
 
     expect(episode?.watched ?? false).toBe(false);
+  });
+});
+
+describe("tracking watch history", () => {
+  beforeEach(async () => {
+    await Promise.all([
+      db.media.clear(),
+      db.episodes.clear(),
+      db.watchHistory.clear(),
+    ]);
+    vi.restoreAllMocks();
+
+    vi.spyOn(tmdbSearchService, "searchTvShows").mockResolvedValue({
+      page: 1,
+      results: [createTmdbTvResult()],
+      total_pages: 1,
+      total_results: 1,
+    });
+
+    vi.spyOn(tmdbTvService, "getTvDetails").mockResolvedValue(
+      createTmdbTvDetails(),
+    );
+
+    vi.spyOn(tmdbTvService, "getSeasonDetails").mockResolvedValue(
+      createTmdbTvSeasonDetails(),
+    );
+  });
+
+  it("plans watched episodes from tracking-prod-records-v2.csv", async () => {
+    const blob = await createTvTimeZip({
+      timeZone: "America/New_York",
+      trackingEpisodes: [
+        {
+          sId: "tvtime-breaking-bad",
+          title: "Breaking Bad (2008)",
+          season: 1,
+          episode: 1,
+          createdAt: "2021-01-14 10:00:00",
+        },
+        {
+          sId: "tvtime-breaking-bad",
+          title: "Breaking Bad (2008)",
+          season: 1,
+          episode: 2,
+          createdAt: "2021-01-15 10:00:00",
+          bulkType: "season",
+        },
+      ],
+    });
+
+    const plan = await buildTvTimeImportPlan(createZipFile(blob));
+
+    expect(plan.summary.plannedWatchedEpisodes).toBe(2);
+    expect(plan.watchedEpisodes[0]).toMatchObject({
+      tvTimeShowId: "tvtime-breaking-bad",
+      showTitle: "Breaking Bad (2008)",
+      seasonNumber: 1,
+      episodeNumber: 1,
+    });
+    expect(plan.watchedEpisodes[0]?.watchedAt.toISOString()).toBe(
+      "2021-01-14T15:00:00.000Z",
+    );
+    expect(plan.watchedEpisodes[1]).toMatchObject({
+      seasonNumber: 1,
+      episodeNumber: 2,
+    });
+  });
+
+  it("prefers tracking watches over seen_episode_source.csv watches", async () => {
+    const blob = await createTvTimeZip({
+      timeZone: "America/New_York",
+      trackingEpisodes: [
+        {
+          sId: "tvtime-breaking-bad",
+          title: "Breaking Bad (2008)",
+          season: 1,
+          episode: 1,
+          createdAt: "2021-01-14 10:00:00",
+        },
+        {
+          sId: "tvtime-breaking-bad",
+          title: "Breaking Bad (2008)",
+          season: 1,
+          episode: 2,
+          createdAt: "2021-01-15 10:00:00",
+        },
+      ],
+      seenEpisodes: [
+        { title: "Breaking Bad (2008)", season: 1, episode: 1 },
+        { title: "Breaking Bad (2008)", season: 1, episode: 3 },
+      ],
+    });
+
+    const plan = await buildTvTimeImportPlan(createZipFile(blob));
+
+    // Only tracking-derived watches are planned: S1E3 from the seen source
+    // never appears and the seen-source timestamp is never used.
+    expect(plan.summary.plannedWatchedEpisodes).toBe(2);
+    expect(
+      plan.watchedEpisodes.map(
+        (watched) => `${watched.seasonNumber}-${watched.episodeNumber}`,
+      ),
+    ).toEqual(["1-1", "1-2"]);
+    expect(plan.watchedEpisodes[0]?.watchedAt.toISOString()).toBe(
+      "2021-01-14T15:00:00.000Z",
+    );
+  });
+
+  it("falls back to seen_episode_source.csv when the tracking file is absent", async () => {
+    const blob = await createTvTimeZip({
+      timeZone: "America/New_York",
+      seenCreatedAt: "2021-01-14 10:00:00",
+    });
+
+    const plan = await buildTvTimeImportPlan(createZipFile(blob));
+
+    expect(plan.summary.plannedWatchedEpisodes).toBe(1);
+    expect(plan.watchedEpisodes[0]).toMatchObject({
+      tvTimeShowId: "tvtime-breaking-bad",
+      showTitle: "Breaking Bad (2008)",
+      seasonNumber: 1,
+      episodeNumber: 1,
+    });
+    expect(plan.watchedEpisodes[0]?.watchedAt.toISOString()).toBe(
+      "2021-01-14T15:00:00.000Z",
+    );
+  });
+
+  it("plans Game of Thrones-like tracking data without the S00E55 special", async () => {
+    const trackingEpisodes: TvTimeTrackingEpisodeRow[] = [];
+
+    // 73 normal episodes across S01-S08, mirroring the real GDPR export.
+    const seasonEpisodeCounts = [9, 9, 9, 9, 9, 10, 10, 8];
+
+    seasonEpisodeCounts.forEach((count, index) => {
+      const season = index + 1;
+
+      for (let episode = 1; episode <= count; episode++) {
+        trackingEpisodes.push({
+          sId: "tvtime-game-of-thrones",
+          title: "Game of Thrones (2011)",
+          season,
+          episode,
+          createdAt: `2019-05-${String((episode % 28) + 1).padStart(2, "0")} 12:00:00`,
+          bulkType: "season",
+        });
+      }
+    });
+
+    // The one anomalous S00E55 record present in the real export.
+    trackingEpisodes.push({
+      sId: "tvtime-game-of-thrones",
+      title: "Game of Thrones (2011)",
+      season: 0,
+      episode: 55,
+      createdAt: "2019-06-01 12:00:00",
+    });
+
+    const blob = await createTvTimeZip({
+      shows: [{ id: "tvtime-game-of-thrones", title: "Game of Thrones (2011)" }],
+      seenEpisodes: [],
+      trackingEpisodes,
+    });
+
+    const plan = await buildTvTimeImportPlan(createZipFile(blob));
+
+    expect(plan.summary.plannedWatchedEpisodes).toBe(73);
+    expect(plan.watchedEpisodes.some((watched) => watched.seasonNumber === 0)).toBe(
+      false,
+    );
+    expect(
+      plan.watchedEpisodes.filter((watched) => watched.episodeNumber === 55),
+    ).toEqual([]);
+
+    for (const watched of plan.watchedEpisodes) {
+      expect(watched.tvTimeShowId).toBe("tvtime-game-of-thrones");
+      expect(watched.seasonNumber).toBeGreaterThanOrEqual(1);
+      expect(watched.seasonNumber).toBeLessThanOrEqual(8);
+      expect(watched.episodeNumber).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it("uses tracking data instead of the incomplete six-row seen source", async () => {
+    const trackingEpisodes: TvTimeTrackingEpisodeRow[] = [
+      ...Array.from({ length: 6 }, (_, index) => ({
+        sId: "tvtime-walking-dead",
+        title: "The Walking Dead (2010)",
+        season: 1,
+        episode: index + 1,
+        createdAt: "2015-10-12 03:00:00",
+        bulkType: "season",
+      })),
+      ...Array.from({ length: 4 }, (_, index) => ({
+        sId: "tvtime-walking-dead",
+        title: "The Walking Dead (2010)",
+        season: 2,
+        episode: index + 1,
+        createdAt: "2016-02-20 21:00:00",
+        bulkType: "season",
+      })),
+    ];
+
+    const blob = await createTvTimeZip({
+      timeZone: "America/New_York",
+      shows: [{ id: "tvtime-walking-dead", title: "The Walking Dead (2010)" }],
+      seenEpisodes: [
+        { title: "The Walking Dead (2010)", season: 1, episode: 1 },
+        { title: "The Walking Dead (2010)", season: 1, episode: 2 },
+        { title: "The Walking Dead (2010)", season: 1, episode: 3 },
+        { title: "The Walking Dead (2010)", season: 1, episode: 4 },
+        { title: "The Walking Dead (2010)", season: 1, episode: 5 },
+        { title: "The Walking Dead (2010)", season: 1, episode: 6 },
+      ],
+      trackingEpisodes,
+    });
+
+    const plan = await buildTvTimeImportPlan(createZipFile(blob));
+
+    // The incomplete six-row seen source is ignored in favour of the complete
+    // tracking history (6 x S1 + 4 x S2); bulk_type=season marks are retained.
+    expect(plan.summary.plannedWatchedEpisodes).toBe(10);
+    expect(
+      plan.watchedEpisodes.map(
+        (watched) => `${watched.seasonNumber}-${watched.episodeNumber}`,
+      ),
+    ).toEqual([
+      "1-1",
+      "1-2",
+      "1-3",
+      "1-4",
+      "1-5",
+      "1-6",
+      "2-1",
+      "2-2",
+      "2-3",
+      "2-4",
+    ]);
+
+    // The tracking timestamp is used, not the seen-source timestamp.
+    expect(plan.watchedEpisodes[0]?.watchedAt.toISOString()).toBe(
+      "2015-10-12T07:00:00.000Z",
+    );
+  });
+
+  it("does not plan duplicate candidates for the same TV Time show/season/episode", async () => {
+    const blob = await createTvTimeZip({
+      timeZone: "America/New_York",
+      trackingEpisodes: [
+        {
+          sId: "tvtime-breaking-bad",
+          title: "Breaking Bad (2008)",
+          season: 1,
+          episode: 1,
+          createdAt: "2021-02-05 10:00:00",
+        },
+        {
+          sId: "tvtime-breaking-bad",
+          title: "Breaking Bad (2008)",
+          season: 1,
+          episode: 1,
+          createdAt: "2021-01-05 10:00:00",
+        },
+        {
+          sId: "tvtime-breaking-bad",
+          title: "Breaking Bad (2008)",
+          season: 1,
+          episode: 1,
+          createdAt: "2021-03-05 10:00:00",
+          rewatchCount: 1,
+        },
+      ],
+    });
+
+    const plan = await buildTvTimeImportPlan(createZipFile(blob));
+
+    expect(plan.summary.plannedWatchedEpisodes).toBe(1);
+
+    // Earliest watch wins, consistent with WatchLog's first-watch-wins
+    // semantics: watchedAt is never overwritten once set.
+    expect(plan.watchedEpisodes[0]?.watchedAt.toISOString()).toBe(
+      "2021-01-05T15:00:00.000Z",
+    );
+  });
+
+  it("does not skip tracking rows when TV Time show titles are duplicated", async () => {
+    const blob = await createTvTimeZip({
+      shows: [
+        { id: "tvtime-dup-a", title: "Breaking Bad (2008)" },
+        { id: "tvtime-dup-b", title: "Breaking Bad (2008)" },
+      ],
+      seenEpisodes: [],
+      trackingEpisodes: [
+        {
+          sId: "tvtime-dup-a",
+          title: "Breaking Bad (2008)",
+          season: 1,
+          episode: 1,
+          createdAt: "2021-01-05 10:00:00",
+        },
+        {
+          sId: "tvtime-dup-b",
+          title: "Breaking Bad (2008)",
+          season: 1,
+          episode: 1,
+          createdAt: "2021-02-05 10:00:00",
+        },
+      ],
+    });
+
+    const plan = await buildTvTimeImportPlan(createZipFile(blob));
+
+    // Both rows carry a TV Time show id, so duplicated titles must not flag
+    // them as unattributable: the executor joins them by id, not by title.
+    expect(plan.watchedEpisodes).toHaveLength(2);
+    expect(
+      plan.watchedEpisodes.every((watched) => !watched.skippedReason),
+    ).toBe(true);
+    expect(plan.watchedEpisodes.map((watched) => watched.tvTimeShowId)).toEqual([
+      "tvtime-dup-a",
+      "tvtime-dup-b",
+    ]);
+  });
+
+  it("resolves tracking watched rows by TV Time show id during execution", async () => {
+    // series_name deliberately does not match the planned show title, so a
+    // title-based lookup would fail: only the s_id join can attribute it.
+    const blob = await createTvTimeZip({
+      seenEpisodes: [],
+      trackingEpisodes: [
+        {
+          sId: "tvtime-breaking-bad",
+          title: "An Unrelated Series Title",
+          season: 1,
+          episode: 1,
+          createdAt: "2021-01-05 10:00:00",
+        },
+      ],
+    });
+
+    const plan = await buildTvTimeImportPlan(createZipFile(blob));
+
+    expect(plan.watchedEpisodes).toHaveLength(1);
+    expect(plan.watchedEpisodes[0]?.skippedReason).toBeUndefined();
+
+    const result = await executeTvTimeImportPlan(plan);
+
+    expect(result.importedShows).toBe(1);
+    expect(result.importedWatchedEpisodes).toBe(1);
+    expect(result.skippedWatchedEpisodes).toBe(0);
+
+    const media = await mediaRepository.getByTmdbId(1396, "tv");
+
+    if (!media?.id) {
+      throw new Error("Expected the show to exist in the library.");
+    }
+
+    const episode = await episodeRepository.getByShowSeasonAndEpisode(
+      media.id,
+      1,
+      1,
+    );
+
+    expect(episode?.watched ?? false).toBe(true);
+    expect(episode?.watchedAt?.toISOString()).toBe("2021-01-05T04:30:00.000Z");
   });
 });
 

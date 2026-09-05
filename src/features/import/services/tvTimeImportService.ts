@@ -14,6 +14,7 @@ import {
 import { synchronizeTvTimeShowEpisodes } from "./tvTimeEpisodeImporter";
 import { persistTvTimeImportHistory } from "./tvTimeImportHistoryService";
 import { parseTvTimeDate, resolveTvTimeZone } from "./tvTimeZone";
+import { parseTvTimeTrackingRecords } from "./tvTimeTrackingParser";
 import type {
   TvTimeImportCallbacks,
   TvTimeImportPlan,
@@ -130,14 +131,29 @@ export async function buildTvTimeImportPlan(
     "user_tv_show_data.csv",
   );
 
-  const seenEpisodes = await parseCsvFromZip<SeenEpisodeSource>(
-    zipData.zip,
-    "seen_episode_source.csv",
-  );
-
   const users = await parseCsvFromZip<TvTimeUser>(zipData.zip, "user.csv");
 
   const timezone = resolveTvTimeZone(users[0]?.timezone ?? "");
+
+  // Attempt to parse tracking-prod-records-v2.csv as the primary watched source.
+  // Tracking file is optional — older/partial exports may not have it.
+  let trackingWatchedEpisodes: TvTimePlannedWatchedEpisode[] | null = null;
+
+  try {
+    const trackingRecords = await parseCsvFromZip<Record<string, string>>(
+      zipData.zip,
+      "tracking-prod-records-v2.csv",
+    );
+
+    if (trackingRecords.length > 0) {
+      trackingWatchedEpisodes = parseTvTimeTrackingRecords(
+        trackingRecords,
+        timezone,
+      );
+    }
+  } catch {
+    // tracking-prod-records-v2.csv is optional; fall through to fallback
+  }
 
   const candidates = buildImportCandidates(shows, progress);
 
@@ -229,16 +245,27 @@ export async function buildTvTimeImportPlan(
 
   let invalidWatchedEpisodes = 0;
 
-  for (const seenEpisode of seenEpisodes) {
-    try {
-      const duplicateSkipped = duplicateTitles.has(seenEpisode.tv_show_name);
+  if (trackingWatchedEpisodes && trackingWatchedEpisodes.length > 0) {
+    // Use tracking records as PRIMARY watched source.
+    // Deduplication is handled in the parser by (s_id, season, episode).
+    for (const trackingEpisode of trackingWatchedEpisodes) {
+      /*
+       * Tracking rows carry the TV Time show id, so the executor joins them
+       * through mediaIdByTvTimeShowId and never depends on titles. Duplicated
+       * TV Time titles must not cause these rows to be skipped; only rows
+       * without a usable id (none today, defensive for the future) fall back
+       * to the legacy title-based attribution rule below.
+       */
+      const duplicateSkipped =
+        trackingEpisode.tvTimeShowId === undefined &&
+        duplicateTitles.has(trackingEpisode.showTitle);
 
       watchedEpisodes.push({
-        tvTimeShowId: tvTimeShowIdByTitle.get(seenEpisode.tv_show_name),
-        showTitle: seenEpisode.tv_show_name,
-        seasonNumber: Number(seenEpisode.episode_season_number),
-        episodeNumber: Number(seenEpisode.episode_number),
-        watchedAt: parseTvTimeDate(seenEpisode.created_at, timezone),
+        tvTimeShowId: trackingEpisode.tvTimeShowId,
+        showTitle: trackingEpisode.showTitle,
+        seasonNumber: trackingEpisode.seasonNumber,
+        episodeNumber: trackingEpisode.episodeNumber,
+        watchedAt: trackingEpisode.watchedAt,
         skippedReason: duplicateSkipped
           ? "duplicate-show-title"
           : undefined,
@@ -247,19 +274,46 @@ export async function buildTvTimeImportPlan(
       if (duplicateSkipped) {
         duplicateTitleWatchedEpisodes++;
       }
-    } catch (watchedError) {
-      console.error(
-        `Invalid watched timestamp for: ${seenEpisode.tv_show_name} ` +
-          `S${seenEpisode.episode_season_number}E${seenEpisode.episode_number}`,
-        watchedError,
-      );
+    }
+  } else {
+    // Fallback to seen_episode_source.csv.
+    const seenEpisodes = await parseCsvFromZip<SeenEpisodeSource>(
+      zipData.zip,
+      "seen_episode_source.csv",
+    );
 
-      warnings.push(
-        `Invalid watched timestamp for: ${seenEpisode.tv_show_name} ` +
-          `S${seenEpisode.episode_season_number}E${seenEpisode.episode_number}`,
-      );
+    for (const seenEpisode of seenEpisodes) {
+      try {
+        const duplicateSkipped = duplicateTitles.has(seenEpisode.tv_show_name);
 
-      invalidWatchedEpisodes++;
+        watchedEpisodes.push({
+          tvTimeShowId: tvTimeShowIdByTitle.get(seenEpisode.tv_show_name),
+          showTitle: seenEpisode.tv_show_name,
+          seasonNumber: Number(seenEpisode.episode_season_number),
+          episodeNumber: Number(seenEpisode.episode_number),
+          watchedAt: parseTvTimeDate(seenEpisode.created_at, timezone),
+          skippedReason: duplicateSkipped
+            ? "duplicate-show-title"
+            : undefined,
+        });
+
+        if (duplicateSkipped) {
+          duplicateTitleWatchedEpisodes++;
+        }
+      } catch (watchedError) {
+        console.error(
+          `Invalid watched timestamp for: ${seenEpisode.tv_show_name} ` +
+            `S${seenEpisode.episode_season_number}E${seenEpisode.episode_number}`,
+          watchedError,
+        );
+
+        warnings.push(
+          `Invalid watched timestamp for: ${seenEpisode.tv_show_name} ` +
+            `S${seenEpisode.episode_season_number}E${seenEpisode.episode_number}`,
+        );
+
+        invalidWatchedEpisodes++;
+      }
     }
   }
 
@@ -415,6 +469,15 @@ async function executeTvTimeImportPlanCore(
   // show name so seen-episode rows can be joined to their library record.
   const mediaIdByTitle = new Map<string, number>();
 
+  /*
+   * Tracking-derived watched rows carry the TV Time show id, so they are
+   * joined through this map instead of the title. TV Time show ids are
+   * unique per show while titles are not, so duplicate show titles can no
+   * longer misattribute or skip those rows. The title map above is retained
+   * because legacy seen_episode_source.csv rows are attributed by title.
+   */
+  const mediaIdByTvTimeShowId = new Map<string, number>();
+
   let importedShows = 0;
   let skippedShows = 0;
   let failedShows = 0;
@@ -491,6 +554,10 @@ async function executeTvTimeImportPlanCore(
         }
 
         mediaIdByTitle.set(entry.candidate.title, mediaId);
+
+        if (entry.candidate.tvTimeShowId) {
+          mediaIdByTvTimeShowId.set(entry.candidate.tvTimeShowId, mediaId);
+        }
 
         try {
           await synchronizeTvTimeShowEpisodes(mediaId, tmdbId);
@@ -571,7 +638,14 @@ async function executeTvTimeImportPlanCore(
       if (plannedWatch.skippedReason) {
         skippedWatchedEpisodes++;
       } else {
-        const mediaId = mediaIdByTitle.get(plannedWatch.showTitle);
+        /*
+         * Rows with a TV Time show id (tracking-derived rows, and legacy rows
+         * whose title mapped to a candidate) are resolved by that id; rows
+         * without one keep the legacy title-based attribution.
+         */
+        const mediaId = plannedWatch.tvTimeShowId
+          ? mediaIdByTvTimeShowId.get(plannedWatch.tvTimeShowId)
+          : mediaIdByTitle.get(plannedWatch.showTitle);
 
         if (!mediaId) {
           skippedWatchedEpisodes++;
