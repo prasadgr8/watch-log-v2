@@ -60,7 +60,7 @@ describe("backupService", () => {
     expect(backup).toMatchObject({
       format: WATCH_LOG_BACKUP_FORMAT,
       version: WATCH_LOG_BACKUP_VERSION,
-      databaseVersion: 4,
+      databaseVersion: 5,
     });
 
     expect(new Date(backup.exportedAt).toISOString()).toBe(backup.exportedAt);
@@ -117,7 +117,7 @@ describe("backupService", () => {
     expect(backup).toMatchObject({
       format: WATCH_LOG_BACKUP_FORMAT,
       version: WATCH_LOG_BACKUP_VERSION,
-      databaseVersion: 4,
+      databaseVersion: 5,
       data: {
         media: [],
         episodes: [],
@@ -452,4 +452,257 @@ describe("backupService", () => {
       value: "current",
     });
   });
+  it("exports collections and memberships in the version 2 backup", async () => {
+    const showId = await mediaRepository.add(createTvShow());
+
+    const now = new Date("2026-07-15T00:00:00.000Z");
+
+    const collectionId = (await db.collections.add({
+      name: "Favourites",
+      createdAt: now,
+      updatedAt: now,
+    }))!;
+
+    const membershipId = await db.collectionMedia.add({
+      collectionId,
+      mediaId: showId,
+      createdAt: now,
+    });
+
+    const backup = await backupService.createBackup();
+
+    expect(backup.version).toBe(2);
+    expect(backup.databaseVersion).toBe(5);
+    expect(backup.data.collections).toHaveLength(1);
+    expect(backup.data.collectionMedia).toHaveLength(1);
+
+    expect(backup.data.collections[0]).toMatchObject({
+      id: collectionId,
+      name: "Favourites",
+      createdAt: "2026-07-15T00:00:00.000Z",
+      updatedAt: "2026-07-15T00:00:00.000Z",
+    });
+
+    expect(backup.data.collectionMedia[0]).toMatchObject({
+      id: membershipId,
+      collectionId,
+      mediaId: showId,
+      createdAt: "2026-07-15T00:00:00.000Z",
+    });
+
+    expect(typeof backup.data.collections[0]?.createdAt).toBe("string");
+    expect(typeof backup.data.collectionMedia[0]?.createdAt).toBe("string");
+  });
+
+  it("round-trips collections and memberships through export and restore", async () => {
+    const showId = await mediaRepository.add(createTvShow());
+
+    const now = new Date("2026-07-15T00:00:00.000Z");
+
+    const collectionId = (await db.collections.add({
+      name: "Favourites",
+      createdAt: now,
+      updatedAt: now,
+    }))!;
+
+    await db.collectionMedia.add({
+      collectionId,
+      mediaId: showId,
+      createdAt: now,
+    });
+
+    const backup = await backupService.createBackup();
+
+    // Mutate the database after exporting.
+    await db.collectionMedia.clear();
+    await db.collections.clear();
+    await db.media.clear();
+
+    await backupService.restoreBackup(backup);
+
+    const restoredMedia = await db.media.toArray();
+    const restoredCollections = await db.collections.toArray();
+    const restoredMemberships = await db.collectionMedia.toArray();
+
+    expect(restoredMedia).toHaveLength(1);
+    expect(restoredMedia[0]?.id).toBe(showId);
+
+    expect(restoredCollections).toHaveLength(1);
+    expect(restoredCollections[0]).toMatchObject({
+      id: collectionId,
+      name: "Favourites",
+    });
+    expect(restoredCollections[0]?.createdAt).toEqual(now);
+
+    expect(restoredMemberships).toHaveLength(1);
+    expect(restoredMemberships[0]).toMatchObject({
+      collectionId,
+      mediaId: showId,
+    });
+  });
+
+  it("replaces existing collections when restoring a version 2 backup", async () => {
+    const now = new Date("2026-07-15T00:00:00.000Z");
+
+    const backupCollectionId = (await db.collections.add({
+      name: "From Backup",
+      createdAt: now,
+      updatedAt: now,
+    }))!;
+
+    const backup = await backupService.createBackup();
+
+    // Collections created after the export must be replaced by the restore.
+    await db.collectionMedia.clear();
+    await db.collections.clear();
+    await db.collections.add({
+      name: "Created After Backup",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await backupService.restoreBackup(backup);
+
+    const collections = await db.collections.toArray();
+
+    expect(collections).toHaveLength(1);
+    expect(collections[0]).toMatchObject({
+      id: backupCollectionId,
+      name: "From Backup",
+    });
+  });
+
+
+  it("preserves collections and prunes orphaned memberships when restoring a version 1 backup", async () => {
+    const now = new Date("2026-07-15T00:00:00.000Z");
+
+    // A version 1 backup predating collections; its library contains media 41.
+    const legacyBackup = {
+      format: "watch-log-v2-backup",
+      version: 1,
+      databaseVersion: 3,
+      exportedAt: "2026-07-15T16:00:00.000Z",
+      data: {
+        media: [
+          {
+            id: 41,
+            tmdbId: 1396,
+            mediaType: "tv",
+            title: "Breaking Bad",
+            userStatus: "watching",
+            createdAt: "2026-07-15T00:00:00.000Z",
+            updatedAt: "2026-07-15T00:00:00.000Z",
+          },
+        ],
+        episodes: [],
+        watchHistory: [],
+        settings: [],
+      },
+    };
+
+    // Local state created after the legacy backup was exported.
+    const survivingCollectionId = (await db.collections.add({
+      name: "Keep Me",
+      createdAt: now,
+      updatedAt: now,
+    }))!;
+
+    await db.collectionMedia.add({
+      collectionId: survivingCollectionId,
+      mediaId: 41,
+      createdAt: now,
+    });
+
+    await db.collectionMedia.add({
+      collectionId: survivingCollectionId,
+      mediaId: 77,
+      createdAt: now,
+    });
+
+    const secondCollectionId = (await db.collections.add({
+      name: "Also Kept",
+      createdAt: now,
+      updatedAt: now,
+    }))!;
+
+    await db.collectionMedia.add({
+      collectionId: secondCollectionId,
+      mediaId: 99,
+      createdAt: now,
+    });
+
+    await backupService.restoreBackup(legacyBackup);
+
+    const collections = await db.collections.toArray();
+    const memberships = await db.collectionMedia.toArray();
+
+    // Existing collections are never silently deleted.
+    expect(collections.map((collection) => collection.name).sort()).toEqual([
+      "Also Kept",
+      "Keep Me",
+    ]);
+
+    // Memberships referencing missing media are pruned; no orphans remain.
+    expect(memberships).toHaveLength(1);
+    expect(memberships[0]).toMatchObject({
+      collectionId: survivingCollectionId,
+      mediaId: 41,
+    });
+
+    expect(await db.media.count()).toBe(1);
+    expect((await db.media.toArray())[0]?.id).toBe(41);
+  });
+
+  it("rolls back collections replacement when a version 2 restore fails", async () => {
+    const now = new Date("2026-07-15T00:00:00.000Z");
+
+    const localCollectionId = await db.collections.add({
+      name: "Local Collection",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Valid collections payload, but a non-cloneable settings value forces the
+    // restore transaction to fail after the collections writes would run.
+    const backup = {
+      format: "watch-log-v2-backup",
+      version: 2,
+      databaseVersion: 5,
+      exportedAt: "2026-07-15T16:00:00.000Z",
+      data: {
+        media: [],
+        episodes: [],
+        watchHistory: [],
+        settings: [
+          {
+            key: "theme",
+            value: () => "not cloneable",
+            updatedAt: "2026-07-15T00:00:00.000Z",
+          },
+        ],
+        collections: [
+          {
+            id: 500,
+            name: "Backup Collection",
+            createdAt: "2026-07-15T00:00:00.000Z",
+            updatedAt: "2026-07-15T00:00:00.000Z",
+          },
+        ],
+        collectionMedia: [],
+      },
+    };
+
+    await expect(backupService.restoreBackup(backup)).rejects.toThrow();
+
+    // The failed restore left the local collections untouched.
+    const collections = await db.collections.toArray();
+
+    expect(collections).toHaveLength(1);
+    expect(collections[0]).toMatchObject({
+      id: localCollectionId,
+      name: "Local Collection",
+    });
+  });
+
+
 });

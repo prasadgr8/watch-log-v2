@@ -1,0 +1,112 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { describe, expect, it } from "vitest";
+
+const featureDirectory = dirname(fileURLToPath(import.meta.url));
+
+const modalSource = readFileSync(
+  join(featureDirectory, "components/AddMediaToCollectionModal.tsx"),
+  "utf-8",
+);
+
+/*
+ * The backdrop is the aria-hidden scrim layer; extracting it lets the
+ * cancellation assertions target the backdrop itself instead of any
+ * `if (!isSaving)` occurrence in the file.
+ */
+const backdropElement =
+  modalSource.match(/<div\s+aria-hidden="true"[\s\S]*?<\/div>/)?.[0] ?? "";
+
+/*
+ * Source-level regression coverage for the Add Media to Collection modal,
+ * matching the editMediaModal test conventions. The modal mirrors the
+ * established EditMediaModal dialog behavior: dialog semantics, Escape and
+ * backdrop cancellation guarded by the save state, initial focus on the search
+ * control, and focus restoration to the previously focused element. Runtime
+ * DOM behavior cannot be exercised in the node test environment, so these
+ * assertions pin the implementation contract instead.
+ */
+describe("add media to collection modal dialog semantics", () => {
+  it("renders a modal dialog with modal semantics", () => {
+    expect(modalSource).toContain('role="dialog"');
+    expect(modalSource).toContain('aria-modal="true"');
+  });
+
+  it("names the dialog with a stable title id", () => {
+    expect(modalSource).toContain('aria-labelledby="add-media-modal-title"');
+    expect(modalSource).toContain('id="add-media-modal-title"');
+  });
+
+  it("describes the dialog with a stable description id", () => {
+    expect(modalSource).toContain(
+      'aria-describedby="add-media-modal-description"',
+    );
+    expect(modalSource).toContain('id="add-media-modal-description"');
+  });
+
+  it("separates an aria-hidden backdrop from the positioned dialog panel", () => {
+    expect(backdropElement).toContain('aria-hidden="true"');
+    expect(backdropElement).toContain("absolute inset-0 bg-black/60");
+    expect(modalSource).toContain("relative flex max-h-[80vh]");
+  });
+});
+
+describe("add media to collection modal keyboard and focus behavior", () => {
+  it("closes on Escape through a document listener only while not saving", () => {
+    expect(modalSource).toContain('document.addEventListener("keydown"');
+    expect(modalSource).toContain('event.key === "Escape"');
+    expect(modalSource).toContain("!isSavingRef.current");
+  });
+
+  it("removes the Escape listener when the dialog closes", () => {
+    expect(modalSource).toContain('document.removeEventListener("keydown"');
+  });
+
+  it("opens with focus on the search control", () => {
+    expect(modalSource).toContain("searchInputRef.current?.focus()");
+    expect(modalSource).toContain("ref={searchInputRef}");
+  });
+
+  it("restores focus to the previously focused element on close", () => {
+    expect(modalSource).toContain(
+      "document.activeElement instanceof HTMLElement",
+    );
+    expect(modalSource).toContain("previouslyFocusedRef.current?.focus()");
+  });
+
+  it("closes from the backdrop only while a save is not running", () => {
+    expect(backdropElement).toContain("onClick={() => {");
+    expect(backdropElement).toContain("if (!isSaving) {");
+    expect(backdropElement).toContain("onClose();");
+  });
+
+  it("gates the dialog behavior on the isOpen state", () => {
+    expect(modalSource).toContain("if (!isOpen) {");
+    expect(modalSource).toContain("}, [isOpen]);");
+  });
+});
+
+describe("add media to collection modal preserved functionality", () => {
+  it("provides a labelled Add-to-collection control per media item", () => {
+    expect(modalSource).toContain("Add");
+    expect(modalSource).toContain(
+      "aria-label={`Add ${item.title} to collection`}",
+    );
+  });
+
+  it("disables the add control while a save is running", () => {
+    expect(modalSource).toContain("disabled={isSaving || pendingId !== null}");
+  });
+
+  it("renders an empty state when all media are already in the collection", () => {
+    expect(modalSource).toContain(
+      "All library media are already in this collection.",
+    );
+  });
+
+  it("renders a no-results state when the search matches nothing", () => {
+    expect(modalSource).toContain("No media found.");
+  });
+});

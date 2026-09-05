@@ -125,7 +125,7 @@ describe("validateAndHydrateBackup", () => {
   it("rejects an unsupported backup version", () => {
     const backup = createValidBackup() as Record<string, unknown>;
 
-    backup.version = 2;
+    backup.version = 3;
 
     expect(() => validateAndHydrateBackup(backup)).toThrow(
       "Unsupported backup version.",
@@ -299,4 +299,143 @@ describe("validateAndHydrateBackup", () => {
       "data.media[0].id must be a positive integer.",
     );
   });
+  function withVersion2Collections(
+    backup: Record<string, unknown>,
+    collections: unknown[],
+    collectionMedia: unknown[],
+  ): Record<string, unknown> {
+    const data = backup.data as Record<string, unknown>;
+
+    return {
+      ...backup,
+      version: 2,
+      data: {
+        ...data,
+        collections,
+        collectionMedia,
+      },
+    };
+  }
+
+  it("accepts a version 2 backup with collections and memberships", () => {
+    const backup = withVersion2Collections(
+      createValidBackup() as Record<string, unknown>,
+      [
+        {
+          id: 7,
+          name: "Favourites",
+          createdAt: "2026-07-15T00:00:00.000Z",
+          updatedAt: "2026-07-16T00:00:00.000Z",
+        },
+      ],
+      [
+        {
+          id: 70,
+          collectionId: 7,
+          mediaId: 41,
+          createdAt: "2026-07-16T00:00:00.000Z",
+        },
+      ],
+    );
+
+    const validated = validateAndHydrateBackup(backup);
+
+    expect(validated.formatVersion).toBe(2);
+    expect(validated.collections).toHaveLength(1);
+    expect(validated.collections[0]).toMatchObject({
+      id: 7,
+      name: "Favourites",
+    });
+    expect(validated.collections[0]?.createdAt).toEqual(
+      new Date("2026-07-15T00:00:00.000Z"),
+    );
+    expect(validated.collectionMedia).toHaveLength(1);
+    expect(validated.collectionMedia[0]).toMatchObject({
+      collectionId: 7,
+      mediaId: 41,
+    });
+    expect(validated.collectionMedia[0]?.createdAt).toEqual(
+      new Date("2026-07-16T00:00:00.000Z"),
+    );
+  });
+
+  it("returns empty collections for version 1 backups", () => {
+    const validated = validateAndHydrateBackup(createValidBackup());
+
+    expect(validated.formatVersion).toBe(1);
+    expect(validated.collections).toEqual([]);
+    expect(validated.collectionMedia).toEqual([]);
+  });
+
+  it("accepts the current database version 5", () => {
+    const backup = createValidBackup() as Record<string, unknown>;
+
+    backup.databaseVersion = 5;
+
+    const validated = validateAndHydrateBackup(backup);
+
+    expect(validated.media).toHaveLength(1);
+  });
+
+  it("rejects a version 2 backup without collections data", () => {
+    const backup = createValidBackup() as Record<string, unknown>;
+
+    backup.version = 2;
+
+    expect(() => validateAndHydrateBackup(backup)).toThrow(
+      "data.collections must be an array.",
+    );
+  });
+
+  it("rejects a version 2 backup without collection media data", () => {
+    const backup = createValidBackup() as Record<string, unknown>;
+    const data = backup.data as Record<string, unknown>;
+
+    backup.version = 2;
+    backup.data = { ...data, collections: [], collectionMedia: undefined };
+
+    expect(() => validateAndHydrateBackup(backup)).toThrow(
+      "data.collectionMedia must be an array.",
+    );
+  });
+
+  it("rejects malformed collection records", () => {
+    const backup = withVersion2Collections(
+      createValidBackup() as Record<string, unknown>,
+      [
+        {
+          id: 7,
+          name: "   ",
+          createdAt: "2026-07-15T00:00:00.000Z",
+          updatedAt: "2026-07-16T00:00:00.000Z",
+        },
+      ],
+      [],
+    );
+
+    expect(() => validateAndHydrateBackup(backup)).toThrow(
+      "data.collections[0].name must not be empty.",
+    );
+  });
+
+  it("rejects malformed membership records", () => {
+    const backup = withVersion2Collections(
+      createValidBackup() as Record<string, unknown>,
+      [],
+      [
+        {
+          id: 1.5,
+          collectionId: 7,
+          mediaId: 41,
+          createdAt: "2026-07-16T00:00:00.000Z",
+        },
+      ],
+    );
+
+    expect(() => validateAndHydrateBackup(backup)).toThrow(
+      "data.collectionMedia[0].id must be an integer.",
+    );
+  });
+
+
 });

@@ -1,20 +1,31 @@
-import type { AppSetting, Episode, Media, WatchHistory } from "../../types";
+import type {
+  AppSetting,
+  Collection,
+  CollectionMedia,
+  Episode,
+  Media,
+  WatchHistory,
+} from "../../types";
 
 import {
+  LEGACY_WATCH_LOG_BACKUP_VERSION,
   WATCH_LOG_BACKUP_FORMAT,
   WATCH_LOG_BACKUP_VERSION,
   type BackupEpisode,
   type BackupMedia,
   type BackupSetting,
   type BackupWatchHistory,
-  type WatchLogBackupV1,
+  type WatchLogBackupV2,
 } from "./backupTypes";
 
 export interface ValidatedRestoreData {
+  formatVersion: 1 | 2;
   media: Media[];
   episodes: Episode[];
   watchHistory: WatchHistory[];
   settings: AppSetting[];
+  collections: Collection[];
+  collectionMedia: CollectionMedia[];
 }
 
 export class BackupValidationError extends Error {
@@ -302,6 +313,75 @@ function hydrateSetting(value: unknown, index: number): AppSetting {
   };
 }
 
+function hydrateCollection(value: unknown, index: number): Collection {
+  const fieldName = `data.collections[${index}]`;
+  const record = requireRecord(value, fieldName);
+
+  return {
+    id: requirePositiveInteger(record.id, `${fieldName}.id`),
+    name: requireNonEmptyString(record.name, `${fieldName}.name`),
+    createdAt: requireIsoDate(record.createdAt, `${fieldName}.createdAt`),
+    updatedAt: requireIsoDate(record.updatedAt, `${fieldName}.updatedAt`),
+  };
+}
+
+function hydrateCollectionMedia(value: unknown, index: number): CollectionMedia {
+  const fieldName = `data.collectionMedia[${index}]`;
+  const record = requireRecord(value, fieldName);
+
+  return {
+    id: requirePositiveInteger(record.id, `${fieldName}.id`),
+    collectionId: requirePositiveInteger(
+      record.collectionId,
+      `${fieldName}.collectionId`,
+    ),
+    mediaId: requirePositiveInteger(record.mediaId, `${fieldName}.mediaId`),
+    createdAt: requireIsoDate(record.createdAt, `${fieldName}.createdAt`),
+  };
+}
+
+function validateCollectionRelationships(
+  collections: Collection[],
+  collectionMedia: CollectionMedia[],
+  media: Media[],
+): void {
+  const collectionIds = new Set(
+    collections.map((collection) =>
+      requirePositiveInteger(collection.id, "collection.id"),
+    ),
+  );
+
+  const mediaIds = new Set(
+    media.map((mediaItem) => requirePositiveInteger(mediaItem.id, "media.id")),
+  );
+
+  const membershipPairs = new Set<string>();
+
+  for (const membership of collectionMedia) {
+    if (!collectionIds.has(membership.collectionId)) {
+      fail(
+        `Collection media ${membership.id} references missing collection ${membership.collectionId}.`,
+      );
+    }
+
+    if (!mediaIds.has(membership.mediaId)) {
+      fail(
+        `Collection media ${membership.id} references missing media ${membership.mediaId}.`,
+      );
+    }
+
+    const pairKey = `${membership.collectionId}:${membership.mediaId}`;
+
+    if (membershipPairs.has(pairKey)) {
+      fail(
+        `Duplicate collection membership: collection ${membership.collectionId} already contains media ${membership.mediaId}.`,
+      );
+    }
+
+    membershipPairs.add(pairKey);
+  }
+}
+
 function validateRelationships(
   media: Media[],
   episodes: Episode[],
@@ -345,18 +425,25 @@ export function validateAndHydrateBackup(value: unknown): ValidatedRestoreData {
     fail("Unsupported backup format.");
   }
 
-  if (backup.version !== WATCH_LOG_BACKUP_VERSION) {
+  if (
+    backup.version !== WATCH_LOG_BACKUP_VERSION &&
+    backup.version !== LEGACY_WATCH_LOG_BACKUP_VERSION
+  ) {
     fail("Unsupported backup version.");
   }
+
+  const formatVersion: 1 | 2 =
+    backup.version === WATCH_LOG_BACKUP_VERSION ? 2 : 1;
 
   const databaseVersion = requireInteger(
     backup.databaseVersion,
     "databaseVersion",
   );
 
-  // Accept the current schema version and the previous one: backups exported
-  // before importHistory existed (v3) must remain restorable.
-  if (databaseVersion !== 3 && databaseVersion !== 4) {
+  // Accept the current schema version and previous ones: backups exported
+  // before importHistory existed (v3) and before collections existed (v4)
+  // must remain restorable.
+  if (databaseVersion !== 3 && databaseVersion !== 4 && databaseVersion !== 5) {
     fail("Unsupported backup database version.");
   }
 
@@ -372,10 +459,23 @@ export function validateAndHydrateBackup(value: unknown): ValidatedRestoreData {
   );
   const settingValues = requireArray(data.settings, "data.settings");
 
+  // Version 1 backups predate custom collections and carry no collections
+  // data; version 2 backups must contain both collections stores.
+  const collectionValues =
+    formatVersion === 2
+      ? requireArray(data.collections, "data.collections")
+      : [];
+  const collectionMediaValues =
+    formatVersion === 2
+      ? requireArray(data.collectionMedia, "data.collectionMedia")
+      : [];
+
   const media = mediaValues.map(hydrateMedia);
   const episodes = episodeValues.map(hydrateEpisode);
   const watchHistory = watchHistoryValues.map(hydrateWatchHistory);
   const settings = settingValues.map(hydrateSetting);
+  const collections = collectionValues.map(hydrateCollection);
+  const collectionMedia = collectionMediaValues.map(hydrateCollectionMedia);
 
   validateUniqueIds(
     media.map((mediaItem) => requirePositiveInteger(mediaItem.id, "media.id")),
@@ -396,13 +496,31 @@ export function validateAndHydrateBackup(value: unknown): ValidatedRestoreData {
 
   validateUniqueSettingKeys(settings);
 
+  validateUniqueIds(
+    collections.map((collection) =>
+      requirePositiveInteger(collection.id, "collection.id"),
+    ),
+    "collections",
+  );
+
+  validateUniqueIds(
+    collectionMedia.map((membership) =>
+      requirePositiveInteger(membership.id, "collectionMedia.id"),
+    ),
+    "collectionMedia",
+  );
+
   validateRelationships(media, episodes, watchHistory);
+  validateCollectionRelationships(collections, collectionMedia, media);
 
   return {
+    formatVersion,
     media,
     episodes,
     watchHistory,
     settings,
+    collections,
+    collectionMedia,
   };
 }
 
@@ -411,5 +529,5 @@ export type {
   BackupMedia,
   BackupSetting,
   BackupWatchHistory,
-  WatchLogBackupV1,
+  WatchLogBackupV2,
 };

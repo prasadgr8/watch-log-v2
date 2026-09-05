@@ -1,7 +1,14 @@
 import Dexie, { type Table } from "dexie";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { Episode, ImportHistory, Media, WatchHistory } from "../types";
+import type {
+  Collection,
+  CollectionMedia,
+  Episode,
+  ImportHistory,
+  Media,
+  WatchHistory,
+} from "../types";
 
 interface TestSetting {
   key: string;
@@ -175,6 +182,85 @@ class VersionFourDatabase extends Dexie {
       watchHistory: "++id, episodeId, watchedAt, source, [episodeId+watchedAt]",
       settings: "key",
       importHistory: "++id, startedAt, completedAt, status, provider",
+    });
+  }
+}
+
+class VersionFiveDatabase extends Dexie {
+  media!: Table<Media, number>;
+  episodes!: Table<Episode, number>;
+  watchHistory!: Table<WatchHistory, number>;
+  importHistory!: Table<ImportHistory, number>;
+  collections!: Table<Collection, number>;
+  collectionMedia!: Table<CollectionMedia, number>;
+  settings!: Table<TestSetting, string>;
+
+  constructor(databaseName: string) {
+    super(databaseName);
+
+    this.version(1).stores({
+      media: "++id, tmdbId, mediaType, userStatus, [tmdbId+mediaType]",
+      episodes: "++id, showId, watched, [showId+seasonNumber+episodeNumber]",
+      settings: "key",
+    });
+
+    this.version(2).stores({
+      media: "++id, tmdbId, mediaType, userStatus, [tmdbId+mediaType]",
+      episodes:
+        "++id, showId, tmdbId, watched, [showId+tmdbId], [showId+seasonNumber+episodeNumber]",
+      settings: "key",
+    });
+
+    this.version(3)
+      .stores({
+        media: "++id, tmdbId, mediaType, userStatus, [tmdbId+mediaType]",
+        episodes:
+          "++id, showId, tmdbId, watched, [showId+tmdbId], [showId+seasonNumber+episodeNumber]",
+        watchHistory:
+          "++id, episodeId, watchedAt, source, [episodeId+watchedAt]",
+        settings: "key",
+      })
+      .upgrade(async (transaction) => {
+        const watchedEpisodes = await transaction
+          .table<Episode, number>("episodes")
+          .filter(
+            (episode) =>
+              episode.watched &&
+              episode.watchedAt !== undefined &&
+              episode.id !== undefined,
+          )
+          .toArray();
+
+        const migrationCreatedAt = new Date();
+
+        await transaction.table<WatchHistory, number>("watchHistory").bulkAdd(
+          watchedEpisodes.map((episode) => ({
+            episodeId: episode.id as number,
+            watchedAt: episode.watchedAt as Date,
+            source: "manual",
+            createdAt: migrationCreatedAt,
+          })),
+        );
+      });
+
+    this.version(4).stores({
+      media: "++id, tmdbId, mediaType, userStatus, [tmdbId+mediaType]",
+      episodes:
+        "++id, showId, tmdbId, watched, [showId+tmdbId], [showId+seasonNumber+episodeNumber]",
+      watchHistory: "++id, episodeId, watchedAt, source, [episodeId+watchedAt]",
+      settings: "key",
+      importHistory: "++id, startedAt, completedAt, status, provider",
+    });
+
+    this.version(5).stores({
+      media: "++id, tmdbId, mediaType, userStatus, [tmdbId+mediaType]",
+      episodes:
+        "++id, showId, tmdbId, watched, [showId+tmdbId], [showId+seasonNumber+episodeNumber]",
+      watchHistory: "++id, episodeId, watchedAt, source, [episodeId+watchedAt]",
+      settings: "key",
+      importHistory: "++id, startedAt, completedAt, status, provider",
+      collections: "++id, createdAt, updatedAt",
+      collectionMedia: "++id, collectionId, mediaId, &[collectionId+mediaId]",
     });
   }
 }
@@ -446,5 +532,142 @@ describe("WatchLogDatabase schema migration", () => {
     ).toBe(true);
 
     versionFourDatabase.close();
+  });
+
+  it("upgrades a version 4 database to version 5 and creates the collections stores", async () => {
+    const databaseName = createTestDatabaseName();
+
+    const versionFourDatabase = new VersionFourDatabase(databaseName);
+
+    await versionFourDatabase.open();
+
+    expect(versionFourDatabase.verno).toBe(4);
+
+    const now = new Date("2026-07-15T00:00:00.000Z");
+
+    const showId = await versionFourDatabase.media.add({
+      tmdbId: 1396,
+      mediaType: "tv",
+      title: "Breaking Bad",
+      userStatus: "watching",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const episodeId = await versionFourDatabase.episodes.add({
+      showId,
+      tmdbId: 62085,
+      seasonNumber: 1,
+      episodeNumber: 1,
+      title: "Pilot",
+      watched: true,
+      watchedAt: new Date("2026-07-10T18:30:00.000Z"),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await versionFourDatabase.watchHistory.add({
+      episodeId,
+      watchedAt: new Date("2026-07-10T18:30:00.000Z"),
+      source: "manual",
+      createdAt: now,
+    });
+
+    await versionFourDatabase.settings.put({
+      key: "theme",
+      value: "dark",
+    });
+
+    versionFourDatabase.close();
+
+    const versionFiveDatabase = new VersionFiveDatabase(databaseName);
+
+    await versionFiveDatabase.open();
+
+    expect(versionFiveDatabase.verno).toBe(5);
+
+    // All existing v4 data survives the additive migration.
+    const storedMedia = await versionFiveDatabase.media.get(showId);
+
+    const storedEpisode = await versionFiveDatabase.episodes.get(episodeId);
+
+    expect(storedMedia).toMatchObject({
+      id: showId,
+      tmdbId: 1396,
+      mediaType: "tv",
+      title: "Breaking Bad",
+      userStatus: "watching",
+    });
+
+    expect(storedEpisode).toMatchObject({
+      id: episodeId,
+      showId,
+      watched: true,
+      watchedAt: new Date("2026-07-10T18:30:00.000Z"),
+    });
+
+    const watchHistoryEvents = await versionFiveDatabase.watchHistory.toArray();
+
+    expect(watchHistoryEvents).toHaveLength(1);
+    expect(watchHistoryEvents[0]).toMatchObject({
+      episodeId,
+      source: "manual",
+    });
+
+    expect(await versionFiveDatabase.settings.count()).toBe(1);
+    expect(await versionFiveDatabase.importHistory.count()).toBe(0);
+
+    // The new stores exist and start empty.
+    expect(await versionFiveDatabase.collections.count()).toBe(0);
+    expect(await versionFiveDatabase.collectionMedia.count()).toBe(0);
+
+    const collectionsSchema = versionFiveDatabase.collections.schema;
+
+    expect(
+      collectionsSchema.indexes.some((index) => index.name === "createdAt"),
+    ).toBe(true);
+    expect(
+      collectionsSchema.indexes.some((index) => index.name === "updatedAt"),
+    ).toBe(true);
+
+    const collectionMediaSchema =
+      versionFiveDatabase.collectionMedia.schema;
+
+    expect(
+      collectionMediaSchema.indexes.some((index) => index.name === "collectionId"),
+    ).toBe(true);
+    expect(
+      collectionMediaSchema.indexes.some((index) => index.name === "mediaId"),
+    ).toBe(true);
+
+    const compoundIndex = collectionMediaSchema.indexes.find(
+      (index) =>
+        Array.isArray(index.keyPath) &&
+        index.keyPath.join("+") === "collectionId+mediaId",
+    );
+
+    expect(compoundIndex).toBeDefined();
+    expect(compoundIndex?.unique).toBe(true);
+
+    // Collections persist across close/reopen.
+    await versionFiveDatabase.collections.add({
+      name: "Favourites",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    versionFiveDatabase.close();
+
+    const reopenedDatabase = new VersionFiveDatabase(databaseName);
+
+    await reopenedDatabase.open();
+
+    expect(await reopenedDatabase.collections.count()).toBe(1);
+
+    expect((await reopenedDatabase.collections.toArray())[0]).toMatchObject({
+      name: "Favourites",
+    });
+
+    reopenedDatabase.close();
   });
 });

@@ -25,3 +25,10 @@ export type {
   ImportHistoryStatus,
   PersistedImportHistory,
 } from "./importHistory";
+
+export type {
+  Collection,
+  CollectionMedia,
+  PersistedCollection,
+  PersistedCollectionMedia,
+} from "./collection";

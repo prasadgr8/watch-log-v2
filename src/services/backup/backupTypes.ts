@@ -1,6 +1,13 @@
 export const WATCH_LOG_BACKUP_FORMAT = "watch-log-v2-backup" as const;
 
-export const WATCH_LOG_BACKUP_VERSION = 1 as const;
+/*
+ * Current backup format version. Version 2 added collections and their
+ * memberships as first-class user data. Version 1 backups (exported before
+ * custom collections existed) remain fully readable.
+ */
+export const WATCH_LOG_BACKUP_VERSION = 2 as const;
+
+export const LEGACY_WATCH_LOG_BACKUP_VERSION = 1 as const;
 
 export interface BackupMedia {
   id: number;
@@ -52,7 +59,34 @@ export interface BackupSetting {
   updatedAt: string;
 }
 
+export interface BackupCollection {
+  id: number;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BackupCollectionMedia {
+  id: number;
+  collectionId: number;
+  mediaId: number;
+  createdAt: string;
+}
+
 export interface WatchLogBackupV1 {
+  format: typeof WATCH_LOG_BACKUP_FORMAT;
+  version: typeof LEGACY_WATCH_LOG_BACKUP_VERSION;
+  databaseVersion: number;
+  exportedAt: string;
+  data: {
+    media: BackupMedia[];
+    episodes: BackupEpisode[];
+    watchHistory: BackupWatchHistory[];
+    settings: BackupSetting[];
+  };
+}
+
+export interface WatchLogBackupV2 {
   format: typeof WATCH_LOG_BACKUP_FORMAT;
   version: typeof WATCH_LOG_BACKUP_VERSION;
   databaseVersion: number;
@@ -62,5 +96,7 @@ export interface WatchLogBackupV1 {
     episodes: BackupEpisode[];
     watchHistory: BackupWatchHistory[];
     settings: BackupSetting[];
+    collections: BackupCollection[];
+    collectionMedia: BackupCollectionMedia[];
   };
 }

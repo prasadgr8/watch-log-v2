@@ -22,6 +22,12 @@ const SettingsPage = lazy(() => import("../features/settings/SettingsPage"));
 const StatisticsPage = lazy(
   () => import("../features/statistics/StatisticsPage"),
 );
+const CollectionsPage = lazy(
+  () => import("../features/collections/CollectionsPage"),
+);
+const CollectionDetailPage = lazy(
+  () => import("../features/collections/CollectionDetailPage"),
+);
 
 function MoviesPage() {
   return <h1 className="text-3xl font-bold">🎬 Movies</h1>;
@@ -60,6 +66,14 @@ export const router = createBrowserRouter([
       {
         path: "library/tv/:mediaId",
         element: suspended(<TvShowDetailsPage />),
+      },
+      {
+        path: "collections",
+        element: suspended(<CollectionsPage />),
+      },
+      {
+        path: "collections/:collectionId",
+        element: suspended(<CollectionDetailPage />),
       },
       {
         path: "search",
