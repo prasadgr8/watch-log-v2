@@ -124,10 +124,6 @@ The Library supports:
 - view modes: grid and list (persisted)
 - empty states: empty library, no results
 
-### Known Issue
-
-- year sorting is currently non-functional
-
 ## Theme Support
 
 Dark mode is the initial application theme.

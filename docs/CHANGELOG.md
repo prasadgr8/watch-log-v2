@@ -1,5 +1,50 @@
 # Changelog
 
+## v2.0.0-alpha.18 — Offline-Aware TV Details
+
+### Changed
+
+- TV show details now gate TMDB enrichment on the reactive browser online
+  state: offline users render entirely from locally persisted data without
+  network attempts, and enrichment resumes automatically when connectivity
+  returns.
+
+### Added
+
+- Added a Retry control to the season error state shown when a season has no
+  saved episodes, reusing the existing season-loading path.
+
+## v2.0.0-alpha.17.3 — Custom Collections
+
+### Added
+
+- Added custom collections: create, rename, and delete user-defined
+  collections and add or remove existing library media. The same media item
+  may belong to multiple collections.
+- Added the `collections` and `collectionMedia` IndexedDB stores (database
+  schema version 5) with a unique membership constraint so a collection
+  contains a media item at most once.
+- Added Collections pages with A-Z ordering, an add-media picker, and
+  dedicated `/collections` routes with sidebar navigation.
+- Added collections and memberships to the backup envelope (backup format
+  version 2).
+
+### Changed
+
+- Format version 2 backups restore atomically across all six stores; legacy
+  format version 1 backups remain restorable and preserve existing
+  collections while pruning memberships whose media no longer exists.
+- Deleting media removes its collection memberships inside the existing
+  deletion transaction; deleting a collection never deletes media, episodes,
+  or watch history.
+
+### Fixed
+
+- Fixed the add-to-collection modal causing a render loop when mounted while
+  closed.
+- Fixed collection deletion leaving the detail page open; deleting now
+  navigates back to /collections.
+
 ## v2.0.0-alpha.17.2 — Library Progress Sorting
 
 ### Added

@@ -51,10 +51,11 @@ Every emitted route and shared chunk is covered by the Workbox `globPatterns` pr
 TV show details and season episodes load offline-first through the TV show details service, with IndexedDB as the source for saved data:
 
 - Saved media, derived season summaries, and locally persisted episodes are read from IndexedDB and rendered first, so offline use is never blocked.
-- When the user is online, a TMDB refresh runs afterward and the UI is updated with the synchronized episodes when it succeeds.
+- TMDB enrichment is optional and gated by the reactive browser online state: the page consumes `useOnlineStatus` and passes it into the details and season loaders through the service's `canUseNetwork` option, so network requests are skipped while offline.
+- When online, a TMDB refresh runs afterward and the UI is updated with the synchronized episodes when it succeeds; because the online state is reactive, enrichment is re-attempted automatically when connectivity returns.
 - Season synchronization continues to preserve locally owned watch state.
 - If the TMDB refresh fails, the already displayed local episodes are retained and no error replaces them.
-- When a season has no saved episodes and the user is offline, the page shows a friendly notice asking to go online.
+- When a season has no saved episodes and the user is offline, the page shows a friendly notice asking to go online, with a Retry control that re-runs the existing season loading path.
 
 While saved data is shown, the TV show details page displays an offline notice with a retry control, and the header reflects the browser's online status with an "Offline — showing saved data" message.
 
@@ -103,13 +104,10 @@ filterLibrary() → sortLibrary() → visibleMedia → MediaCard/MediaListItem
 - title search through `filterLibrary()`
 - media type filter (TV / Movie / All)
 - watch status filter
-- sorting by title (A-Z / Z-A), date added (recent first), and rating
+- minimum-rating filter
+- sorting by title (A-Z / Z-A), date added (recent first), rating, year, and progress (ascending/descending)
 - grid and list view modes with persisted preference
 - empty library and no-results states
-
-### Known Issue
-
-- Year sorting is currently non-functional and returns unsorted results.
 
 ## Continue Watching Projection
 
@@ -167,19 +165,23 @@ Watch Log V2 uses a versioned JSON backup envelope containing:
 - media records
 - episode records
 - watch history records
+- collection records
+- collection-media membership records
 - application settings
 
 Backup format versioning is independent of IndexedDB schema versioning. A change to the database schema does not implicitly redefine the backup wire format.
 
 Application `Date` values are explicitly serialized as ISO-8601 UTC strings. Backup wire types are therefore separate from application domain types.
 
-Persisted numeric IDs are retained in backup data. This preserves the relationships from `Media.id` to `Episode.showId` and from `Episode.id` to `WatchHistory.episodeId`.
+Persisted numeric IDs are retained in backup data. This preserves the relationships from `Media.id` to `Episode.showId` and from `Episode.id` to `WatchHistory.episodeId`, and from `CollectionMedia.collectionId` and `CollectionMedia.mediaId` to their `Collection` and `Media` records.
+
+The current backup format version is 2, which added collections and memberships. Format version 1 envelopes contain only media, episodes, watch history, and settings and remain valid restore inputs.
 
 ### Backup Snapshot
 
-Export reads media, episodes, watch history, and settings within one read transaction.
+Export reads media, episodes, watch history, collections, collectionMedia, and settings within one read transaction.
 
-The transaction defines the backup snapshot boundary across all four stores.
+The transaction defines the backup snapshot boundary across all six stores.
 
 ### Backup Validation
 
@@ -196,9 +198,12 @@ Before any replacement transaction starts, the backup validator verifies:
 - positive and non-negative integer constraints
 - ISO-8601 UTC timestamps
 - duplicate media, episode, and watch-history IDs
+- duplicate collection and collection-media membership IDs
 - duplicate setting keys
 - episode references to existing TV media records
 - watch-history references to existing episode records
+- collection-media references to existing collections and media records
+- duplicate collection-media (collectionId, mediaId) pairs
 
 Validated timestamp strings are hydrated to application `Date` values.
 
@@ -208,15 +213,17 @@ Validation failure occurs before database replacement and therefore leaves curre
 
 Backup restore uses replace semantics rather than merge semantics.
 
-A validated restore clears and replaces media, episodes, watch history, and settings within one read-write transaction.
+A validated restore clears and replaces media, episodes, watch history, collections, collectionMedia, and settings within one read-write transaction.
 
 Records are restored using their original persisted IDs.
 
-The logical restore order is media, episodes, watch history, and settings.
+The logical restore order is media, episodes, watch history, collections, collectionMedia, and settings.
 
 If any write fails during the replacement transaction, the transaction is rolled back and the previous database state is preserved.
 
 A valid empty backup intentionally clears all application data.
+
+A format version 1 backup replaces the media, episodes, watch history, and settings stores while preserving existing collections and their memberships; collection-media memberships whose media no longer exists after the restore are pruned.
 
 ### Recovery User Experience
 
