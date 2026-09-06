@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, Layers, Pencil, Plus, Trash2 } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { collectionsService } from "./services/collectionsService";
 import type { PersistedCollection, PersistedMedia } from "../../types";
@@ -26,6 +26,8 @@ export default function CollectionDetailPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const [pickerMedia, setPickerMedia] = useState<PersistedMedia[]>([]);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     let isActive = true;
@@ -165,9 +167,23 @@ export default function CollectionDetailPage() {
       return;
     }
 
-    await collectionsService.deleteCollection(deletingCollection.id);
-    setIsDeleteDialogOpen(false);
-    setDeletingCollection(null);
+    setIsSaving(true);
+
+    try {
+      await collectionsService.deleteCollection(deletingCollection.id);
+      setIsDeleteDialogOpen(false);
+      setDeletingCollection(null);
+      navigate("/collections");
+    } catch (deleteError) {
+      console.error("Failed to delete collection:", deleteError);
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Failed to delete collection.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   if (isLoading) {
