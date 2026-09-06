@@ -129,7 +129,7 @@ Project Orion supports:
 - Backup validation
 - Schema version detection
 
-Backup and recovery shipped in v2.0.0-beta.1. The backup envelope contains the `media`, `episodes`, `watchHistory`, and `settings` stores. The `importHistory` store is intentionally excluded from the backup envelope because import history is a diagnostic log of import runs, not user watch-state data. Backup validation accepts the current database schema version 4 as well as the previous version 3, so backups exported before import history existed remain restorable.
+Backup and recovery shipped in v2.0.0-beta.1 with a format version 1 envelope containing the `media`, `episodes`, `watchHistory`, and `settings` stores. As of backup format version 2, introduced with v2.0.0-alpha.17.3 Custom Collections, the envelope also contains the `collections` and `collectionMedia` stores, so backups capture collections and their memberships. The `importHistory` store remains intentionally excluded from the backup envelope because import history is a diagnostic log of import runs, not user watch-state data. Backup validation accepts the current database schema version 5 as well as the previous versions 4 and 3, so backups exported before import history or collections existed remain restorable.
 
 ## Data Access Architecture
 
@@ -347,4 +347,42 @@ The version 4 schema adds the `importHistory` store. The migration is additive: 
 
 ### Backup Exclusion
 
-The `importHistory` store is intentionally excluded from the backup envelope. Backups continue to contain only `media`, `episodes`, `watchHistory`, and `settings`. Backup validation accepts database schema version 4 as well as version 3, so backups exported before import history existed remain restorable.
+The `importHistory` store is intentionally excluded from the backup envelope. Backup validation accepts database schema version 5 as well as versions 4 and 3, so backups exported before import history existed remain restorable.
+
+## Custom Collections
+
+Database schema version 5 introduces the `collections` and `collectionMedia` stores.
+
+A collection is a user-defined named list of library media:
+
+- `id` — generated collection identifier
+- `name` — user-defined collection name
+- `createdAt` — timestamp when the collection was created
+- `updatedAt` — timestamp when the collection was last updated
+
+A collection-media record is a membership relationship row:
+
+- `id` — generated membership identifier
+- `collectionId` — reference to the owning collection
+- `mediaId` — reference to the library media item
+- `createdAt` — timestamp when the membership was created
+
+The `collectionMedia` store uses the following indexes:
+
+- `collectionId`
+- `mediaId`
+- a unique `[collectionId+mediaId]` compound index, so a collection contains a particular media item at most once
+
+### Relationship Semantics
+
+Collections are organizational relationships, not a watch-state source of truth. Membership rows never modify `Media`, `Episode`, or `WatchHistory` records, and the same media item may belong to multiple collections.
+
+Deleting a collection removes its membership rows but never the underlying media, episodes, or watch history. Deleting media removes its collection memberships inside the existing media deletion transaction.
+
+### Version 4 to Version 5 Migration
+
+The version 5 schema adds the `collections` and `collectionMedia` stores. The migration is additive: it creates the empty stores and changes no existing records, so version 4 data requires no backfill.
+
+### Backup Inclusion
+
+Collections and memberships are user-owned data and are included in backup format version 2 envelopes. Format version 1 backups remain restorable: they replace the original four stores while preserving existing collections and pruning memberships whose media no longer exists.

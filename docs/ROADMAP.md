@@ -345,7 +345,7 @@ The Alpha 15 import refinements shipped on `main` as follows:
 
 ## Current Implementation Status
 
-*Reconciled with verified implementation on September 5, 2026, following v2.0.0-alpha.17.1 and v2.0.0-alpha.17.2.*
+*Reconciled with verified implementation on September 6, 2026, following v2.0.0-alpha.17.3 and v2.0.0-alpha.18.*
 
 Status markers: ✅ Implemented · ⚠️ Known defect · ❌ Not implemented · ⏸️ Deferred · 🔮 Future
 
@@ -366,17 +366,27 @@ The Library page supports:
 - ✅ No-results state
 - ✅ Grid/list view with persisted preference
 
+### Collections
+
+The Collections pages support:
+
+- ✅ Custom collections with user-defined names (create, rename, delete)
+- ✅ Add and remove existing library media; the same media may belong to multiple collections
+- ✅ Unique membership constraint: a collection contains a media item at most once
+- ✅ Collections list (A-Z) and collection detail with an add-media picker
+- ✅ Dedicated `/collections` routes with sidebar navigation
+- ✅ Persistence in the `collections` and `collectionMedia` stores (schema version 5), included in backups (format version 2)
+
 ### Gaps
 
 The following Library capabilities are not yet implemented:
 
 - ❌ Genre filtering (requires schema extension)
-- ❌ Custom collections
 
 ---
 
 ## Planned Milestones
 
 No further milestones are currently defined. The most recently shipped
-milestone is v2.0.0-alpha.17.2. Exploratory work is tracked under Future
+milestone is v2.0.0-alpha.18. Exploratory work is tracked under Future
 Milestones above and in `future-enhhancements.md`.
