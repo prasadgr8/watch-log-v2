@@ -162,6 +162,21 @@ function optionalIsoDate(value: unknown, fieldName: string): Date | undefined {
   return requireIsoDate(value, fieldName);
 }
 
+function optionalBoolean(
+  value: unknown,
+  fieldName: string,
+): boolean | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value !== "boolean") {
+    return fail(`${fieldName} must be a boolean.`);
+  }
+
+  return value;
+}
+
 function requireOneOf<T extends string>(
   value: unknown,
   allowedValues: readonly T[],
@@ -223,6 +238,7 @@ function hydrateMedia(value: unknown, index: number): Media {
       `${fieldName}.userStatus`,
     ),
     rating: optionalNumber(record.rating, `${fieldName}.rating`),
+    favorite: optionalBoolean(record.favorite, `${fieldName}.favorite`),
     createdAt: requireIsoDate(record.createdAt, `${fieldName}.createdAt`),
     updatedAt: requireIsoDate(record.updatedAt, `${fieldName}.updatedAt`),
   };

@@ -7,6 +7,7 @@ export interface LibraryFilters {
   mediaType: MediaTypeFilter;
   status: WatchStatus | "all";
   minRating: number | null;
+  favoritesOnly: boolean;
 }
 
 export function filterLibrary(
@@ -40,6 +41,10 @@ export function filterLibrary(
     result = result.filter(
       (item) => (item.rating ?? 0) >= minRating,
     );
+  }
+
+  if (filters.favoritesOnly) {
+    result = result.filter((item) => item.favorite === true);
   }
 
   return result;

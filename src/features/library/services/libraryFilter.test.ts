@@ -36,7 +36,88 @@ const baseFilters: LibraryFilters = {
   mediaType: "all",
   status: "all",
   minRating: null,
+  favoritesOnly: false,
 };
+
+describe("filterLibrary - favorites filtering", () => {
+  it("returns only favorite items when favoritesOnly is true", () => {
+    const media = [
+      createMovie({ id: 1, favorite: true }),
+      createMovie({ id: 2, favorite: false }),
+      createTvShow({ id: 3, favorite: true }),
+      createTvShow({ id: 4 }),
+    ];
+
+    const result = filterLibrary(media, {
+      ...baseFilters,
+      favoritesOnly: true,
+    });
+
+    expect(result.map((m) => m.id)).toEqual([1, 3]);
+  });
+
+  it("returns all items when favoritesOnly is false", () => {
+    const media = [
+      createMovie({ id: 1, favorite: true }),
+      createMovie({ id: 2, favorite: false }),
+      createTvShow({ id: 3 }),
+    ];
+
+    const result = filterLibrary(media, {
+      ...baseFilters,
+      favoritesOnly: false,
+    });
+
+    expect(result.map((m) => m.id)).toEqual([1, 2, 3]);
+  });
+
+  it("combines favoritesOnly with search filter", () => {
+    const media = [
+      createMovie({ id: 1, title: "The Matrix", favorite: true }),
+      createMovie({ id: 2, title: "The Godfather", favorite: false }),
+      createMovie({ id: 3, title: "Inception", favorite: true }),
+    ];
+
+    const result = filterLibrary(media, {
+      ...baseFilters,
+      search: "the",
+      favoritesOnly: true,
+    });
+
+    expect(result.map((m) => m.id)).toEqual([1]);
+  });
+
+  it("combines favoritesOnly with mediaType filter", () => {
+    const media = [
+      createTvShow({ id: 1, favorite: true }),
+      createMovie({ id: 2, favorite: true }),
+      createTvShow({ id: 3, favorite: false }),
+    ];
+
+    const result = filterLibrary(media, {
+      ...baseFilters,
+      mediaType: "tv",
+      favoritesOnly: true,
+    });
+
+    expect(result.map((m) => m.id)).toEqual([1]);
+  });
+
+  it("treats undefined favorite as non-favorited", () => {
+    const media = [
+      createMovie({ id: 1, favorite: undefined }),
+      createMovie({ id: 2, favorite: false }),
+      createMovie({ id: 3, favorite: true }),
+    ];
+
+    const result = filterLibrary(media, {
+      ...baseFilters,
+      favoritesOnly: true,
+    });
+
+    expect(result.map((m) => m.id)).toEqual([3]);
+  });
+});
 
 describe("filterLibrary - rating filtering", () => {
   it("returns all items when minRating is null", () => {

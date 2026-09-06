@@ -474,4 +474,52 @@ describe("executeTvTimeImportPlan detailed per-show outcomes", () => {
     expect(result.skippedShows).toBe(0);
     expect(result.failedShows).toBe(0);
   });
+
+  it("preserves is_favorited from TV Time import into Media.favorite", async () => {
+    mockEpisodeSyncSuccess();
+
+    const result = await executeTvTimeImportPlan(
+      createPlan([
+        {
+          kind: "new",
+          candidate: {
+            ...createCandidate("Breaking Bad"),
+            favorite: true,
+          },
+          tmdbShow: createTmdbTvResult(),
+        },
+      ]),
+    );
+
+    expect(result.importedShows).toBe(1);
+
+    const importedMedia = await mediaRepository.getByTmdbId(1396, "tv");
+    expect(importedMedia?.favorite).toBe(true);
+  });
+
+  it("does not overwrite existing Media.favorite when importing an already-existing show", async () => {
+    mockEpisodeSyncSuccess();
+
+    const existingId = await seedExistingMedia(1396);
+    await mediaRepository.update(existingId, { favorite: true });
+
+    const result = await executeTvTimeImportPlan(
+      createPlan([
+        {
+          kind: "new",
+          candidate: {
+            ...createCandidate("Breaking Bad"),
+            favorite: false,
+          },
+          tmdbShow: createTmdbTvResult(),
+        },
+      ]),
+    );
+
+    expect(result.importedShows).toBe(0);
+    expect(result.skippedShows).toBe(1);
+
+    const existingMedia = await mediaRepository.getById(existingId);
+    expect(existingMedia?.favorite).toBe(true);
+  });
 });
