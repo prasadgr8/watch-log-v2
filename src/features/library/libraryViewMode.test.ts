@@ -55,6 +55,21 @@ describe("library grid/list view mode", () => {
     expect(mediaListItemSource).toContain("onDelete(media.id)");
   });
 
+  it("provides a favorite toggle in both presentations", () => {
+    expect(mediaCardSource).toContain("onToggleFavorite(media)");
+    expect(mediaListItemSource).toContain("onToggleFavorite(media)");
+    expect(mediaCardSource).toContain("aria-pressed={media.favorite");
+    expect(mediaListItemSource).toContain("aria-pressed={media.favorite");
+    expect(mediaCardSource).toContain("Add ${media.title} to favorites");
+    expect(mediaCardSource).toContain("Remove ${media.title} from favorites");
+  });
+
+  it("wires the favorite toggle through LibraryPage", () => {
+    expect(libraryPageSource).toContain("onToggleFavorite={handleToggleFavorite}");
+    expect(libraryPageSource).toContain("favoritesOnly");
+    expect(libraryPageSource).toContain("Show only favorites");
+  });
+
   it("styles the view mode toggle with accessible state semantics", () => {
     expect(toggleSource).toContain('role="group"');
     expect(toggleSource).toContain("aria-pressed");

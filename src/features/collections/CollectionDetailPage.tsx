@@ -3,6 +3,7 @@ import { ArrowLeft, Layers, Pencil, Plus, Trash2 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { collectionsService } from "./services/collectionsService";
+import { mediaRepository } from "../../database/repositories";
 import type { PersistedCollection, PersistedMedia } from "../../types";
 
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
@@ -140,6 +141,16 @@ export default function CollectionDetailPage() {
       await reloadCollection();
     } catch (removeError) {
       console.error("Failed to remove media from collection:", removeError);
+    }
+  }
+
+  async function handleToggleFavorite(media: PersistedMedia): Promise<void> {
+    try {
+      await mediaRepository.update(media.id, { favorite: !media.favorite });
+      await reloadCollection();
+    } catch (error) {
+      console.error("Failed to update favorite:", error);
+      setError("Failed to update favorite.");
     }
   }
 
@@ -291,6 +302,7 @@ export default function CollectionDetailPage() {
               key={item.id}
               media={item}
               onRemove={handleRemoveMedia}
+              onToggleFavorite={handleToggleFavorite}
             />
           ))}
         </div>

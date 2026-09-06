@@ -1,4 +1,4 @@
-import { Film, Tv, X } from "lucide-react";
+import { Film, Star, Tv, X } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import type { PersistedMedia } from "../../../types";
@@ -6,6 +6,7 @@ import type { PersistedMedia } from "../../../types";
 interface CollectionMediaCardProps {
   media: PersistedMedia;
   onRemove: (id: number) => Promise<void>;
+  onToggleFavorite: (media: PersistedMedia) => Promise<void>;
 }
 
 /*
@@ -18,6 +19,7 @@ interface CollectionMediaCardProps {
 export default function CollectionMediaCard({
   media,
   onRemove,
+  onToggleFavorite,
 }: CollectionMediaCardProps) {
   const mediaContent = (
     <>
@@ -53,6 +55,30 @@ export default function CollectionMediaCard({
         ) : (
           <div className="flex min-w-0 items-start gap-3">{mediaContent}</div>
         )}
+
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            void onToggleFavorite(media);
+          }}
+          aria-label={
+            media.favorite
+              ? `Remove ${media.title} from favorites`
+              : `Add ${media.title} to favorites`
+          }
+          aria-pressed={media.favorite === true}
+          className={`rounded-lg p-2 transition hover:bg-accent/15 ${
+            media.favorite
+              ? "text-warning"
+              : "text-muted hover:text-accent-text"
+          }`}
+        >
+          <Star
+            className="h-4 w-4"
+            fill={media.favorite ? "currentColor" : "none"}
+          />
+        </button>
 
         <button
           type="button"

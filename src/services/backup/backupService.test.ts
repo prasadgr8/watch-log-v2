@@ -704,5 +704,75 @@ describe("backupService", () => {
     });
   });
 
+  it("exports and restores favorite state in a version 2 backup", async () => {
+    const now = new Date("2026-07-15T00:00:00.000Z");
+
+    const showId = await mediaRepository.add({
+      tmdbId: 1396,
+      mediaType: "tv",
+      title: "Breaking Bad",
+      userStatus: "watching",
+      favorite: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await mediaRepository.add({
+      tmdbId: 157336,
+      mediaType: "movie",
+      title: "Inception",
+      userStatus: "completed",
+      favorite: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const backup = await backupService.createBackup();
+
+    expect(backup.version).toBe(2);
+    expect(backup.data.media).toHaveLength(2);
+    expect(backup.data.media.find((m) => m.id === showId)?.favorite).toBe(true);
+    expect(backup.data.media.find((m) => m.tmdbId === 157336)?.favorite).toBe(
+      false,
+    );
+
+    // Mutate after export.
+    await db.media.update(showId, { favorite: false });
+
+    await backupService.restoreBackup(backup);
+
+    const restoredFavorite = await db.media.get(showId);
+    expect(restoredFavorite?.favorite).toBe(true);
+  });
+
+  it("treats missing favorite in a version 1 backup as non-favorited", async () => {
+    const legacyBackup = {
+      format: "watch-log-v2-backup",
+      version: 1,
+      databaseVersion: 3,
+      exportedAt: "2026-07-15T16:00:00.000Z",
+      data: {
+        media: [
+          {
+            id: 41,
+            tmdbId: 1396,
+            mediaType: "tv",
+            title: "Breaking Bad",
+            userStatus: "watching",
+            createdAt: "2026-07-15T00:00:00.000Z",
+            updatedAt: "2026-07-15T00:00:00.000Z",
+          },
+        ],
+        episodes: [],
+        watchHistory: [],
+        settings: [],
+      },
+    };
+
+    await backupService.restoreBackup(legacyBackup);
+
+    const restoredMedia = await db.media.get(41);
+    expect(restoredMedia?.favorite).toBeUndefined();
+  });
+
 
 });

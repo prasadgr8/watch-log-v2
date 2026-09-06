@@ -19,6 +19,7 @@ export interface BackupMedia {
   backdropPath?: string;
   userStatus: "planned" | "watching" | "completed" | "on-hold" | "dropped";
   rating?: number;
+  favorite?: boolean;
   createdAt: string;
   updatedAt: string;
   firstAirDate?: string;

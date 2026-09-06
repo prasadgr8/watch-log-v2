@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Film } from "lucide-react";
+import { Film, Star } from "lucide-react";
 
 import { episodeRepository, mediaRepository } from "../../database/repositories";
 
@@ -55,6 +55,7 @@ export default function LibraryPage() {
 
   const [status, setStatus] = useState<WatchStatus | "all">("all");
   const [minRating, setMinRating] = useState<number | null>(null);
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [sort, setSort] = useState<LibrarySort>("recent");
   const [progressMap, setProgressMap] = useState<
     ReadonlyMap<number, number> | null
@@ -145,10 +146,11 @@ export default function LibraryPage() {
       mediaType,
       status,
       minRating,
+      favoritesOnly,
     });
 
     return sortLibrary(filtered, sort, progressMap ?? undefined);
-  }, [media, search, mediaType, status, minRating, sort, progressMap]);
+  }, [media, search, mediaType, status, minRating, favoritesOnly, sort, progressMap]);
   async function handleAddMedia(values: AddMediaValues): Promise<boolean> {
     const trimmedTitle = values.title.trim();
 
@@ -203,6 +205,16 @@ export default function LibraryPage() {
     setSelectedMedia(media);
     setIsEditModalOpen(true);
   }
+
+  async function handleToggleFavorite(media: PersistedMedia): Promise<void> {
+    try {
+      await mediaRepository.update(media.id, { favorite: !media.favorite });
+      await loadMedia();
+    } catch (error) {
+      console.error("Failed to update favorite:", error);
+      setError("Failed to update favorite.");
+    }
+  }
   async function handleSave(values: {
     status: PersistedMedia["userStatus"];
     rating: number;
@@ -254,6 +266,21 @@ export default function LibraryPage() {
           onChange={(e) => setSearch(e.target.value)}
           className="flex-1 rounded-lg border border-border bg-input-bg px-4 py-2.5 text-primary outline-none transition focus:border-accent-hover focus:ring-2 focus:ring-accent-hover/20"
         />
+
+        <button
+          type="button"
+          onClick={() => setFavoritesOnly((prev) => !prev)}
+          aria-pressed={favoritesOnly}
+          aria-label="Show only favorites"
+          className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-accent-hover/40 ${
+            favoritesOnly
+              ? "border-warning/60 bg-warning/10 text-warning"
+              : "border-border bg-input-bg text-muted hover:text-primary"
+          }`}
+        >
+          <Star className="h-4 w-4" fill={favoritesOnly ? "currentColor" : "none"} />
+          Favorites
+        </button>
 
         <select
           value={mediaType}
@@ -353,6 +380,7 @@ export default function LibraryPage() {
                 media={item}
                 onDelete={handleDelete}
                 onEdit={handleEdit}
+                onToggleFavorite={handleToggleFavorite}
               />
             ))}
           </div>
@@ -364,6 +392,7 @@ export default function LibraryPage() {
                 media={item}
                 onDelete={handleDelete}
                 onEdit={handleEdit}
+                onToggleFavorite={handleToggleFavorite}
               />
             ))}
           </div>

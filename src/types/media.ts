@@ -13,6 +13,7 @@ export interface BaseMedia {
   backdropPath?: string;
   userStatus: WatchStatus;
   rating?: number;
+  favorite?: boolean;
   createdAt: Date;
   updatedAt: Date;
   notes?: string;

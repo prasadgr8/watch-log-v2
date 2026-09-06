@@ -543,6 +543,7 @@ async function executeTvTimeImportPlanCore(
           mediaId = await libraryService.addMedia(
             mapTmdbResultToMedia(entry.tmdbShow, {
               userStatus: entry.candidate.watchStatus,
+              favorite: entry.candidate.favorite,
             }),
           );
 

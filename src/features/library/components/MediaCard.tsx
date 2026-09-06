@@ -1,4 +1,4 @@
-import { Film, Pencil, Trash2, Tv } from "lucide-react";
+import { Film, Pencil, Star, Trash2, Tv } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import type { PersistedMedia } from "../../../types";
@@ -9,12 +9,14 @@ interface MediaCardProps {
   media: PersistedMedia;
   onDelete: (id: number) => Promise<void>;
   onEdit: (media: PersistedMedia) => void;
+  onToggleFavorite: (media: PersistedMedia) => Promise<void>;
 }
 
 export default function MediaCard({
   media,
   onDelete,
   onEdit,
+  onToggleFavorite,
 }: MediaCardProps) {
   const statusLabel =
     watchStatusOptions.find((status) => status.value === media.userStatus)
@@ -56,7 +58,31 @@ export default function MediaCard({
         )}
 
         <div className="flex items-center gap-2">
-  <button
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              void onToggleFavorite(media);
+            }}
+            aria-label={
+              media.favorite
+                ? `Remove ${media.title} from favorites`
+                : `Add ${media.title} to favorites`
+            }
+            aria-pressed={media.favorite === true}
+            className={`rounded-lg p-2 transition hover:bg-accent/15 ${
+              media.favorite
+                ? "text-warning"
+                : "text-muted hover:text-accent-text"
+            }`}
+          >
+            <Star
+              className="h-4 w-4"
+              fill={media.favorite ? "currentColor" : "none"}
+            />
+          </button>
+
+          <button
     type="button"
     onClick={() => onEdit(media)}
     aria-label={`Edit ${media.title}`}

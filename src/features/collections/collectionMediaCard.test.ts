@@ -50,4 +50,11 @@ describe("collection media card", () => {
     );
     expect(cardSource).toContain("onRemove");
   });
+
+  it("provides a favorite toggle with accessible state semantics", () => {
+    expect(cardSource).toContain("onToggleFavorite(media)");
+    expect(cardSource).toContain("aria-pressed={media.favorite");
+    expect(cardSource).toContain("Add ${media.title} to favorites");
+    expect(cardSource).toContain("Remove ${media.title} from favorites");
+  });
 });

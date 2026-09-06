@@ -7,6 +7,7 @@ import type { TmdbMediaSearchResult } from "./tmdbTypes";
 
 interface MapTmdbMediaOptions {
   userStatus?: WatchStatus;
+  favorite?: boolean;
 }
 
 export function mapTmdbResultToMedia(
@@ -25,6 +26,7 @@ export function mapTmdbResultToMedia(
       posterPath: result.poster_path ?? undefined,
       backdropPath: result.backdrop_path ?? undefined,
       userStatus,
+      favorite: options.favorite,
       releaseDate: result.release_date || undefined,
       createdAt: now,
       updatedAt: now,
@@ -39,6 +41,7 @@ export function mapTmdbResultToMedia(
     posterPath: result.poster_path ?? undefined,
     backdropPath: result.backdrop_path ?? undefined,
     userStatus,
+    favorite: options.favorite,
     firstAirDate: result.first_air_date || undefined,
     createdAt: now,
     updatedAt: now,
