@@ -70,4 +70,47 @@ describe("collection detail page", () => {
     expect(pageSource).toContain("ArrowLeft");
     expect(pageSource).toContain("/collections");
   });
+
+  it("navigates back to /collections after a successful delete", () => {
+    expect(pageSource).toContain("useNavigate");
+    expect(pageSource).toContain('navigate("/collections")');
+
+    // The navigate call must happen after the delete succeeds and the dialog
+    // state is reset â€” not before the awaited delete.
+    const deleteHandler = pageSource.match(
+      /async function handleDelete[\s\S]*?\n {2}\}/,
+    )?.[0] ?? "";
+    expect(deleteHandler).toContain(
+      "await collectionsService.deleteCollection(deletingCollection.id)",
+    );
+    expect(deleteHandler).toContain('navigate("/collections")');
+  });
+
+  it("sets isSaving while the delete is in progress", () => {
+    const deleteHandler = pageSource.match(
+      /async function handleDelete[\s\S]*?\n {2}\}/,
+    )?.[0] ?? "";
+
+    expect(deleteHandler).toContain("setIsSaving(true)");
+    expect(deleteHandler).toContain("await collectionsService.deleteCollection");
+  });
+
+  it("surfaces delete failures through the page error mechanism", () => {
+    const deleteHandler = pageSource.match(
+      /async function handleDelete[\s\S]*?\n {2}\}/,
+    )?.[0] ?? "";
+
+    expect(deleteHandler).toContain("catch");
+    expect(deleteHandler).toContain("setError");
+    expect(deleteHandler).toContain("Failed to delete collection.");
+  });
+
+  it("resets isSaving in a finally block so the dialog unlocks", () => {
+    const deleteHandler = pageSource.match(
+      /async function handleDelete[\s\S]*?\n {2}\}/,
+    )?.[0] ?? "";
+
+    expect(deleteHandler).toContain("finally");
+    expect(deleteHandler).toContain("setIsSaving(false)");
+  });
 });
