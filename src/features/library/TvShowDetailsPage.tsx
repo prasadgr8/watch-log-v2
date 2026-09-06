@@ -18,6 +18,7 @@ import type { TmdbTvSeasonSummary } from "../../services/tmdb/tmdbTvTypes";
 import type { PersistedEpisode, PersistedMedia } from "../../types";
 
 import { EPISODES_VIEW_MODE_SETTING_KEY, useViewMode } from "../../app/viewMode";
+import { useOnlineStatus } from "../../app/useOnlineStatus";
 import ViewModeToggle from "../../components/ui/ViewModeToggle";
 
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
@@ -87,6 +88,8 @@ export default function TvShowDetailsPage() {
 
   const { viewMode, setViewMode } = useViewMode(EPISODES_VIEW_MODE_SETTING_KEY);
 
+  const isOnline = useOnlineStatus();
+
   useEffect(() => {
     let isCancelled = false;
 
@@ -102,6 +105,7 @@ export default function TvShowDetailsPage() {
         }
 
         const result = await loadTvShowDetails(parsedMediaId, {
+          canUseNetwork: () => isOnline,
           onLocalData: (localResult) => {
             if (isCancelled) {
               return;
@@ -151,7 +155,7 @@ export default function TvShowDetailsPage() {
     return () => {
       isCancelled = true;
     };
-  }, [mediaId, reloadToken]);
+  }, [mediaId, reloadToken, isOnline]);
 
   async function handleSelectSeason(seasonNumber: number): Promise<void> {
     if (!details) {
@@ -165,6 +169,7 @@ export default function TvShowDetailsPage() {
       setSeasonError(null);
 
       const result = await loadSeasonEpisodes(details.media.id, seasonNumber, {
+        canUseNetwork: () => isOnline,
         onLocalData: (localResult) => {
           setEpisodes(
             localResult.episodes.filter(
@@ -586,7 +591,22 @@ export default function TvShowDetailsPage() {
               role="alert"
               className="rounded-xl border border-danger/60 bg-danger/10 p-6 text-danger"
             >
-              {seasonError}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p>{seasonError}</p>
+
+                {selectedSeasonNumber !== null && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void handleSelectSeason(selectedSeasonNumber)
+                    }
+                    className="inline-flex items-center gap-2 rounded-lg bg-surface-elevated px-4 py-2 text-sm font-medium text-primary transition hover:bg-surface-hover"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Retry
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             <>
