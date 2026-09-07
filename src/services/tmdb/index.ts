@@ -4,13 +4,18 @@ export { tmdbConfig } from "./tmdbConfig";
 
 export { mapTmdbEpisodeToEpisode } from "./tmdbEpisodeMapper";
 
+export { mapTmdbGenreIdsToNames } from "./tmdbGenres";
+
 export { mapTmdbResultToMedia } from "./tmdbMediaMapper";
+
+export { tmdbMovieService } from "./tmdbMovieService";
 
 export { tmdbSearchService } from "./tmdbSearchService";
 
 export { tmdbTvService } from "./tmdbTvService";
 
 export type {
+  TmdbGenreRef,
   TmdbMediaSearchResult,
   TmdbMovieSearchResult,
   TmdbMultiSearchResult,
@@ -18,6 +23,8 @@ export type {
   TmdbSearchResponse,
   TmdbTvSearchResult,
 } from "./tmdbTypes";
+
+export type { TmdbMovieDetails } from "./tmdbMovieTypes";
 
 export type {
   TmdbTvDetails,

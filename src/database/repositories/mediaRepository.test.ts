@@ -85,6 +85,35 @@ describe("mediaRepository", () => {
     );
   });
 
+  it("updates only the provided fields during a partial update", async () => {
+    const originalUpdatedAt = new Date("2026-07-14T00:00:00.000Z");
+
+    const mediaId = await mediaRepository.add(
+      createTvShow({
+        rating: 7,
+        favorite: true,
+        updatedAt: originalUpdatedAt,
+      }),
+    );
+
+    const before = await mediaRepository.getById(mediaId);
+
+    await mediaRepository.update(mediaId, { genres: ["Action", "Drama"] });
+
+    const after = await mediaRepository.getById(mediaId);
+
+    expect(after?.genres).toEqual(["Action", "Drama"]);
+    expect(after?.title).toBe("Breaking Bad");
+    expect(after?.mediaType).toBe("tv");
+    expect(after?.tmdbId).toBe(1396);
+    expect(after?.userStatus).toBe("watching");
+    expect(after?.rating).toBe(7);
+    expect(after?.favorite).toBe(true);
+    expect(after?.createdAt).toEqual(before?.createdAt);
+    expect(after?.updatedAt.getTime()).toBeGreaterThan(
+      originalUpdatedAt.getTime(),
+    );
+  });
   it("filters media by type", async () => {
     await mediaRepository.add(createTvShow());
 

@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { Film, Star } from "lucide-react";
+import { Film, RefreshCw, Star } from "lucide-react";
 
 import { episodeRepository, mediaRepository } from "../../database/repositories";
 
 import { LIBRARY_VIEW_MODE_SETTING_KEY, useViewMode } from "../../app/viewMode";
+import { useOnlineStatus } from "../../app/useOnlineStatus";
 import ViewModeToggle from "../../components/ui/ViewModeToggle";
 
 import { filterLibrary, type MediaTypeFilter } from "./services/libraryFilter";
+import { enrichLibraryGenres } from "./services/genreEnrichmentService";
 
 import { TMDB_GENRES_LIST } from "../../services/tmdb/tmdbGenres";
 import GenreMultiSelect from "./GenreMultiSelect";
@@ -66,6 +68,9 @@ export default function LibraryPage() {
   >(null);
 
   const { viewMode, setViewMode } = useViewMode(LIBRARY_VIEW_MODE_SETTING_KEY);
+  const isOnline = useOnlineStatus();
+  const [isEnriching, setIsEnriching] = useState(false);
+  const [enrichmentStatus, setEnrichmentStatus] = useState<string | null>(null);
 
   async function loadMedia(): Promise<void> {
     try {
@@ -252,6 +257,71 @@ export default function LibraryPage() {
     }
   }
 
+  async function handleSyncTmdbGenres(): Promise<void> {
+    if (isEnriching) {
+      return;
+    }
+
+    setIsEnriching(true);
+    setEnrichmentStatus(null);
+
+    try {
+      const result = await enrichLibraryGenres({
+        onProgress: ({ completed, total }) => {
+          setEnrichmentStatus(`Syncing genres ${completed} of ${total}…`);
+        },
+      });
+
+      if (result.failures.length > 0) {
+        console.error("TMDB genre sync failures:", result.failures);
+      }
+
+      const summaryParts: string[] = [];
+
+      if (result.updatedCount > 0) {
+        summaryParts.push(
+          `Updated genres for ${result.updatedCount} ${
+            result.updatedCount === 1 ? "item" : "items"
+          }.`,
+        );
+      }
+
+      if (result.noGenresCount > 0) {
+        summaryParts.push(
+          `${result.noGenresCount} ${
+            result.noGenresCount === 1 ? "item has" : "items have"
+          } no TMDB genres.`,
+        );
+      }
+
+      if (result.failedCount > 0) {
+        summaryParts.push(
+          `${result.failedCount} ${
+            result.failedCount === 1 ? "item" : "items"
+          } failed.`,
+        );
+      }
+
+      setEnrichmentStatus(
+        summaryParts.length > 0
+          ? summaryParts.join(" ")
+          : "No items are missing genres.",
+      );
+
+      await loadMedia();
+    } catch (syncError) {
+      console.error("Failed to sync TMDB genres:", syncError);
+
+      setError(
+        syncError instanceof Error
+          ? syncError.message
+          : "Unable to sync TMDB genres. Please try again.",
+      );
+    } finally {
+      setIsEnriching(false);
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -359,6 +429,20 @@ export default function LibraryPage() {
           <h2 className="text-xl font-semibold text-primary">Your Media</h2>
 
           <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={handleSyncTmdbGenres}
+              disabled={isEnriching || !isOnline}
+              title={isOnline ? undefined : "Requires an internet connection."}
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-input-bg px-4 py-2.5 text-sm font-medium text-muted transition hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-hover/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-muted"
+            >
+              <RefreshCw
+                aria-hidden="true"
+                className={`h-4 w-4 ${isEnriching ? "animate-spin" : ""}`}
+              />
+              Sync TMDB genres
+            </button>
+
             <span className="text-sm text-muted">
               {visibleMedia.length} {visibleMedia.length === 1 ? "item" : "items"}
             </span>
@@ -366,6 +450,11 @@ export default function LibraryPage() {
             <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
           </div>
         </div>
+        {enrichmentStatus && (
+          <p role="status" className="mb-4 text-sm text-muted">
+            {enrichmentStatus}
+          </p>
+        )}
 
         {isLoading ? (
           <div className="rounded-xl border border-border bg-surface p-8 text-center text-muted">

@@ -1,3 +1,5 @@
+import type { TmdbGenreRef } from "./tmdbTypes";
+
 export interface TmdbTvSeasonSummary {
   air_date: string | null;
   episode_count: number;
@@ -21,6 +23,7 @@ export interface TmdbTvDetails {
   number_of_seasons: number;
   status: string;
   seasons: TmdbTvSeasonSummary[];
+  genres?: TmdbGenreRef[];
 }
 
 export interface TmdbTvEpisodeDetails {
