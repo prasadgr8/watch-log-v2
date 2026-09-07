@@ -1,3 +1,5 @@
+import type { MediaType } from "../../types/media";
+
 /**
  * TMDB Movie genre ID → Name mapping.
  * Source: https://developer.themoviedb.org/reference/genre-movie-list
@@ -62,3 +64,23 @@ export const TMDB_GENRES_LIST: string[] = Array.from(
     ...Object.values(TMDB_TV_GENRES),
   ]),
 ).sort();
+
+/**
+ * Converts TMDB genre IDs to the WatchLog genre names used by the genre
+ * filter, resolving against the mapping for the given media type. Unknown
+ * IDs are ignored, matching the TMDB search mapping behavior.
+ */
+export function mapTmdbGenreIdsToNames(
+  genreIds: number[] | undefined,
+  mediaType: MediaType,
+): string[] {
+  if (!genreIds || genreIds.length === 0) {
+    return [];
+  }
+
+  const genreMap = mediaType === "movie" ? TMDB_MOVIE_GENRES : TMDB_TV_GENRES;
+
+  return genreIds
+    .map((id) => genreMap[id])
+    .filter((name): name is string => name !== undefined);
+}

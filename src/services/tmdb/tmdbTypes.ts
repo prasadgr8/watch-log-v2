@@ -5,6 +5,11 @@ export interface TmdbSearchResponse<T> {
   total_results: number;
 }
 
+export interface TmdbGenreRef {
+  id: number;
+  name: string;
+}
+
 interface TmdbBaseSearchResult {
   id: number;
   overview: string;
