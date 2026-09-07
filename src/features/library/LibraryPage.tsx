@@ -9,6 +9,7 @@ import ViewModeToggle from "../../components/ui/ViewModeToggle";
 import { filterLibrary, type MediaTypeFilter } from "./services/libraryFilter";
 
 import { TMDB_GENRES_LIST } from "../../services/tmdb/tmdbGenres";
+import GenreMultiSelect from "./GenreMultiSelect";
 
 import type {
   Media,
@@ -262,7 +263,7 @@ export default function LibraryPage() {
       </div>
 
       <AddMediaForm isSaving={isSaving} onSubmit={handleAddMedia} />
-      <div className="library-filters">
+      <div className="flex flex-wrap items-center gap-3">
         <input
           type="text"
           placeholder="Search title..."
@@ -310,24 +311,11 @@ export default function LibraryPage() {
           ))}
         </select>
 
-        <select
-          multiple
-          size={5}
-          aria-label="Filter by genres"
-          value={selectedGenres}
-          onChange={(e) =>
-            setSelectedGenres(
-              Array.from(e.target.selectedOptions).map((option) => option.value),
-            )
-          }
-          className="min-w-[170px] rounded-lg border border-border bg-input-bg px-4 py-2.5 text-primary outline-none transition focus:border-accent-hover focus:ring-2 focus:ring-accent-hover/20"
-        >
-          {TMDB_GENRES_LIST.map((genre) => (
-            <option key={genre} value={genre}>
-              {genre}
-            </option>
-          ))}
-        </select>
+        <GenreMultiSelect
+          genres={TMDB_GENRES_LIST}
+          selectedGenres={selectedGenres}
+          onChange={setSelectedGenres}
+        />
 
         <select
           aria-label="Minimum rating"
