@@ -89,7 +89,6 @@ Advanced analytics remain deferred post-MVP work:
 
 *Note: User-defined lists shipped in v2.0.0-alpha.17.3 as Custom Collections (create, rename, delete, add/remove media, persistent memberships). This section covers organization features that remain future work.*
 
-- Favorites
 - Smart filters
 - Collection sharing (optional)
 
