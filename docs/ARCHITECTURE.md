@@ -107,7 +107,7 @@ filterLibrary() → sortLibrary() → visibleMedia → MediaCard/MediaListItem
 - watch status filter
 - favorites-only filter
 - minimum-rating filter
-- genre filter (native multi-select; empty selection = no genre filtering, OR within selected genres, AND combination with all other filters)
+- genre filter (accessible multi-select dropdown; empty selection = no genre filtering, OR within selected genres, AND combination with all other filters)
 - sorting by title (A-Z / Z-A), date added (recent first), rating, year, and progress (ascending/descending)
 - grid and list view modes with persisted preference
 - empty library and no-results states

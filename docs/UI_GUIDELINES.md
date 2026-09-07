@@ -119,7 +119,7 @@ Mobile navigation uses a responsive drawer (shipped in v2.0.0-alpha.16):
 The Library supports:
 
 - title search
-- filters: media type (TV / Movie), watch status, minimum rating, favorites, genres (native multi-select; empty selection = no genre filtering)
+- filters: media type (TV / Movie), watch status, minimum rating, favorites, genres (accessible multi-select dropdown; empty selection = no genre filtering)
 - sorting: title (A-Z / Z-A), date added (recent first), rating, year, progress (ascending/descending)
 - view modes: grid and list (persisted)
 - empty states: empty library, no results
