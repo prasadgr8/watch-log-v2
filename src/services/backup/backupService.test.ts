@@ -572,7 +572,6 @@ describe("backupService", () => {
     });
   });
 
-
   it("preserves collections and prunes orphaned memberships when restoring a version 1 backup", async () => {
     const now = new Date("2026-07-15T00:00:00.000Z");
 
@@ -774,5 +773,45 @@ describe("backupService", () => {
     expect(restoredMedia?.favorite).toBeUndefined();
   });
 
-
+  it("exports and restores media genres in a version 2 backup", async () => {
+    const now = new Date("2026-07-15T00:00:00.000Z");
+    const showId = await mediaRepository.add({
+      tmdbId: 1396,
+      mediaType: "tv",
+      title: "Breaking Bad",
+      userStatus: "watching",
+      genres: ["Drama", "Crime"],
+      createdAt: now,
+      updatedAt: now,
+    });
+    const backup = await backupService.createBackup();
+    expect(backup.version).toBe(2);
+    expect(backup.data.media.find((m) => m.id === showId)?.genres).toEqual([
+      "Drama",
+      "Crime",
+    ]);
+    await db.media.update(showId, { genres: ["Action"] });
+    await backupService.restoreBackup(backup);
+    const restoredGenres = (await db.media.get(showId))?.genres;
+    expect(restoredGenres?.length).toBe(2);
+    expect(restoredGenres?.sort()).toEqual(["Crime", "Drama"]);
+  });
+  it("round-trips media without genres in a version 2 backup", async () => {
+    const now = new Date("2026-07-15T00:00:00.000Z");
+    const movieId = await mediaRepository.add({
+      tmdbId: 157336,
+      mediaType: "movie",
+      title: "Inception",
+      userStatus: "completed",
+      createdAt: now,
+      updatedAt: now,
+    });
+    const backup = await backupService.createBackup();
+    expect(
+      backup.data.media.find((m) => m.id === movieId)?.genres,
+    ).toBeUndefined();
+    await backupService.restoreBackup(backup);
+    const restoredMedia = await db.media.get(movieId);
+    expect(restoredMedia?.genres).toBeUndefined();
+  });
 });

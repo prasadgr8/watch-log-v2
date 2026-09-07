@@ -8,6 +8,7 @@ export interface LibraryFilters {
   status: WatchStatus | "all";
   minRating: number | null;
   favoritesOnly: boolean;
+  selectedGenres: string[];
 }
 
 export function filterLibrary(
@@ -45,6 +46,14 @@ export function filterLibrary(
 
   if (filters.favoritesOnly) {
     result = result.filter((item) => item.favorite === true);
+  }
+
+  if (filters.selectedGenres.length > 0) {
+    const selectedGenres = new Set(filters.selectedGenres);
+
+    result = result.filter((item) =>
+      (item.genres ?? []).some((genre) => selectedGenres.has(genre)),
+    );
   }
 
   return result;

@@ -20,6 +20,7 @@ export interface BackupMedia {
   userStatus: "planned" | "watching" | "completed" | "on-hold" | "dropped";
   rating?: number;
   favorite?: boolean;
+  genres?: string[];
   createdAt: string;
   updatedAt: string;
   firstAirDate?: string;

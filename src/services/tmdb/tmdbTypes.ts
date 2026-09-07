@@ -13,6 +13,7 @@ interface TmdbBaseSearchResult {
   popularity: number;
   vote_average: number;
   vote_count: number;
+  genre_ids?: number[];
 }
 
 export interface TmdbMovieSearchResult extends TmdbBaseSearchResult {

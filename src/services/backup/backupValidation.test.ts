@@ -437,5 +437,84 @@ describe("validateAndHydrateBackup", () => {
     );
   });
 
+  it("hydrates media genres from a version 2 backup", () => {
+    const backup = withVersion2Collections(
+      createValidBackup() as Record<string, unknown>,
+      [],
+      [],
+    );
 
+    const data = backup.data as { media: Record<string, unknown>[] };
+
+    data.media[0]!.genres = ["Action", "Drama"];
+
+    const validated = validateAndHydrateBackup(backup);
+
+    expect(validated.media[0]?.genres).toEqual(["Action", "Drama"]);
+  });
+
+  it("leaves media genres undefined when the backup has no genres field", () => {
+    const v2Backup = withVersion2Collections(
+      createValidBackup() as Record<string, unknown>,
+      [],
+      [],
+    );
+
+    const validatedV2 = validateAndHydrateBackup(v2Backup);
+
+    expect(validatedV2.media[0]?.genres).toBeUndefined();
+
+    // Version 1 backups predate genres and hydrate the same way as undefined.
+    const validatedV1 = validateAndHydrateBackup(createValidBackup());
+
+    expect(validatedV1.media[0]?.genres).toBeUndefined();
+  });
+
+  it("accepts an empty media genres array in a version 2 backup", () => {
+    const backup = withVersion2Collections(
+      createValidBackup() as Record<string, unknown>,
+      [],
+      [],
+    );
+
+    const data = backup.data as { media: Record<string, unknown>[] };
+
+    data.media[0]!.genres = [];
+
+    const validated = validateAndHydrateBackup(backup);
+
+    expect(validated.media[0]?.genres).toEqual([]);
+  });
+
+  it("rejects media genres that are not an array", () => {
+    const backup = withVersion2Collections(
+      createValidBackup() as Record<string, unknown>,
+      [],
+      [],
+    );
+
+    const data = backup.data as { media: Record<string, unknown>[] };
+
+    data.media[0]!.genres = "Action";
+
+    expect(() => validateAndHydrateBackup(backup)).toThrow(
+      "data.media[0].genres must be an array of strings.",
+    );
+  });
+
+  it("rejects media genres arrays containing non-string entries", () => {
+    const backup = withVersion2Collections(
+      createValidBackup() as Record<string, unknown>,
+      [],
+      [],
+    );
+
+    const data = backup.data as { media: Record<string, unknown>[] };
+
+    data.media[0]!.genres = [1, "Action"];
+
+    expect(() => validateAndHydrateBackup(backup)).toThrow(
+      "data.media[0].genres[0] must be a string.",
+    );
+  });
 });
