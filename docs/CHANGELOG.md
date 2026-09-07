@@ -1,5 +1,39 @@
 # Changelog
 
+## v2.0.0-alpha.20 — Genre Filtering
+
+### Added
+
+- Added optional `genres` metadata on media records, populated only when media
+  is added from TMDB search results. TMDB genre IDs resolve through separate
+  Movie and TV genre mappings selected by the result's media type; unknown
+  genre IDs are ignored, and manually added media has no genres.
+- Added a native genre multi-select to the Library filter bar. An empty
+  selection applies no genre filtering, multiple selected genres match with OR
+  semantics, and genre filtering combines with title search, media type, watch
+  status, minimum rating, and favorites using AND semantics. Sorting behavior
+  is unchanged, and genres are not displayed on media cards.
+- Added `genres` to backup serialization and validation as an optional string
+  array while keeping the backup format version unchanged at 2. Existing
+  format version 1 and version 2 backups remain restorable. No Dexie schema
+  version or index change was required.
+
+### Quality
+
+- Added Library filter coverage for no genre selection, single-genre and
+  multi-genre OR matching, media without genres, and genre filtering combined
+  with search, media type, watch status, minimum rating, and favorites.
+- Added TMDB mapping coverage for known movie genres, known TV genres, shared
+  genres, TV-specific genres, unknown genre IDs, and Movie/TV mapping
+  separation.
+- Added backup round-trip coverage for format version 2 backups with and
+  without genres and for format version 1 backups.
+- Validation completed with 575 tests passing.
+- TypeScript check passed.
+- ESLint passed with 0 errors and the existing 10 router warnings.
+- Production build passed.
+- `git diff --check` passed.
+
 ## v2.0.0-alpha.18 — Offline-Aware TV Details
 
 ### Changed

@@ -345,7 +345,7 @@ The Alpha 15 import refinements shipped on `main` as follows:
 
 ## Current Implementation Status
 
-*Reconciled with verified implementation on September 6, 2026, following v2.0.0-alpha.17.3 and v2.0.0-alpha.18.*
+*Reconciled with verified implementation on September 7, 2026, following v2.0.0-alpha.20.*
 
 Status markers: ✅ Implemented · ⚠️ Known defect · ❌ Not implemented · ⏸️ Deferred · 🔮 Future
 
@@ -356,6 +356,8 @@ The Library page supports:
 - ✅ Title search through `filterLibrary()`
 - ✅ Media type filter (TV/Movie)
 - ✅ Watch status filter
+- ✅ Favorites-only filter
+- ✅ Genre filtering (TMDB genre multi-select; empty selection = no filtering)
 - ✅ Title sorting (A-Z / Z-A)
 - ✅ Date/recent sorting (by `createdAt`)
 - ✅ Rating sorting
@@ -379,14 +381,12 @@ The Collections pages support:
 
 ### Gaps
 
-The following Library capabilities are not yet implemented:
-
-- ❌ Genre filtering (requires schema extension)
+No Library capability gaps remain.
 
 ---
 
 ## Planned Milestones
 
 No further milestones are currently defined. The most recently shipped
-milestone is v2.0.0-alpha.18. Exploratory work is tracked under Future
+milestone is v2.0.0-alpha.20. Exploratory work is tracked under Future
 Milestones above and in `future-enhhancements.md`.
