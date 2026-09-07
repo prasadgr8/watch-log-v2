@@ -8,6 +8,8 @@ import ViewModeToggle from "../../components/ui/ViewModeToggle";
 
 import { filterLibrary, type MediaTypeFilter } from "./services/libraryFilter";
 
+import { TMDB_GENRES_LIST } from "../../services/tmdb/tmdbGenres";
+
 import type {
   Media,
   MediaType,
@@ -56,6 +58,7 @@ export default function LibraryPage() {
   const [status, setStatus] = useState<WatchStatus | "all">("all");
   const [minRating, setMinRating] = useState<number | null>(null);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [sort, setSort] = useState<LibrarySort>("recent");
   const [progressMap, setProgressMap] = useState<
     ReadonlyMap<number, number> | null
@@ -147,10 +150,11 @@ export default function LibraryPage() {
       status,
       minRating,
       favoritesOnly,
+      selectedGenres,
     });
 
     return sortLibrary(filtered, sort, progressMap ?? undefined);
-  }, [media, search, mediaType, status, minRating, favoritesOnly, sort, progressMap]);
+  }, [media, search, mediaType, status, minRating, favoritesOnly, selectedGenres, sort, progressMap]);
   async function handleAddMedia(values: AddMediaValues): Promise<boolean> {
     const trimmedTitle = values.title.trim();
 
@@ -302,6 +306,25 @@ export default function LibraryPage() {
           {watchStatusOptions.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
+            </option>
+          ))}
+        </select>
+
+        <select
+          multiple
+          size={5}
+          aria-label="Filter by genres"
+          value={selectedGenres}
+          onChange={(e) =>
+            setSelectedGenres(
+              Array.from(e.target.selectedOptions).map((option) => option.value),
+            )
+          }
+          className="min-w-[170px] rounded-lg border border-border bg-input-bg px-4 py-2.5 text-primary outline-none transition focus:border-accent-hover focus:ring-2 focus:ring-accent-hover/20"
+        >
+          {TMDB_GENRES_LIST.map((genre) => (
+            <option key={genre} value={genre}>
+              {genre}
             </option>
           ))}
         </select>

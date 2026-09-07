@@ -37,6 +37,7 @@ const baseFilters: LibraryFilters = {
   status: "all",
   minRating: null,
   favoritesOnly: false,
+  selectedGenres: [],
 };
 
 describe("filterLibrary - favorites filtering", () => {
@@ -218,5 +219,115 @@ describe("filterLibrary - rating filtering", () => {
     });
 
     expect(result.map((m) => m.id)).toEqual([1, 2]);
+  });
+});
+describe("filterLibrary - genre filtering", () => {
+  it("returns all items when no genres are selected", () => {
+    const media = [
+      createMovie({ id: 1, genres: ["Action"] }),
+      createTvShow({ id: 2, genres: ["Drama"] }),
+      createTvShow({ id: 3 }),
+    ];
+
+    const result = filterLibrary(media, { ...baseFilters, selectedGenres: [] });
+
+    expect(result.map((m) => m.id)).toEqual([1, 2, 3]);
+  });
+
+  it("filters to items containing the selected single genre", () => {
+    const media = [
+      createMovie({ id: 1, genres: ["Action"] }),
+      createMovie({ id: 2, genres: ["Drama"] }),
+      createTvShow({ id: 3, genres: ["Action", "Thriller"] }),
+      createTvShow({ id: 4 }),
+    ];
+
+    const result = filterLibrary(media, {
+      ...baseFilters,
+      selectedGenres: ["Action"],
+    });
+
+    expect(result.map((m) => m.id)).toEqual([1, 3]);
+  });
+
+  it("matches items with any of the selected genres (OR semantics)", () => {
+    const media = [
+      createMovie({ id: 1, genres: ["Action"] }),
+      createMovie({ id: 2, genres: ["Drama"] }),
+      createTvShow({ id: 3, genres: ["Horror"] }),
+      createTvShow({ id: 4, genres: ["Drama", "Comedy"] }),
+    ];
+
+    const result = filterLibrary(media, {
+      ...baseFilters,
+      selectedGenres: ["Action", "Drama"],
+    });
+
+    expect(result.map((m) => m.id)).toEqual([1, 2, 4]);
+  });
+
+  it("excludes items with undefined or empty genres when a selection is active", () => {
+    const media = [
+      createMovie({ id: 1, genres: ["Action"] }),
+      createMovie({ id: 2, genres: [] }),
+      createTvShow({ id: 3 }),
+      createTvShow({ id: 4, genres: ["Drama"] }),
+    ];
+
+    const result = filterLibrary(media, {
+      ...baseFilters,
+      selectedGenres: ["Action"],
+    });
+
+    expect(result.map((m) => m.id)).toEqual([1]);
+  });
+
+  it("combines genre selection with search, type, status, rating and favorites filters", () => {
+    const media = [
+      createMovie({
+        id: 1,
+        title: "The Matrix",
+        genres: ["Action", "Sci-Fi"],
+        userStatus: "completed",
+        rating: 9,
+        favorite: true,
+      }),
+      createMovie({
+        id: 2,
+        title: "The Matrix Reloaded",
+        genres: ["Action"],
+        userStatus: "completed",
+        rating: 8,
+        favorite: true,
+      }),
+      createMovie({
+        id: 3,
+        title: "The Godfather",
+        genres: ["Drama"],
+        userStatus: "completed",
+        rating: 9,
+        favorite: true,
+      }),
+      createTvShow({
+        id: 4,
+        title: "The Matrix Hidden Episode",
+        genres: ["Action"],
+        userStatus: "watching",
+        rating: 8,
+        favorite: true,
+      }),
+    ];
+
+    const result = filterLibrary(media, {
+      ...baseFilters,
+      search: "matrix",
+      mediaType: "movie",
+      status: "completed",
+      minRating: 8.5,
+      favoritesOnly: true,
+      selectedGenres: ["Action", "Drama"],
+    });
+
+    expect(result.map((m) => m.id)).toEqual([1]);
   });
 });

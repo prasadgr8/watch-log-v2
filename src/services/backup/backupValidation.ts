@@ -177,6 +177,23 @@ function optionalBoolean(
   return value;
 }
 
+function optionalStringArray(
+  value: unknown,
+  fieldName: string,
+): string[] | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value)) {
+    return fail(`${fieldName} must be an array of strings.`);
+  }
+
+  return value.map((item, index) =>
+    requireString(item, `${fieldName}[${index}]`),
+  );
+}
+
 function requireOneOf<T extends string>(
   value: unknown,
   allowedValues: readonly T[],
@@ -239,6 +256,7 @@ function hydrateMedia(value: unknown, index: number): Media {
     ),
     rating: optionalNumber(record.rating, `${fieldName}.rating`),
     favorite: optionalBoolean(record.favorite, `${fieldName}.favorite`),
+    genres: optionalStringArray(record.genres, `${fieldName}.genres`),
     createdAt: requireIsoDate(record.createdAt, `${fieldName}.createdAt`),
     updatedAt: requireIsoDate(record.updatedAt, `${fieldName}.updatedAt`),
   };
