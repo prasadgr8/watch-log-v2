@@ -1,5 +1,33 @@
 # Changelog
 
+## v2.0.0-alpha.21 — Library Bulk Watch Actions
+
+### Added
+
+- Added explicit selection mode to the Library page with labeled checkboxes in both grid and list views, a visible selected count, select-all-filtered, clear, and exit-selection controls.
+- Added bulk watch-status changes: `mediaRepository.setUserStatusMany` applies any of the five statuses to all selected items in one transaction, skips records already at the target status, and counts missing IDs.
+- Added bulk favorite/unfavorite: `mediaRepository.setFavoriteMany` sets an explicit boolean for all selected items in one transaction, skipping records already at the target state.
+- Added bulk delete: `mediaRepository.removeMany` removes all selected items in one atomic transaction, cascading to episodes, watch history, and collection memberships. A shared `removeMediaCascade` helper ensures `remove(id)` and `removeMany(ids)` use identical cascade semantics.
+- Added bulk add-to-collection: `collectionRepository.addMediaMany` files all selected items into one chosen collection in a single transaction, skipping existing memberships and counting missing media.
+- Added a `BulkActionsToolbar` component and an `AddSelectedToCollectionModal` picker dialog.
+- Added ConfirmDialog confirmation to the existing single-item Library delete.
+
+### Changed
+
+- Selection state is transient UI state and is never persisted in IndexedDB.
+- Selection clears automatically when the visible result set changes through search, filters, or sorting. Switching between grid and list view preserves the selection.
+
+### Quality
+
+- Added behavior tests for `setUserStatusMany`, `setFavoriteMany`, `removeMany` (including mid-batch rollback), and `addMediaMany` (including duplicate/missing/empty/missing-collection cases).
+- Added source-assertion suites for selection state, toolbar structure, and the collection-selection modal contract.
+- Validation completed with 647 tests passing.
+- TypeScript check passed.
+- ESLint passed with 0 errors and the existing 10 router warnings.
+- Production build passed.
+- `git diff --check` passed.
+- Shipped through PR #103 as squash merge commit `bacb728`.
+
 ## v2.0.0-alpha.20 — Genre Filtering
 
 ### Added
