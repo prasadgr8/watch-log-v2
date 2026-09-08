@@ -51,17 +51,17 @@ export default function MediaCard({
   return (
     <article className="rounded-xl border border-border bg-surface p-5">
       <div className="flex items-start justify-between gap-4">
-        {media.mediaType === "tv" ? (
-          <Link
-            to={`/library/tv/${media.id}`}
-            aria-label={`View ${media.title} details`}
-            className="flex min-w-0 items-start gap-3 rounded-lg transition hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-accent-hover/40"
-          >
-            {mediaContent}
-          </Link>
-        ) : (
-          <div className="flex min-w-0 items-start gap-3">{mediaContent}</div>
-        )}
+        <Link
+          to={
+            media.mediaType === "tv"
+              ? `/library/tv/${media.id}`
+              : `/library/movie/${media.id}`
+          }
+          aria-label={`View ${media.title} details`}
+          className="flex min-w-0 items-start gap-3 rounded-lg transition hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-accent-hover/40"
+        >
+          {mediaContent}
+        </Link>
 
         <div className="flex items-center gap-2">
           {isSelectionMode && (

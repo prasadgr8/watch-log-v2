@@ -38,6 +38,12 @@ import {
   watchStatusOptions,
 } from "./libraryOptions";
 
+import { applyMovieStatusChange } from "../movies/services/movieService";
+
+interface LibraryPageProps {
+  lockedMediaType?: MediaType;
+}
+
 interface AddMediaValues {
   title: string;
   mediaType: MediaType;
@@ -48,7 +54,7 @@ function isPersistedMedia(media: Media): media is PersistedMedia {
   return media.id !== undefined;
 }
 
-export default function LibraryPage() {
+export default function LibraryPage({ lockedMediaType }: LibraryPageProps) {
   const [media, setMedia] = useState<PersistedMedia[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -60,7 +66,9 @@ export default function LibraryPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [search, setSearch] = useState("");
 
-  const [mediaType, setMediaType] = useState<MediaTypeFilter>("all");
+  const [mediaType, setMediaType] = useState<MediaTypeFilter>(
+    lockedMediaType ?? "all",
+  );
 
   const [status, setStatus] = useState<WatchStatus | "all">("all");
   const [minRating, setMinRating] = useState<number | null>(null);
@@ -248,6 +256,7 @@ export default function LibraryPage() {
     status: PersistedMedia["userStatus"];
     rating: number;
     notes: string;
+    watchedAt?: Date | null;
   }): Promise<void> {
     if (selectedMedia === null || isEditSaving) {
       return;
@@ -257,11 +266,17 @@ export default function LibraryPage() {
       setIsEditSaving(true);
       setError(null);
 
-      await mediaRepository.update(selectedMedia.id, {
-        userStatus: values.status,
-        rating: values.rating,
-        notes: values.notes,
-      });
+      const changes =
+        selectedMedia.mediaType === "movie"
+          ? applyMovieStatusChange(selectedMedia, {
+              userStatus: values.status,
+              rating: values.rating,
+              notes: values.notes,
+              watchedAt: values.watchedAt,
+            })
+          : { userStatus: values.status, rating: values.rating, notes: values.notes };
+
+      await mediaRepository.update(selectedMedia.id, changes);
 
       await loadMedia();
 
@@ -546,15 +561,17 @@ export default function LibraryPage() {
           Favorites
         </button>
 
-        <select
-          value={mediaType}
-          onChange={(e) => setMediaType(e.target.value as MediaTypeFilter)}
-          className="min-w-[170px] rounded-lg border border-border bg-input-bg px-4 py-2.5 text-primary outline-none transition focus:border-accent-hover focus:ring-2 focus:ring-accent-hover/20"
-        >
-          <option value="all">All Media</option>
-          <option value="tv">TV Shows</option>
-          <option value="movie">Movies</option>
-        </select>
+        {!lockedMediaType && (
+          <select
+            value={mediaType}
+            onChange={(e) => setMediaType(e.target.value as MediaTypeFilter)}
+            className="min-w-[170px] rounded-lg border border-border bg-input-bg px-4 py-2.5 text-primary outline-none transition focus:border-accent-hover focus:ring-2 focus:ring-accent-hover/20"
+          >
+            <option value="all">All Media</option>
+            <option value="tv">TV Shows</option>
+            <option value="movie">Movies</option>
+          </select>
+        )}
 
         <select
           value={status}
@@ -695,11 +712,15 @@ export default function LibraryPage() {
             <Film className="mx-auto h-10 w-10 text-muted" />
 
             <h3 className="mt-4 text-lg font-semibold text-primary">
-              Your library is empty
+              {lockedMediaType === "movie"
+                ? "Your movie library is empty"
+                : "Your library is empty"}
             </h3>
 
             <p className="mt-2 text-muted">
-              Add your first TV show or movie using the form above.
+              {lockedMediaType === "movie"
+                ? "Add your first movie using the form above."
+                : "Add your first TV show or movie using the form above."}
             </p>
           </div>
         ) : viewMode === "list" ? (

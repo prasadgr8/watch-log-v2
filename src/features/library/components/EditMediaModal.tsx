@@ -12,6 +12,7 @@ interface EditMediaModalProps {
     status: PersistedMedia["userStatus"];
     rating: number;
     notes: string;
+    watchedAt?: Date | null;
   }) => void;
 }
 
@@ -19,8 +20,26 @@ interface EditMediaFormProps {
   media: PersistedMedia;
   isSaving: boolean;
   onClose: () => void;
-  onSave: EditMediaModalProps["onSave"];
+  onSave: (values: {
+    status: PersistedMedia["userStatus"];
+    rating: number;
+    notes: string;
+    watchedAt?: Date | null;
+  }) => void;
   statusSelectRef: RefObject<HTMLSelectElement | null>;
+}
+
+/*
+ * Converts a Date to the value a native <input type="date"> expects
+ * (YYYY-MM-DD in local time). The date field is only shown for completed
+ * movies, so the value is always derived from a real completed timestamp.
+ */
+function toDateInputValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 }
 
 /*
@@ -101,6 +120,10 @@ function EditMediaForm({
   const [status, setStatus] = useState(media.userStatus);
   const [rating, setRating] = useState(media.rating ?? 0);
   const [notes, setNotes] = useState(media.notes ?? "");
+  const [watchedAt, setWatchedAt] = useState<Date | null>(
+    media.mediaType === "movie" ? media.watchedAt ?? null : null,
+  );
+  const [watchedAtTouched, setWatchedAtTouched] = useState(false);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -204,6 +227,50 @@ function EditMediaForm({
           />
         </div>
 
+        {media.mediaType === "movie" && status === "completed" && (
+          <div className="mt-6">
+            <label
+              htmlFor="watchedAt"
+              className="block text-sm font-medium text-muted"
+            >
+              Watched Date
+            </label>
+
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                id="watchedAt"
+                type="date"
+                value={
+                  watchedAt ? toDateInputValue(watchedAt) : ""
+                }
+                onChange={(event) => {
+                  setWatchedAtTouched(true);
+
+                  setWatchedAt(
+                    event.target.value
+                      ? new Date(`${event.target.value}T00:00:00`)
+                      : null,
+                  );
+                }}
+                className="w-full rounded-lg border border-border bg-input-bg px-3 py-2 text-primary focus:border-accent-hover focus:outline-none"
+              />
+
+              {watchedAt && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWatchedAtTouched(true);
+                    setWatchedAt(null);
+                  }}
+                  className="shrink-0 rounded-lg border border-border px-3 py-2 text-sm text-muted transition hover:bg-surface-elevated"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="mt-6 flex justify-end gap-3">
           <button
             type="button"
@@ -221,6 +288,7 @@ function EditMediaForm({
                 status,
                 rating,
                 notes,
+                ...(watchedAtTouched ? { watchedAt } : {}),
               })
             }
             className="rounded-lg bg-accent px-4 py-2 text-inverted hover:bg-accent-hover"
