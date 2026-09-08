@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Film, RefreshCw, Star } from "lucide-react";
 
 import { episodeRepository, mediaRepository } from "../../database/repositories";
+import { collectionRepository } from "../../database/repositories/collectionRepository";
 
 import { LIBRARY_VIEW_MODE_SETTING_KEY, useViewMode } from "../../app/viewMode";
 import { useOnlineStatus } from "../../app/useOnlineStatus";
 import ViewModeToggle from "../../components/ui/ViewModeToggle";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 import { filterLibrary, type MediaTypeFilter } from "./services/libraryFilter";
 import { enrichLibraryGenres } from "./services/genreEnrichmentService";
@@ -21,6 +23,8 @@ import type {
 } from "../../types";
 
 import AddMediaForm from "./components/AddMediaForm";
+import BulkActionsToolbar from "./components/BulkActionsToolbar";
+import AddSelectedToCollectionModal from "./components/AddSelectedToCollectionModal";
 import MediaCard from "./components/MediaCard";
 import MediaListItem from "./components/MediaListItem";
 import EditMediaModal from "./components/EditMediaModal";
@@ -66,6 +70,21 @@ export default function LibraryPage() {
   const [progressMap, setProgressMap] = useState<
     ReadonlyMap<number, number> | null
   >(null);
+
+  // Selection mode state (transient — never persisted).
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<number>>(
+    new Set(),
+  );
+  const [isBulkBusy, setIsBulkBusy] = useState(false);
+  const [bulkResultMessage, setBulkResultMessage] = useState<string | null>(
+    null,
+  );
+  const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
+  const [deletingMedia, setDeletingMedia] = useState<PersistedMedia | null>(
+    null,
+  );
+  const [isAddToCollectionOpen, setIsAddToCollectionOpen] = useState(false);
 
   const { viewMode, setViewMode } = useViewMode(LIBRARY_VIEW_MODE_SETTING_KEY);
   const isOnline = useOnlineStatus();
@@ -149,6 +168,20 @@ export default function LibraryPage() {
     };
   }, [sort, media, progressMap]);
 
+  // Clear selection whenever the visible result set changes (search, filters,
+  // or sorting). Uses the React "adjust state during rendering" pattern to
+  // avoid a setState-in-effect. Deliberately excludes `media` (post-action
+  // reloads must not fight the explicit "clear after successful action" rule)
+  // and `progressMap` (the one-time lazy load during a progress sort is not a
+  // user-facing sort change).
+  const filterSignature = `${search}|${mediaType}|${status}|${minRating}|${favoritesOnly}|${selectedGenres.join(",")}|${sort}`;
+  const [previousFilterSignature, setPreviousFilterSignature] = useState(filterSignature);
+
+  if (filterSignature !== previousFilterSignature) {
+    setPreviousFilterSignature(filterSignature);
+    setSelectedIds(new Set());
+  }
+
   const visibleMedia = useMemo(() => {
     const filtered = filterLibrary(media, {
       search,
@@ -194,20 +227,6 @@ export default function LibraryPage() {
       return false;
     } finally {
       setIsSaving(false);
-    }
-  }
-
-  async function handleDelete(id: number): Promise<void> {
-    try {
-      setError(null);
-
-      await mediaRepository.remove(id);
-
-      await loadMedia();
-    } catch (deleteError) {
-      console.error("Failed to delete media:", deleteError);
-
-      setError("Unable to delete this media item.");
     }
   }
 
@@ -322,6 +341,176 @@ export default function LibraryPage() {
     }
   }
 
+  // Selection mode handlers
+
+  function enterSelection(): void {
+    setIsSelectionMode(true);
+    setBulkResultMessage(null);
+  }
+
+  function exitSelection(): void {
+    setIsSelectionMode(false);
+    setSelectedIds(new Set());
+  }
+
+  function toggleSelected(item: PersistedMedia): void {
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(item.id)) {
+        next.delete(item.id);
+      } else {
+        next.add(item.id);
+      }
+      return next;
+    });
+  }
+
+  function handleSelectAllFiltered(): void {
+    setSelectedIds(new Set(visibleMedia.map((item) => item.id)));
+  }
+
+  function handleClearSelection(): void {
+    setSelectedIds(new Set());
+  }
+
+  async function handleBulkSetStatus(watchStatus: WatchStatus): Promise<void> {
+    if (selectedIds.size === 0) {
+      return;
+    }
+
+    try {
+      setError(null);
+      setIsBulkBusy(true);
+      setBulkResultMessage(null);
+
+      const result = await mediaRepository.setUserStatusMany(
+        [...selectedIds],
+        watchStatus,
+      );
+
+      setBulkResultMessage(
+        `Status updated for ${result.updatedCount} item(s); ${result.unchangedCount} already set.`,
+      );
+      setSelectedIds(new Set());
+      await loadMedia();
+    } catch {
+      setError("Unable to update the selected items. Please try again.");
+    } finally {
+      setIsBulkBusy(false);
+    }
+  }
+
+  async function handleBulkSetFavorite(favorite: boolean): Promise<void> {
+    if (selectedIds.size === 0) {
+      return;
+    }
+
+    try {
+      setError(null);
+      setIsBulkBusy(true);
+      setBulkResultMessage(null);
+
+      const result = await mediaRepository.setFavoriteMany(
+        [...selectedIds],
+        favorite,
+      );
+
+      const action = favorite ? "Added" : "Removed";
+      const target = favorite ? "to" : "from";
+      setBulkResultMessage(
+        `${action} ${result.updatedCount} item(s) ${target} favorites.`,
+      );
+      setSelectedIds(new Set());
+      await loadMedia();
+    } catch {
+      setError("Unable to update favorites. Please try again.");
+    } finally {
+      setIsBulkBusy(false);
+    }
+  }
+
+  async function handleBulkAddToCollection(
+    collectionId: number,
+    name: string,
+  ): Promise<void> {
+    if (selectedIds.size === 0) {
+      return;
+    }
+
+    try {
+      setError(null);
+      setIsBulkBusy(true);
+      setBulkResultMessage(null);
+
+      const result = await collectionRepository.addMediaMany(
+        collectionId,
+        [...selectedIds],
+      );
+
+      if (!result.ok) {
+        setError("Unable to add to collection. Please try again.");
+        return;
+      }
+
+      setBulkResultMessage(
+        `Added ${result.addedCount} item(s) to "${name}"; ${result.duplicateCount} already in it.`,
+      );
+      setSelectedIds(new Set());
+      setIsAddToCollectionOpen(false);
+    } catch {
+      setError("Unable to add to collection. Please try again.");
+    } finally {
+      setIsBulkBusy(false);
+    }
+  }
+
+  async function handleBulkDelete(): Promise<void> {
+    if (selectedIds.size === 0) {
+      return;
+    }
+
+    try {
+      setError(null);
+      setIsBulkBusy(true);
+      setBulkResultMessage(null);
+
+      const result = await mediaRepository.removeMany([...selectedIds]);
+
+      setBulkResultMessage(`Deleted ${result.removedCount} item(s).`);
+      setSelectedIds(new Set());
+      setIsBulkDeleteConfirmOpen(false);
+      await loadMedia();
+    } catch {
+      setError("Unable to delete the selected items. Please try again.");
+    } finally {
+      setIsBulkBusy(false);
+    }
+  }
+
+  async function handleRequestDelete(id: number): Promise<void> {
+    const item = visibleMedia.find((entry) => entry.id === id);
+    if (item) {
+      setDeletingMedia(item);
+    }
+  }
+
+  async function handleConfirmDelete(): Promise<void> {
+    if (!deletingMedia) {
+      return;
+    }
+
+    const id = deletingMedia.id;
+
+    try {
+      setError(null);
+      await mediaRepository.remove(id);
+      setDeletingMedia(null);
+      await loadMedia();
+    } catch {
+      setError("Unable to delete the item. Please try again.");
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -429,6 +618,24 @@ export default function LibraryPage() {
           <h2 className="text-xl font-semibold text-primary">Your Media</h2>
 
           <div className="flex items-center gap-4">
+            {isSelectionMode ? (
+              <button
+                type="button"
+                onClick={exitSelection}
+                disabled={isBulkBusy}
+                className="inline-flex items-center gap-2 rounded-lg border border-border bg-input-bg px-4 py-2.5 text-sm font-medium text-muted transition hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-hover/40 disabled:cursor-wait disabled:opacity-50"
+              >
+                Exit Selection
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={enterSelection}
+                className="inline-flex items-center gap-2 rounded-lg border border-border bg-input-bg px-4 py-2.5 text-sm font-medium text-muted transition hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-hover/40"
+              >
+                Select
+              </button>
+            )}
             <button
               type="button"
               onClick={handleSyncTmdbGenres}
@@ -456,6 +663,29 @@ export default function LibraryPage() {
           </p>
         )}
 
+        {bulkResultMessage && (
+          <p role="status" className="mb-4 text-sm text-muted">
+            {bulkResultMessage}
+          </p>
+        )}
+
+        {isSelectionMode && (
+          <div className="mb-4">
+            <BulkActionsToolbar
+              selectedCount={selectedIds.size}
+              totalCount={visibleMedia.length}
+              isBusy={isBulkBusy}
+              onSelectAll={handleSelectAllFiltered}
+              onClearSelection={handleClearSelection}
+              onExitSelection={exitSelection}
+              onSetStatus={handleBulkSetStatus}
+              onSetFavorite={handleBulkSetFavorite}
+              onAddToCollection={() => setIsAddToCollectionOpen(true)}
+              onRequestDelete={() => setIsBulkDeleteConfirmOpen(true)}
+            />
+          </div>
+        )}
+
         {isLoading ? (
           <div className="rounded-xl border border-border bg-surface p-8 text-center text-muted">
             Loading your library...
@@ -478,9 +708,12 @@ export default function LibraryPage() {
               <MediaListItem
                 key={item.id}
                 media={item}
-                onDelete={handleDelete}
+                onDelete={handleRequestDelete}
                 onEdit={handleEdit}
                 onToggleFavorite={handleToggleFavorite}
+                isSelectionMode={isSelectionMode}
+                isSelected={selectedIds.has(item.id)}
+                onToggleSelected={toggleSelected}
               />
             ))}
           </div>
@@ -490,9 +723,12 @@ export default function LibraryPage() {
               <MediaCard
                 key={item.id}
                 media={item}
-                onDelete={handleDelete}
+                onDelete={handleRequestDelete}
                 onEdit={handleEdit}
                 onToggleFavorite={handleToggleFavorite}
+                isSelectionMode={isSelectionMode}
+                isSelected={selectedIds.has(item.id)}
+                onToggleSelected={toggleSelected}
               />
             ))}
           </div>
@@ -507,6 +743,41 @@ export default function LibraryPage() {
           setSelectedMedia(null);
         }}
         onSave={handleSave}
+      />
+      <AddSelectedToCollectionModal
+        isOpen={isAddToCollectionOpen}
+        isSaving={isBulkBusy}
+        collectionCount={selectedIds.size}
+        onClose={() => setIsAddToCollectionOpen(false)}
+        onPick={handleBulkAddToCollection}
+      />
+      <ConfirmDialog
+        isOpen={deletingMedia !== null}
+        title={`Delete ${deletingMedia?.title ?? ""}`}
+        description={
+          deletingMedia?.mediaType === "tv"
+            ? "Deleting this TV show will also delete its episodes and watch history. This action cannot be undone."
+            : "This will permanently remove this movie from your library. This action cannot be undone."
+        }
+        primaryLabel="Delete"
+        secondaryLabel="Cancel"
+        tertiaryLabel="Cancel"
+        busyAction={null}
+        onPrimary={() => void handleConfirmDelete()}
+        onSecondary={() => setDeletingMedia(null)}
+        onTertiary={() => setDeletingMedia(null)}
+      />
+      <ConfirmDialog
+        isOpen={isBulkDeleteConfirmOpen}
+        title={`Delete ${selectedIds.size} item(s)`}
+        description={`Deleting TV shows also deletes their episodes and watch history. This action cannot be undone.`}
+        primaryLabel={`Delete ${selectedIds.size} item(s)`}
+        secondaryLabel="Cancel"
+        tertiaryLabel="Cancel"
+        busyAction={isBulkBusy ? "primary" : null}
+        onPrimary={() => void handleBulkDelete()}
+        onSecondary={() => setIsBulkDeleteConfirmOpen(false)}
+        onTertiary={() => setIsBulkDeleteConfirmOpen(false)}
       />
     </div>
   );

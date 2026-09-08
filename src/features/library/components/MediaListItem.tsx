@@ -10,6 +10,9 @@ interface MediaListItemProps {
   onDelete: (id: number) => Promise<void>;
   onEdit: (media: PersistedMedia) => void;
   onToggleFavorite: (media: PersistedMedia) => Promise<void>;
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelected?: (media: PersistedMedia) => void;
 }
 
 /*
@@ -22,6 +25,9 @@ export default function MediaListItem({
   onDelete,
   onEdit,
   onToggleFavorite,
+  isSelectionMode = false,
+  isSelected = false,
+  onToggleSelected,
 }: MediaListItemProps) {
   const statusLabel =
     watchStatusOptions.find((status) => status.value === media.userStatus)
@@ -29,6 +35,15 @@ export default function MediaListItem({
 
   return (
     <article className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-surface p-4">
+      {isSelectionMode && (
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={() => onToggleSelected?.(media)}
+          aria-label={`Select ${media.title}`}
+          className="h-4 w-4 shrink-0 rounded border-border accent-accent"
+        />
+      )}
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <div className="shrink-0 rounded-lg bg-surface-elevated p-2 text-accent-text">
           {media.mediaType === "tv" ? (

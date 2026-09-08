@@ -2,9 +2,17 @@ import { db } from "../db";
 
 import type {
   Collection,
+  Media,
   PersistedCollection,
   PersistedCollectionMedia,
 } from "../../types";
+
+/**
+ * Internal marker error used to abort the addMediaMany transaction when the
+ * target collection does not exist. Caught by addMediaMany and mapped to the
+ * "collection-missing" result; all other errors propagate to the caller.
+ */
+class CollectionMissingError extends Error {}
 
 /**
  * Result of adding media to a collection. Expected conditions are reported as
@@ -16,6 +24,22 @@ export type AddMembershipResult =
       ok: false;
       reason: "collection-missing" | "media-missing" | "duplicate";
     };
+
+/**
+ * Outcome of a bulk membership add. Existing memberships are skipped and
+ * counted as duplicates; missing media IDs are counted as missing; new
+ * memberships are counted as added. A transaction failure (e.g. a constraint
+ * violation from a concurrent writer) aborts the whole batch — the call then
+ * rejects rather than returning a partial-success result.
+ */
+export type BulkAddMembershipsResult =
+  | {
+      ok: true;
+      addedCount: number;
+      duplicateCount: number;
+      missingCount: number;
+    }
+  | { ok: false; reason: "collection-missing" };
 
 function isConstraintError(error: unknown): boolean {
   const name = (error as { name?: string } | undefined)?.name;
@@ -120,6 +144,95 @@ export const collectionRepository = {
 
       throw error;
     }
+  },
+
+  /**
+   * Adds many media items to one collection in a single transaction. Existing
+   * memberships are skipped (counted as duplicates) and never rewritten;
+   * missing media IDs are counted as missing. The duplicate check runs inside
+   * the transaction via a single membership lookup, so a ConstraintError can
+   * only come from a concurrent external writer — in that case the transaction
+   * aborts and the error propagates (no partial-success result is returned).
+   * This differs from addMedia, which maps the race to a "duplicate" result
+   * because it cannot roll back a per-row intent.
+   */
+  async addMediaMany(
+    collectionId: number,
+    mediaIds: number[],
+  ): Promise<BulkAddMembershipsResult> {
+    const now = new Date();
+    let addedCount = 0;
+    let duplicateCount = 0;
+    let missingCount = 0;
+
+    try {
+      await db.transaction(
+        "rw",
+        [db.collections, db.collectionMedia, db.media],
+        async () => {
+          const collection = await db.collections.get(collectionId);
+
+          if (!collection) {
+            throw new CollectionMissingError();
+          }
+
+          if (mediaIds.length === 0) {
+            return;
+          }
+
+          const mediaRecords = await db.media.bulkGet(mediaIds);
+          const foundIds = new Set(
+            mediaRecords
+              .filter(
+                (record): record is Media & { id: number } =>
+                  record !== undefined && record.id !== undefined,
+              )
+              .map((record) => record.id),
+          );
+
+          missingCount = mediaIds.length - foundIds.size;
+
+          const existingMemberships = await db.collectionMedia
+            .where("collectionId")
+            .equals(collectionId)
+            .toArray();
+          const existingMemberIds = new Set(
+            existingMemberships.map((membership) => membership.mediaId),
+          );
+
+          for (const mediaId of mediaIds) {
+            if (!foundIds.has(mediaId)) {
+              continue;
+            }
+
+            if (existingMemberIds.has(mediaId)) {
+              duplicateCount++;
+              continue;
+            }
+
+            await db.collectionMedia.add({
+              collectionId,
+              mediaId,
+              createdAt: now,
+            });
+            addedCount++;
+          }
+        },
+      );
+    } catch (error) {
+      if (error instanceof CollectionMissingError) {
+        return { ok: false, reason: "collection-missing" };
+      }
+
+      throw error;
+    }
+
+    return {
+      ok: true,
+      addedCount,
+      duplicateCount,
+      missingCount,
+    };
   },
 
   /** Removes one relationship. Idempotent: absent relationships are a no-op. */
