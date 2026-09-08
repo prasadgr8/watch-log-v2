@@ -112,6 +112,22 @@ filterLibrary() → sortLibrary() → visibleMedia → MediaCard/MediaListItem
 - grid and list view modes with persisted preference
 - empty library and no-results states
 
+### Bulk Selection and Bulk Actions
+
+Selection is transient UI state owned by `LibraryPage`; it is never persisted in IndexedDB and does not survive a page reload.
+
+- Entering selection mode renders a labeled checkbox on every `MediaCard` and `MediaListItem`. The two presentations share an identical selection-prop contract (`isSelectionMode`, `isSelected`, `onToggleSelected`).
+- "Select all" selects exactly the current filtered and sorted result set (`visibleMedia`), not the full library.
+- Selection clears automatically when the visible result set changes through search, filters, or sorting. Switching between grid and list view preserves the selection because the underlying result set is unchanged.
+- A `BulkActionsToolbar` renders the selected count (via `role="status"`) and the bulk actions: set status, favorite, unfavorite, add to collection, and delete.
+
+Repository operations are transactional and all-or-nothing:
+
+- `mediaRepository.setUserStatusMany(ids, status)` opens one `rw` transaction over `db.media`, reads all records with `bulkGet`, skips records already at the target status (without refreshing `updatedAt`), counts missing IDs, and writes `userStatus` + `updatedAt` with one shared timestamp. No episode or watch-history records are touched.
+- `mediaRepository.setFavoriteMany(ids, favorite)` opens one `rw` transaction over `db.media` with the same skip-unchanged, count-missing, single-timestamp shape. The target `true` writes only records that are not already `true`; the target `false` writes only records that are explicitly `true` (undefined counts as already-unfavorite).
+- `mediaRepository.removeMany(ids)` opens one `rw` transaction over `db.media`, `db.episodes`, `db.watchHistory`, and `db.collectionMedia` for the entire batch. A shared private `removeMediaCascade` helper processes each ID through the same sequence as `remove(id)`: collect episode keys, delete their watch history, delete the episodes, delete collection memberships, then delete the media record. Because the batch runs in one transaction, any failure aborts with zero partial deletions. Both `remove(id)` and `removeMany(ids)` delegate to this helper so the cascade logic lives in exactly one place.
+- `collectionRepository.addMediaMany(collectionId, ids)` opens one `rw` transaction over `db.collections`, `db.collectionMedia`, and `db.media`. It verifies the collection exists, counts missing media IDs, builds a set of existing memberships with a single lookup, skips duplicates, and adds the remainder with one shared `createdAt`. A `ConstraintError` from a concurrent external writer aborts the transaction; the error propagates rather than returning a partial-success result.
+
 ## Continue Watching Projection
 
 Continue Watching is implemented as derived feature state rather than persisted media state.

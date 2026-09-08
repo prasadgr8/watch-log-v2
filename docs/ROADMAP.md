@@ -285,6 +285,21 @@ Status: Complete (shipped on `main` via squash merge commit `f3be6bd`, PR #87)
 - Mobile navigation integrated with the Alpha 14 accessibility work (skip link, `role="status"` announcements, decorative bell, and keyboard-visible focus indicators preserved)
 - Mobile navigation regression coverage (8 dedicated tests; layout accessibility coverage updated for the additional labelled header button)
 
+## v2.0.0-alpha.21 — Library Bulk Watch Actions
+
+Status: Complete (shipped on `main` via squash merge commit `bacb728`, PR #103)
+
+- Explicit selection mode in Library grid and list views with labeled checkboxes and a visible selected count
+- Select-all-filtered selects exactly the current filtered and sorted result set
+- Bulk set watch status for all selected items in one transaction, with already-unchanged items skipped
+- Bulk favorite and bulk unfavorite for all selected items in one transaction
+- Bulk add-to-collection filing all selected items into one chosen collection in a single transaction, with existing memberships skipped and missing media counted
+- Bulk delete with ConfirmDialog confirmation; deletion cascades to episodes, watch history, and collection memberships in one atomic transaction
+- Single-item Library delete now requires ConfirmDialog confirmation
+- Selection clears automatically when the visible result set changes through search, filters, or sorting; switching between grid and list view preserves the selection
+- Shared cascade helper between `remove(id)` and `removeMany(ids)`; `addMediaMany` uses a single transaction with in-transaction duplicate detection
+- IndexedDB schema v5 and backup format v2 unchanged; no migration required
+
 ## Future Milestones
 
 Planned or exploratory features include:
@@ -345,7 +360,7 @@ The Alpha 15 import refinements shipped on `main` as follows:
 
 ## Current Implementation Status
 
-*Reconciled with verified implementation on September 7, 2026, following v2.0.0-alpha.20.*
+*Reconciled with verified implementation on September 8, 2026, following v2.0.0-alpha.21.*
 
 Status markers: ✅ Implemented · ⚠️ Known defect · ❌ Not implemented · ⏸️ Deferred · 🔮 Future
 
@@ -367,6 +382,14 @@ The Library page supports:
 - ✅ Empty library state
 - ✅ No-results state
 - ✅ Grid/list view with persisted preference
+- ✅ Selection mode with labeled checkboxes in grid and list views
+- ✅ Select-all-filtered (selects exactly the current filtered/sorted result set)
+- ✅ Bulk set watch status for selected items
+- ✅ Bulk favorite/unfavorite for selected items
+- ✅ Bulk delete with confirmation (cascades to episodes, watch history, collection memberships)
+- ✅ Bulk add-to-collection for selected items
+- ✅ Single-item delete confirmation
+- ✅ Automatic selection clearing on search/filter/sort changes
 
 ### Collections
 
@@ -388,5 +411,5 @@ No Library capability gaps remain.
 ## Planned Milestones
 
 No further milestones are currently defined. The most recently shipped
-milestone is v2.0.0-alpha.20. Exploratory work is tracked under Future
+milestone is v2.0.0-alpha.21. Exploratory work is tracked under Future
 Milestones above and in `future-enhhancements.md`.

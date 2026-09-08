@@ -89,6 +89,8 @@ Advanced analytics remain deferred post-MVP work:
 
 *Note: User-defined lists shipped in v2.0.0-alpha.17.3 as Custom Collections (create, rename, delete, add/remove media, persistent memberships). This section covers organization features that remain future work.*
 
+*Basic bulk Library management shipped in v2.0.0-alpha.21: multi-select in grid/list views, bulk watch-status changes, bulk favorite/unfavorite, bulk add-to-collection, and bulk delete with confirmation. This section covers organization features that remain future work.*
+
 - Smart filters
 - Collection sharing (optional)
 

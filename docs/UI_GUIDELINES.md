@@ -94,6 +94,8 @@ Shipped reusable components include:
 - ViewModeToggle
 - ConfirmDialog
 - EpisodeList, EpisodeCard, and EpisodeListItem
+- BulkActionsToolbar
+- AddSelectedToCollectionModal
 
 `EmptyState` remains a planned component; current empty states are rendered inline by each page.
 
@@ -123,6 +125,37 @@ The Library supports:
 - sorting: title (A-Z / Z-A), date added (recent first), rating, year, progress (ascending/descending)
 - view modes: grid and list (persisted)
 - empty states: empty library, no results
+- selection mode with labeled checkboxes in both grid and list views
+- select-all-filtered, clear selection, and exit-selection controls
+- bulk actions: set watch status, favorite/unfavorite, add to collection, delete
+- confirmation dialogs for single-item and bulk delete
+
+### Selection Mode
+
+- Entering selection mode renders a native checkbox with a meaningful `aria-label` (e.g. `Select ${media.title}`) on every media card and list item. The label is unique per item.
+- The selected count is announced through `role="status"`.
+- "Select all" selects exactly the current filtered and sorted result set, not the full library.
+- Selection clears automatically when the visible result set changes through search, filters, or sorting. Switching between grid and list view preserves the selection.
+
+### Bulk Actions Toolbar
+
+- The toolbar renders only while selection mode is active and shows the selected count plus the bulk actions.
+- Every action button carries a visible label; icon-only controls are not introduced.
+- Action buttons are disabled when nothing is selected or while a bulk operation is running (`disabled:cursor-wait disabled:opacity-50`).
+- The status control is a labeled `<select>` with a placeholder option ("Set status…") that resets after each change.
+- The delete button uses the danger hover convention (`hover:bg-danger/10 hover:text-danger`).
+
+### Delete Confirmations
+
+- Both single-item delete and bulk delete require explicit confirmation through `ConfirmDialog`.
+- The confirmation description warns that deleting TV shows also deletes their episodes and watch history, and that the action cannot be undone.
+- Escape and backdrop dismissal are guarded by the busy state so a running operation cannot be cancelled.
+
+### Collection-Selection Modal
+
+- The bulk add-to-collection modal follows the established dialog conventions: `role="dialog"` with `aria-modal`, an accessible name and description, Escape and backdrop cancellation while no operation is running, initial focus on the search control, and focus restoration on close.
+- Each collection row exposes a labelled "Add" control.
+- An empty state is shown when no collections match the search.
 
 ## Theme Support
 
