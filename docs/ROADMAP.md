@@ -300,6 +300,22 @@ Status: Complete (shipped on `main` via squash merge commit `bacb728`, PR #103)
 - Shared cascade helper between `remove(id)` and `removeMany(ids)`; `addMediaMany` uses a single transaction with in-transaction duplicate detection
 - IndexedDB schema v5 and backup format v2 unchanged; no migration required
 
+## v2.0.0-alpha.22 — Movies Completion
+
+Status: Complete (shipped on `main` via squash merge commit `d656167`, PR #105)
+
+- Movies as a first-class tracked media type; `/movies` now renders a real movie-scoped Library view instead of a stub page
+- `/movies` reuses the Library page with the media type locked to movies, so filtering, sorting, grid/list views, and the Alpha 21 selection and bulk actions all remain available without duplicated Library logic
+- New `/library/movie/:mediaId` route with a lazy-loaded movie details page
+- Local-first movie details: IndexedDB data renders immediately, TMDB enrichment runs only when online and a TMDB ID exists, and TMDB failure retains the displayed local data
+- Movie details show poster, title, release year/date, watch status, rating, watched date, notes, and the TMDB overview when enriched
+- Movies link to their details from Library grid cards and list items; TV navigation is unchanged
+- Movie status, rating, notes, and watched date are edited through the shared `EditMediaModal`; the watched-date field appears only for completed movies (untouched preserves the stored date, an edit replaces it, Clear removes it)
+- Canonical watchedAt lifecycle centralized in `applyMovieStatusChange()` in `movieService.ts` and used by both the Library and Movie Details: becoming completed records the date (existing value or now), staying completed preserves it, explicit edits replace it, explicit clears remove it, and non-completed statuses clear it
+- Movie delete requires ConfirmDialog confirmation; the offline saved-data notice is announced via `role="status"`
+- 24 dedicated tests covering watchedAt lifecycle transitions, local-first/TMDB loading behavior, and movie UI contracts
+- IndexedDB schema v5 and backup format v2 unchanged; no migration required
+
 ## Future Milestones
 
 Planned or exploratory features include:
@@ -360,7 +376,7 @@ The Alpha 15 import refinements shipped on `main` as follows:
 
 ## Current Implementation Status
 
-*Reconciled with verified implementation on September 8, 2026, following v2.0.0-alpha.21.*
+*Reconciled with verified implementation on September 8, 2026, following v2.0.0-alpha.22.*
 
 Status markers: ✅ Implemented · ⚠️ Known defect · ❌ Not implemented · ⏸️ Deferred · 🔮 Future
 
@@ -411,5 +427,5 @@ No Library capability gaps remain.
 ## Planned Milestones
 
 No further milestones are currently defined. The most recently shipped
-milestone is v2.0.0-alpha.21. Exploratory work is tracked under Future
+milestone is v2.0.0-alpha.22. Exploratory work is tracked under Future
 Milestones above and in `future-enhhancements.md`.

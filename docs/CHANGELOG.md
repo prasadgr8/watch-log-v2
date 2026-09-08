@@ -1,5 +1,31 @@
 # Changelog
 
+## v2.0.0-alpha.22 — Movies Completion
+
+### Added
+
+- Added Movies as a first-class tracked media type: `/movies` now renders a real movie-scoped Library view with filtering, sorting, grid/list view modes, and the Alpha 21 selection and bulk actions all available, replacing the previous stub page.
+- Added a `/library/movie/:mediaId` movie details route showing poster, title, release year/date, watch status, user rating, watched date, notes, and the TMDB overview when enriched.
+- Added local-first movie details loading: IndexedDB data renders immediately, TMDB enrichment runs afterward only when online and a TMDB ID exists, and TMDB failure retains the already displayed local data instead of surfacing an error.
+- Added movie navigation from Library grid cards and list items to the movie details route; TV show navigation is unchanged.
+
+### Changed
+
+- Movie status, rating, notes, and watched-date editing uses the shared `EditMediaModal`; the watched-date field is shown only for completed movies, where an untouched field preserves the stored date, an edited field replaces it, and Clear removes it.
+- Centralized the movie watchedAt lifecycle in `applyMovieStatusChange()` (`src/features/movies/services/movieService.ts`): moving to completed records the watched date (existing value or now), staying completed preserves it, an explicit edit replaces it, an explicit clear removes it, and non-completed statuses clear it. Both the Library and Movie Details use this single implementation.
+- Updated route-level code splitting for the new lazy `MoviesPage` and `MovieDetailsPage` routes.
+
+### Quality
+
+- Added 24 dedicated tests: behavior coverage for every `applyMovieStatusChange` watchedAt transition and for `loadMovieDetails` offline, online, and TMDB-failure behavior, plus source-contract suites for shared-modal reuse, canonical lifecycle usage in both pages, and watched-date field semantics.
+- Validation completed with 671 tests passing.
+- TypeScript check passed.
+- ESLint passed with 0 errors and only the pre-existing router warnings.
+- Production build passed.
+- `git diff --check` passed.
+- IndexedDB schema remains v5 and backup format remains v2; no migration was required.
+- Shipped through PR #105 as squash merge commit `d656167`.
+
 ## v2.0.0-alpha.21 — Library Bulk Watch Actions
 
 ### Added
