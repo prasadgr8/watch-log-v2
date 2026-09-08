@@ -53,23 +53,21 @@ export default function MediaListItem({
           )}
         </div>
 
-        {media.mediaType === "tv" ? (
-          <Link
-            to={`/library/tv/${media.id}`}
-            aria-label={`View ${media.title} details`}
-            className="min-w-0 rounded-lg transition hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-accent-hover/40"
-          >
-            <h3 className="truncate font-semibold text-primary">{media.title}</h3>
+        <Link
+          to={
+            media.mediaType === "tv"
+              ? `/library/tv/${media.id}`
+              : `/library/movie/${media.id}`
+          }
+          aria-label={`View ${media.title} details`}
+          className="min-w-0 rounded-lg transition hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-accent-hover/40"
+        >
+          <h3 className="truncate font-semibold text-primary">{media.title}</h3>
 
-            <p className="mt-1 text-sm text-muted">TV Show</p>
-          </Link>
-        ) : (
-          <div className="min-w-0">
-            <h3 className="truncate font-semibold text-primary">{media.title}</h3>
-
-            <p className="mt-1 text-sm text-muted">Movie</p>
-          </div>
-        )}
+          <p className="mt-1 text-sm text-muted">
+            {media.mediaType === "tv" ? "TV Show" : "Movie"}
+          </p>
+        </Link>
       </div>
 
       <span className="shrink-0 rounded-full bg-surface-elevated px-3 py-1 text-xs font-medium text-muted">

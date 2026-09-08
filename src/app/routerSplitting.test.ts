@@ -33,6 +33,8 @@ const LAZY_ROUTES = [
     name: "CollectionDetailPage",
     module: "../features/collections/CollectionDetailPage",
   },
+  { name: "MovieDetailsPage", module: "../features/movies/MovieDetailsPage" },
+  { name: "MoviesPage", module: "../features/movies/MoviesPage" },
 ] as const;
 
 /*
@@ -58,7 +60,7 @@ describe("route-level code splitting", () => {
       );
     }
 
-    expect(normalizedRouterSource.match(/=> import\(/g)?.length).toBe(8);
+    expect(normalizedRouterSource.match(/=> import\(/g)?.length).toBe(10);
   });
 
   it("keeps the application shell eager", () => {
@@ -75,7 +77,7 @@ describe("route-level code splitting", () => {
     );
     expect(
       normalizedRouterSource.match(/suspended\(<[A-Z]/g)?.length,
-    ).toBe(8);
+    ).toBe(10);
   });
 
   it("styles the fallback with the muted loading-text convention", () => {
@@ -84,9 +86,13 @@ describe("route-level code splitting", () => {
     expect(normalizedRouterSource).not.toMatch(/slate-|text-white|bg-blue-/);
   });
 
-  it("keeps the trivial Movies stub eager without a Suspense boundary", () => {
-    expect(normalizedRouterSource).toContain("function MoviesPage()");
-    expect(normalizedRouterSource).toContain("element: <MoviesPage />");
+  it("lazy-loads the Movies page now that it renders a real sub-component", () => {
+    expect(normalizedRouterSource).toContain(
+      'const MoviesPage = lazy(() => import("../features/movies/MoviesPage"));',
+    );
+    expect(normalizedRouterSource).toContain(
+      "element: suspended(<MoviesPage />)",
+    );
   });
 
   it("defines every existing route path exactly as before", () => {
@@ -100,7 +106,8 @@ describe("route-level code splitting", () => {
     expect(normalizedRouterSource).toContain('path: "movies"');
     expect(normalizedRouterSource).toContain('path: "statistics"');
     expect(normalizedRouterSource).toContain('path: "settings"');
-    expect(normalizedRouterSource.match(/path: "/g)?.length).toBe(9);
+    expect(normalizedRouterSource).toContain('path: "library/movie/:mediaId"');
+    expect(normalizedRouterSource.match(/path: "/g)?.length).toBe(10);
   });
 
   it("does not silence the chunk size warning instead of splitting", () => {

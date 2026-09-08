@@ -9,8 +9,8 @@ import AppLayout from "../components/layout/AppLayout";
  * Page-level routes are lazily loaded so the initial application shell
  * (layout, sidebar, header) does not download every feature at once. Every
  * emitted chunk is precached by the PWA service worker, so offline behavior
- * and deep links are unchanged. The Movies stub stays eager because splitting
- * it would provide no meaningful reduction.
+ * and deep links are unchanged. The Movies page reuses the Library
+ * sub-component, so it is lazily loaded like every other page-level route.
  */
 const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage"));
 const LibraryPage = lazy(() => import("../features/library/LibraryPage"));
@@ -28,10 +28,11 @@ const CollectionsPage = lazy(
 const CollectionDetailPage = lazy(
   () => import("../features/collections/CollectionDetailPage"),
 );
+const MovieDetailsPage = lazy(
+  () => import("../features/movies/MovieDetailsPage"),
+);
 
-function MoviesPage() {
-  return <h1 className="text-3xl font-bold">🎬 Movies</h1>;
-}
+const MoviesPage = lazy(() => import("../features/movies/MoviesPage"));
 
 /*
  * Route-level loading fallback shown while a lazily loaded page chunk is
@@ -81,7 +82,11 @@ export const router = createBrowserRouter([
       },
       {
         path: "movies",
-        element: <MoviesPage />,
+        element: suspended(<MoviesPage />),
+      },
+      {
+        path: "library/movie/:mediaId",
+        element: suspended(<MovieDetailsPage />),
       },
       {
         path: "statistics",
