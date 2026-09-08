@@ -10,6 +10,9 @@ interface MediaCardProps {
   onDelete: (id: number) => Promise<void>;
   onEdit: (media: PersistedMedia) => void;
   onToggleFavorite: (media: PersistedMedia) => Promise<void>;
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelected?: (media: PersistedMedia) => void;
 }
 
 export default function MediaCard({
@@ -17,6 +20,9 @@ export default function MediaCard({
   onDelete,
   onEdit,
   onToggleFavorite,
+  isSelectionMode = false,
+  isSelected = false,
+  onToggleSelected,
 }: MediaCardProps) {
   const statusLabel =
     watchStatusOptions.find((status) => status.value === media.userStatus)
@@ -58,6 +64,15 @@ export default function MediaCard({
         )}
 
         <div className="flex items-center gap-2">
+          {isSelectionMode && (
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => onToggleSelected?.(media)}
+              aria-label={`Select ${media.title}`}
+              className="h-4 w-4 rounded border-border accent-accent"
+            />
+          )}
           <button
             type="button"
             onClick={(event) => {

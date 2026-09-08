@@ -292,3 +292,140 @@ describe("collectionRepository", () => {
     );
   });
 });
+
+describe("collectionRepository.addMediaMany", () => {
+  it("adds many new memberships in one transaction and reports counts", async () => {
+    const mediaA = await createLibraryMedia("Show A");
+    const mediaB = await createLibraryMedia("Show B");
+    const mediaC = await createLibraryMedia("Show C");
+    const collection = await createCollection();
+
+    const result = await collectionRepository.addMediaMany(collection.id, [
+      mediaA.id,
+      mediaB.id,
+      mediaC.id,
+    ]);
+
+    expect(result).toEqual({
+      ok: true,
+      addedCount: 3,
+      duplicateCount: 0,
+      missingCount: 0,
+    });
+
+    const memberships = await collectionRepository.getMembershipsByCollection(
+      collection.id,
+    );
+    expect(memberships).toHaveLength(3);
+  });
+
+  it("skips existing memberships and counts them as duplicates", async () => {
+    const mediaA = await createLibraryMedia("Show A");
+    const mediaB = await createLibraryMedia("Show B");
+    const collection = await createCollection();
+
+    await collectionRepository.addMedia(collection.id, mediaA.id);
+
+    const result = await collectionRepository.addMediaMany(collection.id, [
+      mediaA.id,
+      mediaB.id,
+    ]);
+
+    expect(result).toEqual({
+      ok: true,
+      addedCount: 1,
+      duplicateCount: 1,
+      missingCount: 0,
+    });
+
+    expect(
+      await collectionRepository.getMembershipsByCollection(collection.id),
+    ).toHaveLength(2);
+  });
+
+  it("counts missing media ids without writing them", async () => {
+    const media = await createLibraryMedia();
+    const collection = await createCollection();
+
+    const result = await collectionRepository.addMediaMany(collection.id, [
+      media.id,
+      99999,
+    ]);
+
+    expect(result).toEqual({
+      ok: true,
+      addedCount: 1,
+      duplicateCount: 0,
+      missingCount: 1,
+    });
+  });
+
+  it("handles a mixed batch of new, existing, and missing ids", async () => {
+    const existing = await createLibraryMedia("Existing");
+    const fresh = await createLibraryMedia("Fresh");
+    const collection = await createCollection();
+
+    await collectionRepository.addMedia(collection.id, existing.id);
+
+    const result = await collectionRepository.addMediaMany(collection.id, [
+      existing.id,
+      fresh.id,
+      99999,
+    ]);
+
+    expect(result).toEqual({
+      ok: true,
+      addedCount: 1,
+      duplicateCount: 1,
+      missingCount: 1,
+    });
+
+    expect(
+      await collectionRepository.getMembershipsByCollection(collection.id),
+    ).toHaveLength(2);
+  });
+
+  it("returns collection-missing when the target collection does not exist", async () => {
+    const media = await createLibraryMedia();
+
+    const result = await collectionRepository.addMediaMany(99999, [media.id]);
+
+    expect(result).toEqual({ ok: false, reason: "collection-missing" });
+    expect(await db.collectionMedia.count()).toBe(0);
+  });
+
+  it("returns zeroed counts for an empty media list on an existing collection", async () => {
+    const collection = await createCollection();
+
+    const result = await collectionRepository.addMediaMany(collection.id, []);
+
+    expect(result).toEqual({
+      ok: true,
+      addedCount: 0,
+      duplicateCount: 0,
+      missingCount: 0,
+    });
+  });
+
+  it("returns collection-missing for an empty media list on a missing collection", async () => {
+    const result = await collectionRepository.addMediaMany(99999, []);
+
+    expect(result).toEqual({ ok: false, reason: "collection-missing" });
+  });
+
+  it("uses a single createdAt timestamp for the whole batch", async () => {
+    const mediaA = await createLibraryMedia("Show A");
+    const mediaB = await createLibraryMedia("Show B");
+    const collection = await createCollection();
+
+    await collectionRepository.addMediaMany(collection.id, [
+      mediaA.id,
+      mediaB.id,
+    ]);
+
+    const memberships = await collectionRepository.getMembershipsByCollection(
+      collection.id,
+    );
+    expect(memberships[0]?.createdAt).toEqual(memberships[1]?.createdAt);
+  });
+});
