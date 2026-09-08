@@ -157,6 +157,37 @@ The Library supports:
 - Each collection row exposes a labelled "Add" control.
 - An empty state is shown when no collections match the search.
 
+## Movies
+
+The Movies page (`/movies`) presents the Library scoped to movies only. It reuses the Library filter bar, sorting, grid/list view modes, empty states, selection mode, and bulk actions. The media-type filter is not shown because the page is movie-scoped, and the empty state is worded in terms of movies.
+
+### Movie Details
+
+The movie details page (`/library/movie/:mediaId`) shows:
+
+- poster (or the established missing-poster fallback) and title
+- release year/date
+- watch status badge
+- user rating (when set)
+- watched date (when set)
+- notes (when set)
+- TMDB overview (when enrichment is available)
+
+A "Back to Movies" link returns to `/movies`. While showing saved data offline, an offline notice is announced through `role="status"`. Load failures are announced through `role="alert"` and include the back link.
+
+### Movie Card and List Navigation
+
+- In both grid and list presentations, movies link to the movie details route; TV shows continue to link to TV show details.
+- Selection checkboxes and card/list action controls remain outside the link, so entering selection mode, toggling selection, and using quick actions never navigate.
+
+### Watched-Date Editing
+
+- The shared edit modal (`EditMediaModal`) shows a watched-date field only for completed movies.
+- The field starts from the stored watched date; changing it replaces the date on save.
+- A Clear control removes the watched date.
+- Leaving the field untouched preserves the existing watched date.
+- The modal follows the established dialog conventions (`role="dialog"` with `aria-modal`, accessible name and description, Escape and backdrop cancellation, initial focus, and focus restoration).
+
 ## Theme Support
 
 Dark mode is the initial application theme.

@@ -42,7 +42,7 @@ Runtime caching is intentionally narrow:
 
 ### Route-Level Code Splitting
 
-Page-level routes (Dashboard, Library, TV show details, Search, Statistics, and Settings) are loaded through `React.lazy` inside a `Suspense` boundary that shows a muted "Loading..." fallback. The application shell — layout, sidebar, and header — remains eagerly loaded.
+Page-level routes (Dashboard, Library, Movies, TV show details, Movie details, Search, Statistics, Settings, and Collections) are loaded through `React.lazy` inside a `Suspense` boundary that shows a muted "Loading..." fallback. The application shell — layout, sidebar, and header — remains eagerly loaded.
 
 Every emitted route and shared chunk is covered by the Workbox `globPatterns` precache, so lazily loaded routes work offline exactly like the application shell, and deep links keep resolving through the `/index.html` navigation fallback.
 
@@ -127,6 +127,51 @@ Repository operations are transactional and all-or-nothing:
 - `mediaRepository.setFavoriteMany(ids, favorite)` opens one `rw` transaction over `db.media` with the same skip-unchanged, count-missing, single-timestamp shape. The target `true` writes only records that are not already `true`; the target `false` writes only records that are explicitly `true` (undefined counts as already-unfavorite).
 - `mediaRepository.removeMany(ids)` opens one `rw` transaction over `db.media`, `db.episodes`, `db.watchHistory`, and `db.collectionMedia` for the entire batch. A shared private `removeMediaCascade` helper processes each ID through the same sequence as `remove(id)`: collect episode keys, delete their watch history, delete the episodes, delete collection memberships, then delete the media record. Because the batch runs in one transaction, any failure aborts with zero partial deletions. Both `remove(id)` and `removeMany(ids)` delegate to this helper so the cascade logic lives in exactly one place.
 - `collectionRepository.addMediaMany(collectionId, ids)` opens one `rw` transaction over `db.collections`, `db.collectionMedia`, and `db.media`. It verifies the collection exists, counts missing media IDs, builds a set of existing memberships with a single lookup, skips duplicates, and adds the remainder with one shared `createdAt`. A `ConstraintError` from a concurrent external writer aborts the transaction; the error propagates rather than returning a partial-success result.
+
+## Movies
+
+### Routes and Code Splitting
+
+- `/movies` renders `MoviesPage`, which delegates to `LibraryPage` with the media type locked to movies (`lockedMediaType="movie"`). All Library filtering, sorting, view modes, empty states, selection mode, and bulk actions remain available; no Library logic is duplicated.
+- `/library/movie/:mediaId` renders the lazy-loaded `MovieDetailsPage`.
+
+### Local-First Details Data Flow
+
+```
+IndexedDB → mediaRepository.getById(mediaId) → onLocalData callback →
+MovieDetailsPage renders local data → (optional) TMDB enrichment →
+updated MovieDetailsResult
+```
+
+- `loadMovieDetails()` in `src/features/movies/services/movieService.ts` reads the movie from IndexedDB first and invokes the `onLocalData` callback synchronously with the local result, so saved data renders before any network activity.
+- A non-integer or non-positive media ID, a missing record, and a non-movie record each raise a descriptive error before any network request.
+- The page consumes the reactive `useOnlineStatus` hook and passes it into the loader through the service's `canUseNetwork` option; TMDB enrichment is attempted only when online and the stored movie has a `tmdbId`.
+- On success, the UI updates with the enriched `MovieDetailsResult`. On TMDB failure, the already rendered local data is retained and no error replaces it. Because the online state is reactive, enrichment is re-attempted automatically when connectivity returns.
+- The load effect guards against out-of-order completion with a cancellation flag, so a stale local or TMDB result cannot overwrite a newer render.
+- While showing saved data offline, the page displays an offline notice announced through `role="status"`.
+
+### User-Owned Movie State
+
+- IndexedDB is the authoritative source for user-owned movie state: watch status, rating, notes, and `watchedAt`.
+- TMDB movie details are presentational enrichment only. They are returned alongside the persisted movie and are never written into the `media` store.
+
+### Canonical watchedAt Lifecycle
+
+`applyMovieStatusChange(media, change)` in `src/features/movies/services/movieService.ts` is the single implementation of movie watchedAt transition semantics. Both `LibraryPage` (for movie edits) and `MovieDetailsPage` call it; neither page implements its own transition logic.
+
+- A movie moving to `completed` from another status records `watchedAt` as the existing value when present, otherwise the current time.
+- A movie already `completed` with an unrelated edit (rating or notes only) preserves its existing `watchedAt`; the returned changes omit `watchedAt` entirely.
+- An explicit watched-date edit on a completed movie persists the supplied `Date`.
+- An explicit clear enters the service boundary as `null` and is persisted as `undefined`; `null` is never written to IndexedDB.
+- A movie leaving `completed`, or any edit targeting a non-completed status, clears `watchedAt` to `undefined`.
+
+`EditMediaModal` owns the watched-date editing UI: the date input renders only for completed movies, an untouched field omits `watchedAt` from `onSave`, an edited field sends a `Date`, and the Clear control sends `null` for the lifecycle to persist as cleared.
+
+### Movie Navigation
+
+- `MediaCard` and `MediaListItem` link movies to `/library/movie/:mediaId`; TV shows continue to link to `/library/tv/:mediaId`.
+- Selection checkboxes and card action controls remain outside the link, so entering selection mode, toggling selection, and using quick actions never navigate.
+- Deleting a movie requires `ConfirmDialog` confirmation, following the established delete-confirmation conventions.
 
 ## Continue Watching Projection
 
