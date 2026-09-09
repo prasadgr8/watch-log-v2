@@ -316,6 +316,19 @@ Status: Complete (shipped on `main` via squash merge commit `d656167`, PR #105)
 - 24 dedicated tests covering watchedAt lifecycle transitions, local-first/TMDB loading behavior, and movie UI contracts
 - IndexedDB schema v5 and backup format v2 unchanged; no migration required
 
+## v2.0.0-alpha.23 — Richer Media Cards
+
+Status: Complete (shipped on `main` via squash merge commit `aa09d74`, PR #107)
+
+- Richer Library media card and list presentation: poster artwork with lazy loading and fallback, release year, conditional user rating, notes indicator, watch status badge, and TV episode progress
+- Local TV episode progress derivation via `buildLibraryProgressMap()`: regular-episode-only counting, rounded percentage, unknown-progress omission, and binary movie progress
+- Conditional episode loading: the movie-locked Movies view skips the episode store entirely; the unlocked Library view loads episodes to derive TV progress
+- Progress sorting (ascending/descending) in `sortLibrary()` using the shared progress map
+- Source-contract tests for poster loading, fallback, year derivation, rating gating, notes indicator, progress display, navigation targets, and action placement
+- Full behavior coverage for `buildLibraryProgressMap` (empty inputs, TV 0%/partial/100%, Season 0 exclusion, unknown-progress omission, movie binary progress, mixed library, parity with `calculateShowProgress`)
+- `sortLibrary` progress-sorting coverage (ascending/descending, unknown-progress placement, stable sort, mixed TV/movie domain)
+- IndexedDB schema v5 and backup format v2 unchanged; no migration required
+
 ## Future Milestones
 
 Planned or exploratory features include:
@@ -376,7 +389,7 @@ The Alpha 15 import refinements shipped on `main` as follows:
 
 ## Current Implementation Status
 
-*Reconciled with verified implementation on September 8, 2026, following v2.0.0-alpha.22.*
+*Reconciled with verified implementation on September 9, 2026, following v2.0.0-alpha.23.*
 
 Status markers: ✅ Implemented · ⚠️ Known defect · ❌ Not implemented · ⏸️ Deferred · 🔮 Future
 
@@ -427,5 +440,5 @@ No Library capability gaps remain.
 ## Planned Milestones
 
 No further milestones are currently defined. The most recently shipped
-milestone is v2.0.0-alpha.22. Exploratory work is tracked under Future
+milestone is v2.0.0-alpha.23. Exploratory work is tracked under Future
 Milestones above and in `future-enhhancements.md`.

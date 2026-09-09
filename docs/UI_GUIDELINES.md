@@ -130,6 +130,18 @@ The Library supports:
 - bulk actions: set watch status, favorite/unfavorite, add to collection, delete
 - confirmation dialogs for single-item and bulk delete
 
+### Media Card and List Presentation
+
+Both `MediaCard` and `MediaListItem` share the same presentation contract:
+
+- Poster artwork loads with `loading="lazy"` and `decoding="async"`. On load error, the application falls back to a decorative type icon (TV or Film).
+- Release year is derived locally from `firstAirDate` (TV) or `releaseDate` (movie) and omitted when unavailable.
+- User rating is rendered only when set above zero.
+- A notes-present indicator (StickyNote icon with screen-reader text "Has notes") appears for non-blank notes.
+- TV shows display watched/total episode counts and a shared `ProgressBar` when progress is known. Movies never show a progress bar.
+- Grid view uses `md:grid-cols-2 xl:grid-cols-3`. List view uses stacked rows.
+- The title links to the details route; selection checkboxes and quick actions (favorite, edit, delete) remain outside the link so they never trigger navigation.
+
 ### Selection Mode
 
 - Entering selection mode renders a native checkbox with a meaningful `aria-label` (e.g. `Select ${media.title}`) on every media card and list item. The label is unique per item.
