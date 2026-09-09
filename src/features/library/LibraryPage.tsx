@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Film, RefreshCw, Star } from "lucide-react";
 
-import { episodeRepository, mediaRepository } from "../../database/repositories";
+import {
+  episodeRepository,
+  mediaRepository,
+} from "../../database/repositories";
 import { collectionRepository } from "../../database/repositories/collectionRepository";
 
 import { LIBRARY_VIEW_MODE_SETTING_KEY, useViewMode } from "../../app/viewMode";
@@ -16,6 +19,7 @@ import { TMDB_GENRES_LIST } from "../../services/tmdb/tmdbGenres";
 import GenreMultiSelect from "./GenreMultiSelect";
 
 import type {
+  Episode,
   Media,
   MediaType,
   PersistedMedia,
@@ -30,7 +34,10 @@ import MediaListItem from "./components/MediaListItem";
 import EditMediaModal from "./components/EditMediaModal";
 
 import { sortLibrary, type LibrarySort } from "./services/librarySort";
-import { buildLibraryProgressMap } from "./services/libraryProgress";
+import {
+  buildLibraryProgressMap,
+  type LibraryProgress,
+} from "./services/libraryProgress";
 
 import {
   libraryRatingFilterOptions,
@@ -54,7 +61,28 @@ function isPersistedMedia(media: Media): media is PersistedMedia {
   return media.id !== undefined;
 }
 
+/*
+ * Loads the Library dataset in one place: media always, episodes only when TV
+ * progress can be displayed. The movie-locked Movies view never renders TV
+ * progress, so it skips the episode store entirely and builds its binary
+ * movie progress from media alone.
+ */
+async function fetchLibraryData(
+  includeEpisodes: boolean,
+): Promise<{ storedMedia: Media[]; episodes: Episode[] }> {
+  const [storedMedia, episodes] = await Promise.all([
+    mediaRepository.getAll(),
+    includeEpisodes ? episodeRepository.getAll() : Promise.resolve([]),
+  ]);
+
+  return { storedMedia, episodes };
+}
+
 export default function LibraryPage({ lockedMediaType }: LibraryPageProps) {
+  // TV progress is only displayable in the unlocked Library view; the
+  // movie-locked Movies view builds its binary progress from media alone.
+  const includeEpisodes = lockedMediaType !== "movie";
+
   const [media, setMedia] = useState<PersistedMedia[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -75,9 +103,10 @@ export default function LibraryPage({ lockedMediaType }: LibraryPageProps) {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [sort, setSort] = useState<LibrarySort>("recent");
-  const [progressMap, setProgressMap] = useState<
-    ReadonlyMap<number, number> | null
-  >(null);
+  const [progressMap, setProgressMap] = useState<ReadonlyMap<
+    number,
+    LibraryProgress
+  > | null>(null);
 
   // Selection mode state (transient — never persisted).
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -103,10 +132,11 @@ export default function LibraryPage({ lockedMediaType }: LibraryPageProps) {
     try {
       setError(null);
 
-      const storedMedia = await mediaRepository.getAll();
+      const { storedMedia, episodes } = await fetchLibraryData(includeEpisodes);
+      const persistedMedia = storedMedia.filter(isPersistedMedia);
 
-      setMedia(storedMedia.filter(isPersistedMedia));
-      setProgressMap(null);
+      setMedia(persistedMedia);
+      setProgressMap(buildLibraryProgressMap(persistedMedia, episodes));
     } catch (loadError) {
       console.error("Failed to load media:", loadError);
 
@@ -121,11 +151,14 @@ export default function LibraryPage({ lockedMediaType }: LibraryPageProps) {
 
     async function loadInitialMedia(): Promise<void> {
       try {
-        const storedMedia = await mediaRepository.getAll();
+        const { storedMedia, episodes } =
+          await fetchLibraryData(includeEpisodes);
 
         if (isActive) {
-          setMedia(storedMedia.filter(isPersistedMedia));
-          setProgressMap(null);
+          const persistedMedia = storedMedia.filter(isPersistedMedia);
+
+          setMedia(persistedMedia);
+          setProgressMap(buildLibraryProgressMap(persistedMedia, episodes));
         }
       } catch (loadError) {
         console.error("Failed to load media:", loadError);
@@ -144,46 +177,17 @@ export default function LibraryPage({ lockedMediaType }: LibraryPageProps) {
     return () => {
       isActive = false;
     };
-  }, []);
-
-  useEffect(() => {
-    if (sort !== "progress-asc" && sort !== "progress-desc") {
-      return;
-    }
-
-    if (progressMap !== null) {
-      return;
-    }
-
-    let isActive = true;
-
-    async function loadProgress(): Promise<void> {
-      try {
-        const episodes = await episodeRepository.getAll();
-
-        if (isActive) {
-          setProgressMap(buildLibraryProgressMap(media, episodes));
-        }
-      } catch (loadError) {
-        console.error("Failed to load progress:", loadError);
-      }
-    }
-
-    void loadProgress();
-
-    return () => {
-      isActive = false;
-    };
-  }, [sort, media, progressMap]);
+  }, [includeEpisodes]);
 
   // Clear selection whenever the visible result set changes (search, filters,
   // or sorting). Uses the React "adjust state during rendering" pattern to
   // avoid a setState-in-effect. Deliberately excludes `media` (post-action
   // reloads must not fight the explicit "clear after successful action" rule)
-  // and `progressMap` (the one-time lazy load during a progress sort is not a
-  // user-facing sort change).
+  // and `progressMap` (rebuilds that ride on media reloads after actions are
+  // not user-facing filter changes and must not clear an active selection).
   const filterSignature = `${search}|${mediaType}|${status}|${minRating}|${favoritesOnly}|${selectedGenres.join(",")}|${sort}`;
-  const [previousFilterSignature, setPreviousFilterSignature] = useState(filterSignature);
+  const [previousFilterSignature, setPreviousFilterSignature] =
+    useState(filterSignature);
 
   if (filterSignature !== previousFilterSignature) {
     setPreviousFilterSignature(filterSignature);
@@ -201,7 +205,17 @@ export default function LibraryPage({ lockedMediaType }: LibraryPageProps) {
     });
 
     return sortLibrary(filtered, sort, progressMap ?? undefined);
-  }, [media, search, mediaType, status, minRating, favoritesOnly, selectedGenres, sort, progressMap]);
+  }, [
+    media,
+    search,
+    mediaType,
+    status,
+    minRating,
+    favoritesOnly,
+    selectedGenres,
+    sort,
+    progressMap,
+  ]);
   async function handleAddMedia(values: AddMediaValues): Promise<boolean> {
     const trimmedTitle = values.title.trim();
 
@@ -274,7 +288,11 @@ export default function LibraryPage({ lockedMediaType }: LibraryPageProps) {
               notes: values.notes,
               watchedAt: values.watchedAt,
             })
-          : { userStatus: values.status, rating: values.rating, notes: values.notes };
+          : {
+              userStatus: values.status,
+              rating: values.rating,
+              notes: values.notes,
+            };
 
       await mediaRepository.update(selectedMedia.id, changes);
 
@@ -457,10 +475,9 @@ export default function LibraryPage({ lockedMediaType }: LibraryPageProps) {
       setIsBulkBusy(true);
       setBulkResultMessage(null);
 
-      const result = await collectionRepository.addMediaMany(
-        collectionId,
-        [...selectedIds],
-      );
+      const result = await collectionRepository.addMediaMany(collectionId, [
+        ...selectedIds,
+      ]);
 
       if (!result.ok) {
         setError("Unable to add to collection. Please try again.");
@@ -557,7 +574,10 @@ export default function LibraryPage({ lockedMediaType }: LibraryPageProps) {
               : "border-border bg-input-bg text-muted hover:text-primary"
           }`}
         >
-          <Star className="h-4 w-4" fill={favoritesOnly ? "currentColor" : "none"} />
+          <Star
+            className="h-4 w-4"
+            fill={favoritesOnly ? "currentColor" : "none"}
+          />
           Favorites
         </button>
 
@@ -668,7 +688,8 @@ export default function LibraryPage({ lockedMediaType }: LibraryPageProps) {
             </button>
 
             <span className="text-sm text-muted">
-              {visibleMedia.length} {visibleMedia.length === 1 ? "item" : "items"}
+              {visibleMedia.length}{" "}
+              {visibleMedia.length === 1 ? "item" : "items"}
             </span>
 
             <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
@@ -729,6 +750,7 @@ export default function LibraryPage({ lockedMediaType }: LibraryPageProps) {
               <MediaListItem
                 key={item.id}
                 media={item}
+                progress={progressMap?.get(item.id)}
                 onDelete={handleRequestDelete}
                 onEdit={handleEdit}
                 onToggleFavorite={handleToggleFavorite}
@@ -744,6 +766,7 @@ export default function LibraryPage({ lockedMediaType }: LibraryPageProps) {
               <MediaCard
                 key={item.id}
                 media={item}
+                progress={progressMap?.get(item.id)}
                 onDelete={handleRequestDelete}
                 onEdit={handleEdit}
                 onToggleFavorite={handleToggleFavorite}

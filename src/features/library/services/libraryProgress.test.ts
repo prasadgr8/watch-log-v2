@@ -65,7 +65,11 @@ describe("buildLibraryProgressMap", () => {
 
     const progress = buildLibraryProgressMap(media, episodes);
 
-    expect(progress.get(1)).toBe(0);
+    expect(progress.get(1)).toEqual({
+      percentage: 0,
+      watchedEpisodeCount: 0,
+      totalEpisodeCount: 2,
+    });
   });
 
   it("maps a partially watched TV show to the rounded percentage", () => {
@@ -78,7 +82,11 @@ describe("buildLibraryProgressMap", () => {
 
     const progress = buildLibraryProgressMap(media, episodes);
 
-    expect(progress.get(1)).toBe(33);
+    expect(progress.get(1)).toEqual({
+      percentage: 33,
+      watchedEpisodeCount: 1,
+      totalEpisodeCount: 3,
+    });
   });
 
   it("maps a fully watched TV show to 100%", () => {
@@ -90,26 +98,44 @@ describe("buildLibraryProgressMap", () => {
 
     const progress = buildLibraryProgressMap(media, episodes);
 
-    expect(progress.get(1)).toBe(100);
+    expect(progress.get(1)).toEqual({
+      percentage: 100,
+      watchedEpisodeCount: 2,
+      totalEpisodeCount: 2,
+    });
   });
 
   it("excludes Season 0 specials from TV progress", () => {
     const media = [createTvShow({ id: 1 })];
     const episodes = [
-      createEpisode({ showId: 1, seasonNumber: 0, episodeNumber: 1, watched: true }),
+      createEpisode({
+        showId: 1,
+        seasonNumber: 0,
+        episodeNumber: 1,
+        watched: true,
+      }),
       createEpisode({ showId: 1, episodeNumber: 1, watched: false }),
       createEpisode({ showId: 1, episodeNumber: 2, watched: false }),
     ];
 
     const progress = buildLibraryProgressMap(media, episodes);
 
-    expect(progress.get(1)).toBe(0);
+    expect(progress.get(1)).toEqual({
+      percentage: 0,
+      watchedEpisodeCount: 0,
+      totalEpisodeCount: 2,
+    });
   });
 
   it("omits a TV show with no regular episodes (unknown progress)", () => {
     const media = [createTvShow({ id: 1 })];
     const episodes = [
-      createEpisode({ showId: 1, seasonNumber: 0, episodeNumber: 1, watched: true }),
+      createEpisode({
+        showId: 1,
+        seasonNumber: 0,
+        episodeNumber: 1,
+        watched: true,
+      }),
     ];
 
     const progress = buildLibraryProgressMap(media, episodes);
@@ -122,7 +148,11 @@ describe("buildLibraryProgressMap", () => {
 
     const progress = buildLibraryProgressMap(media, []);
 
-    expect(progress.get(7)).toBe(100);
+    expect(progress.get(7)).toEqual({
+      percentage: 100,
+      watchedEpisodeCount: 0,
+      totalEpisodeCount: 0,
+    });
   });
 
   it("maps a non-completed movie to 0%", () => {
@@ -135,10 +165,14 @@ describe("buildLibraryProgressMap", () => {
 
     const progress = buildLibraryProgressMap(media, []);
 
-    expect(progress.get(7)).toBe(0);
-    expect(progress.get(8)).toBe(0);
-    expect(progress.get(9)).toBe(0);
-    expect(progress.get(10)).toBe(0);
+    expect(progress.get(7)).toEqual({
+      percentage: 0,
+      watchedEpisodeCount: 0,
+      totalEpisodeCount: 0,
+    });
+    expect(progress.get(8)?.percentage).toBe(0);
+    expect(progress.get(9)?.percentage).toBe(0);
+    expect(progress.get(10)?.percentage).toBe(0);
   });
 
   it("maps a mixed TV and movie library", () => {
@@ -156,22 +190,32 @@ describe("buildLibraryProgressMap", () => {
     const progress = buildLibraryProgressMap(media, episodes);
 
     expect(progress.has(1)).toBe(false);
-    expect(progress.get(2)).toBe(50);
-    expect(progress.get(3)).toBe(100);
-    expect(progress.get(4)).toBe(0);
+    expect(progress.get(2)).toEqual({
+      percentage: 50,
+      watchedEpisodeCount: 1,
+      totalEpisodeCount: 2,
+    });
+    expect(progress.get(3)).toEqual({
+      percentage: 100,
+      watchedEpisodeCount: 0,
+      totalEpisodeCount: 0,
+    });
+    expect(progress.get(4)?.percentage).toBe(0);
   });
 
   it("matches calculateShowProgress semantics for TV shows (parity)", () => {
-    const media = [
-      createTvShow({ id: 1 }),
-      createTvShow({ id: 2 }),
-    ];
+    const media = [createTvShow({ id: 1 }), createTvShow({ id: 2 })];
     const episodes = [
       createEpisode({ showId: 1, episodeNumber: 1, watched: true }),
       createEpisode({ showId: 1, episodeNumber: 2, watched: false }),
       createEpisode({ showId: 1, episodeNumber: 3, watched: false }),
       createEpisode({ showId: 2, episodeNumber: 1, watched: true }),
-      createEpisode({ showId: 2, seasonNumber: 0, episodeNumber: 1, watched: true }),
+      createEpisode({
+        showId: 2,
+        seasonNumber: 0,
+        episodeNumber: 1,
+        watched: true,
+      }),
     ];
     const showProgress = calculateShowProgress(media, episodes);
 
@@ -181,7 +225,7 @@ describe("buildLibraryProgressMap", () => {
 
     const progress = buildLibraryProgressMap(media, episodes);
 
-    expect(progress.get(1)).toBe(expected.get(1));
-    expect(progress.get(2)).toBe(expected.get(2));
+    expect(progress.get(1)?.percentage).toBe(expected.get(1));
+    expect(progress.get(2)?.percentage).toBe(expected.get(2));
   });
 });
