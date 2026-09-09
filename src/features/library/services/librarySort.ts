@@ -1,5 +1,7 @@
 import type { PersistedMedia } from "../../../types/media";
 
+import type { LibraryProgress } from "./libraryProgress";
+
 export type LibrarySort =
   | "recent"
   | "title-asc"
@@ -47,10 +49,12 @@ function compareByProgress(
   a: PersistedMedia,
   b: PersistedMedia,
   descending: boolean,
-  progressByMediaId: ReadonlyMap<number, number>,
+  progressByMediaId: ReadonlyMap<number, LibraryProgress>,
 ): number {
-  const progressA = a.id === undefined ? undefined : progressByMediaId.get(a.id);
-  const progressB = b.id === undefined ? undefined : progressByMediaId.get(b.id);
+  const progressA =
+    a.id === undefined ? undefined : progressByMediaId.get(a.id)?.percentage;
+  const progressB =
+    b.id === undefined ? undefined : progressByMediaId.get(b.id)?.percentage;
 
   if (progressA === undefined && progressB === undefined) {
     return 0;
@@ -68,20 +72,16 @@ function compareByProgress(
 export function sortLibrary(
   media: PersistedMedia[],
   sort: LibrarySort,
-  progressByMediaId?: ReadonlyMap<number, number>,
+  progressByMediaId?: ReadonlyMap<number, LibraryProgress>,
 ): PersistedMedia[] {
   const sorted = [...media];
 
   switch (sort) {
     case "title-asc":
-      return sorted.sort((a, b) =>
-        a.title.localeCompare(b.title),
-      );
+      return sorted.sort((a, b) => a.title.localeCompare(b.title));
 
     case "title-desc":
-      return sorted.sort((a, b) =>
-        b.title.localeCompare(a.title),
-      );
+      return sorted.sort((a, b) => b.title.localeCompare(a.title));
 
     case "year-asc":
       return sorted.sort((a, b) => compareByYear(a, b, false));
@@ -100,16 +100,13 @@ export function sortLibrary(
       );
 
     case "rating-desc":
-      return sorted.sort(
-        (a, b) => (b.rating ?? 0) - (a.rating ?? 0),
-      );
+      return sorted.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
 
     case "recent":
     default:
       return sorted.sort(
         (a, b) =>
-          new Date(b.createdAt).getTime() -
-          new Date(a.createdAt).getTime(),
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
   }
 }

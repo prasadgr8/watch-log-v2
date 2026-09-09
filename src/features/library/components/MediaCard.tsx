@@ -1,12 +1,20 @@
-import { Film, Pencil, Star, Trash2, Tv } from "lucide-react";
+import { useState } from "react";
+import { Film, Pencil, Star, StickyNote, Trash2, Tv } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { tmdbConfig } from "../../../services/tmdb";
+
+import ProgressBar from "../../statistics/components/ProgressBar";
+
 import type { PersistedMedia } from "../../../types";
+
+import type { LibraryProgress } from "../services/libraryProgress";
 
 import { watchStatusOptions } from "../libraryOptions";
 
 interface MediaCardProps {
   media: PersistedMedia;
+  progress?: LibraryProgress;
   onDelete: (id: number) => Promise<void>;
   onEdit: (media: PersistedMedia) => void;
   onToggleFavorite: (media: PersistedMedia) => Promise<void>;
@@ -15,8 +23,28 @@ interface MediaCardProps {
   onToggleSelected?: (media: PersistedMedia) => void;
 }
 
+function getPosterUrl(posterPath: string | null | undefined): string | null {
+  if (!posterPath) {
+    return null;
+  }
+
+  return `${tmdbConfig.imageBaseUrl}/w342${posterPath}`;
+}
+
+function getReleaseYear(media: PersistedMedia): string | null {
+  const dateString =
+    media.mediaType === "tv" ? media.firstAirDate : media.releaseDate;
+
+  if (!dateString || dateString.length < 4) {
+    return null;
+  }
+
+  return dateString.slice(0, 4);
+}
+
 export default function MediaCard({
   media,
+  progress,
   onDelete,
   onEdit,
   onToggleFavorite,
@@ -24,46 +52,107 @@ export default function MediaCard({
   isSelected = false,
   onToggleSelected,
 }: MediaCardProps) {
+  const [failedPosterUrl, setFailedPosterUrl] = useState<string | null>(null);
+
   const statusLabel =
     watchStatusOptions.find((status) => status.value === media.userStatus)
       ?.label ?? media.userStatus;
 
-  const mediaContent = (
-    <>
-      <div className="rounded-lg bg-surface-elevated p-2 text-accent-text">
-        {media.mediaType === "tv" ? (
-          <Tv className="h-5 w-5" />
-        ) : (
-          <Film className="h-5 w-5" />
-        )}
-      </div>
-
-      <div className="min-w-0">
-        <h3 className="truncate font-semibold text-primary">{media.title}</h3>
-
-        <p className="mt-1 text-sm text-muted">
-          {media.mediaType === "tv" ? "TV Show" : "Movie"}
-        </p>
-      </div>
-    </>
-  );
+  const posterUrl = getPosterUrl(media.posterPath);
+  const releaseYear = getReleaseYear(media);
+  const showRating = typeof media.rating === "number" && media.rating > 0;
+  const showNotesIndicator =
+    media.notes !== undefined && media.notes.trim().length > 0;
+  const showProgress = media.mediaType === "tv" && progress !== undefined;
 
   return (
-    <article className="rounded-xl border border-border bg-surface p-5">
-      <div className="flex items-start justify-between gap-4">
-        <Link
-          to={
-            media.mediaType === "tv"
-              ? `/library/tv/${media.id}`
-              : `/library/movie/${media.id}`
-          }
-          aria-label={`View ${media.title} details`}
-          className="flex min-w-0 items-start gap-3 rounded-lg transition hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-accent-hover/40"
-        >
-          {mediaContent}
-        </Link>
+    <article className="flex flex-col overflow-hidden rounded-xl border border-border bg-surface">
+      <Link
+        to={
+          media.mediaType === "tv"
+            ? `/library/tv/${media.id}`
+            : `/library/movie/${media.id}`
+        }
+        aria-label={`View ${media.title} details`}
+        className="focus:outline-none focus:ring-2 focus:ring-accent-hover/40"
+      >
+        <div className="aspect-[2/3] bg-app-bg">
+          {posterUrl !== null && failedPosterUrl !== posterUrl ? (
+            <img
+              src={posterUrl}
+              alt={`${media.title} poster`}
+              loading="lazy"
+              decoding="async"
+              onError={() => setFailedPosterUrl(posterUrl)}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-muted">
+              {media.mediaType === "tv" ? (
+                <Tv aria-hidden="true" className="h-12 w-12" />
+              ) : (
+                <Film aria-hidden="true" className="h-12 w-12" />
+              )}
+            </div>
+          )}
+        </div>
 
-        <div className="flex items-center gap-2">
+        <h3
+          className="truncate px-4 pt-4 font-semibold text-primary"
+          title={media.title}
+        >
+          {media.title}
+        </h3>
+      </Link>
+
+      <div className="flex flex-1 flex-col p-4 pt-1">
+        {releaseYear && <p className="text-sm text-muted">{releaseYear}</p>}
+
+        {(showRating || showNotesIndicator) && (
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            {showRating && (
+              <span className="inline-flex items-center gap-1 text-sm text-warning">
+                <Star
+                  aria-hidden="true"
+                  className="h-4 w-4"
+                  fill="currentColor"
+                />
+                {media.rating}
+              </span>
+            )}
+
+            {showNotesIndicator && (
+              <span className="inline-flex items-center gap-1 text-xs text-muted">
+                <StickyNote aria-hidden="true" className="h-3.5 w-3.5" />
+                <span className="sr-only">Has notes</span>
+              </span>
+            )}
+          </div>
+        )}
+
+        <div className="mt-3">
+          <span className="inline-flex rounded-full bg-surface-elevated px-3 py-1 text-xs font-medium text-muted">
+            {statusLabel}
+          </span>
+        </div>
+
+        {showProgress && progress && (
+          <div className="mt-4">
+            <p className="text-xs text-muted">
+              {progress.watchedEpisodeCount} of {progress.totalEpisodeCount}{" "}
+              episodes watched
+            </p>
+
+            <div className="mt-2">
+              <ProgressBar
+                value={progress.percentage}
+                label={`${media.title} progress`}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="mt-auto flex items-center gap-2 pt-4">
           {isSelectionMode && (
             <input
               type="checkbox"
@@ -98,29 +187,23 @@ export default function MediaCard({
           </button>
 
           <button
-    type="button"
-    onClick={() => onEdit(media)}
-    aria-label={`Edit ${media.title}`}
-    className="rounded-lg p-2 text-muted transition hover:bg-accent/15 hover:text-accent-text"
-  >
-    <Pencil className="h-4 w-4" />
-  </button>
+            type="button"
+            onClick={() => onEdit(media)}
+            aria-label={`Edit ${media.title}`}
+            className="rounded-lg p-2 text-muted transition hover:bg-accent/15 hover:text-accent-text"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
 
-  <button
-    type="button"
-    onClick={() => void onDelete(media.id)}
-    aria-label={`Delete ${media.title}`}
-    className="rounded-lg p-2 text-muted transition hover:bg-danger/10 hover:text-danger"
-  >
-    <Trash2 className="h-4 w-4" />
-  </button>
-</div>
-      </div>
-
-      <div className="mt-5">
-        <span className="inline-flex rounded-full bg-surface-elevated px-3 py-1 text-xs font-medium text-muted">
-          {statusLabel}
-        </span>
+          <button
+            type="button"
+            onClick={() => void onDelete(media.id)}
+            aria-label={`Delete ${media.title}`}
+            className="rounded-lg p-2 text-muted transition hover:bg-danger/10 hover:text-danger"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
       </div>
     </article>
   );

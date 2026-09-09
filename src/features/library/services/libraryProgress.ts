@@ -1,23 +1,31 @@
 import type { Episode, PersistedMedia } from "../../../types";
 
 /*
- * Builds a read-only progress lookup for Library sorting, keyed by the
- * persisted media id.
+ * Builds a read-only progress lookup for Library sorting and card display,
+ * keyed by the persisted media id.
  *
  * TV progress follows the authoritative definition used by the Statistics
  * page (calculateShowProgress): only regular episodes (seasonNumber > 0)
  * count toward progress, an episode is watched when watched === true, and
- * the percentage is Math.round(watched / total * 100). SHows with zero
+ * the percentage is Math.round(watched / total * 100). Shows with zero
  * regular episodes have unknown progress and are omitted from the map.
  *
  * Movie progress is binary: a movie marked completed is 100%, anything else
- * is 0%. The application never writes partial movie progress.
+ * is 0%. The application never writes partial movie progress. Movie entries
+ * carry placeholder counts (0/0) that the UI never renders because media
+ * cards gate progress rendering on mediaType === "tv".
  */
+export interface LibraryProgress {
+  percentage: number;
+  watchedEpisodeCount: number;
+  totalEpisodeCount: number;
+}
+
 export function buildLibraryProgressMap(
   media: PersistedMedia[],
   episodes: Episode[],
-): ReadonlyMap<number, number> {
-  const progressByMediaId = new Map<number, number>();
+): ReadonlyMap<number, LibraryProgress> {
+  const progressByMediaId = new Map<number, LibraryProgress>();
 
   const regularEpisodesByShowId = new Map<number, Episode[]>();
 
@@ -53,12 +61,17 @@ export function buildLibraryProgressMap(
         (episode) => episode.watched,
       ).length;
 
-      progressByMediaId.set(
-        item.id,
-        Math.round((watchedEpisodeCount / totalEpisodeCount) * 100),
-      );
+      progressByMediaId.set(item.id, {
+        percentage: Math.round((watchedEpisodeCount / totalEpisodeCount) * 100),
+        watchedEpisodeCount,
+        totalEpisodeCount,
+      });
     } else {
-      progressByMediaId.set(item.id, item.userStatus === "completed" ? 100 : 0);
+      progressByMediaId.set(item.id, {
+        percentage: item.userStatus === "completed" ? 100 : 0,
+        watchedEpisodeCount: 0,
+        totalEpisodeCount: 0,
+      });
     }
   }
 

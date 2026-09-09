@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { sortLibrary } from "./librarySort";
 
+import type { LibraryProgress } from "./libraryProgress";
+
 import type { Movie, PersistedMedia, TVShow } from "../../../types/media";
 
 function createTvShow(overrides: Partial<TVShow> = {}): PersistedMedia {
@@ -28,6 +30,14 @@ function createMovie(overrides: Partial<Movie> = {}): PersistedMedia {
     updatedAt: now,
     ...overrides,
   } as PersistedMedia;
+}
+
+function createProgress(
+  percentage: number,
+  watchedEpisodeCount = 0,
+  totalEpisodeCount = 0,
+): LibraryProgress {
+  return { percentage, watchedEpisodeCount, totalEpisodeCount };
 }
 
 describe("sortLibrary - year sorting", () => {
@@ -120,7 +130,11 @@ describe("sortLibrary - year sorting", () => {
       createTvShow({ id: 1, title: "Bad Date", firstAirDate: "abcd" }),
       createTvShow({ id: 2, title: "Good Date", firstAirDate: "2010-01-01" }),
       createMovie({ id: 3, title: "Empty String", releaseDate: "" }),
-      createMovie({ id: 4, title: "Null Date", releaseDate: null as unknown as string }),
+      createMovie({
+        id: 4,
+        title: "Null Date",
+        releaseDate: null as unknown as string,
+      }),
       createTvShow({ id: 5, title: "Undefined", firstAirDate: undefined }),
     ];
 
@@ -143,12 +157,12 @@ describe("sortLibrary - progress sorting", () => {
       createMovie({ id: 4, title: "Movie 100" }),
       createTvShow({ id: 5, title: "Show 50" }),
     ];
-    const progressByMediaId = new Map<number, number>([
-      [1, 100],
-      [2, 0],
-      [3, 50],
-      [4, 100],
-      [5, 50],
+    const progressByMediaId = new Map<number, LibraryProgress>([
+      [1, createProgress(100)],
+      [2, createProgress(0)],
+      [3, createProgress(50)],
+      [4, createProgress(100)],
+      [5, createProgress(50)],
     ]);
 
     const sorted = sortLibrary(media, "progress-asc", progressByMediaId);
@@ -164,12 +178,12 @@ describe("sortLibrary - progress sorting", () => {
       createMovie({ id: 4, title: "Movie 100" }),
       createTvShow({ id: 5, title: "Show 50" }),
     ];
-    const progressByMediaId = new Map<number, number>([
-      [1, 100],
-      [2, 0],
-      [3, 50],
-      [4, 100],
-      [5, 50],
+    const progressByMediaId = new Map<number, LibraryProgress>([
+      [1, createProgress(100)],
+      [2, createProgress(0)],
+      [3, createProgress(50)],
+      [4, createProgress(100)],
+      [5, createProgress(50)],
     ]);
 
     const sorted = sortLibrary(media, "progress-desc", progressByMediaId);
@@ -184,10 +198,10 @@ describe("sortLibrary - progress sorting", () => {
       createMovie({ id: 3, title: "Movie 50", userStatus: "watching" }),
       createTvShow({ id: 4, title: "Show 0" }),
     ];
-    const progressByMediaId = new Map<number, number>([
-      [1, 100],
-      [3, 50],
-      [4, 0],
+    const progressByMediaId = new Map<number, LibraryProgress>([
+      [1, createProgress(100)],
+      [3, createProgress(50)],
+      [4, createProgress(0)],
     ]);
 
     const sorted = sortLibrary(media, "progress-asc", progressByMediaId);
@@ -202,10 +216,10 @@ describe("sortLibrary - progress sorting", () => {
       createMovie({ id: 3, title: "Movie 50", userStatus: "watching" }),
       createTvShow({ id: 4, title: "Show 0" }),
     ];
-    const progressByMediaId = new Map<number, number>([
-      [1, 100],
-      [3, 50],
-      [4, 0],
+    const progressByMediaId = new Map<number, LibraryProgress>([
+      [1, createProgress(100)],
+      [3, createProgress(50)],
+      [4, createProgress(0)],
     ]);
 
     const sorted = sortLibrary(media, "progress-desc", progressByMediaId);
@@ -219,10 +233,10 @@ describe("sortLibrary - progress sorting", () => {
       createTvShow({ id: 2, title: "B 50" }),
       createTvShow({ id: 3, title: "C 50" }),
     ];
-    const progressByMediaId = new Map<number, number>([
-      [1, 50],
-      [2, 50],
-      [3, 50],
+    const progressByMediaId = new Map<number, LibraryProgress>([
+      [1, createProgress(50)],
+      [2, createProgress(50)],
+      [3, createProgress(50)],
     ]);
 
     const sorted = sortLibrary(media, "progress-asc", progressByMediaId);
@@ -237,11 +251,11 @@ describe("sortLibrary - progress sorting", () => {
       createTvShow({ id: 3, title: "Show 75" }),
       createMovie({ id: 4, title: "Movie 0", userStatus: "planned" }),
     ];
-    const progressByMediaId = new Map<number, number>([
-      [1, 25],
-      [2, 100],
-      [3, 75],
-      [4, 0],
+    const progressByMediaId = new Map<number, LibraryProgress>([
+      [1, createProgress(25)],
+      [2, createProgress(100)],
+      [3, createProgress(75)],
+      [4, createProgress(0)],
     ]);
 
     const sorted = sortLibrary(media, "progress-asc", progressByMediaId);
@@ -251,32 +265,41 @@ describe("sortLibrary - progress sorting", () => {
 
   it("does not alter existing sorts when a progress map is supplied", () => {
     const media = [
-      createMovie({ id: 1, title: "The Matrix", rating: 9, releaseDate: "1999-03-31" }),
-      createTvShow({ id: 2, title: "Breaking Bad", rating: 8, firstAirDate: "2008-01-20" }),
-      createMovie({ id: 3, title: "Inception", rating: 7, releaseDate: "2010-07-16" }),
+      createMovie({
+        id: 1,
+        title: "The Matrix",
+        rating: 9,
+        releaseDate: "1999-03-31",
+      }),
+      createTvShow({
+        id: 2,
+        title: "Breaking Bad",
+        rating: 8,
+        firstAirDate: "2008-01-20",
+      }),
+      createMovie({
+        id: 3,
+        title: "Inception",
+        rating: 7,
+        releaseDate: "2010-07-16",
+      }),
     ];
-    const progressByMediaId = new Map<number, number>([
-      [1, 100],
-      [2, 50],
-      [3, 0],
+    const progressByMediaId = new Map<number, LibraryProgress>([
+      [1, createProgress(100)],
+      [2, createProgress(50)],
+      [3, createProgress(0)],
     ]);
 
     expect(
       sortLibrary(media, "title-asc", progressByMediaId).map((m) => m.id),
-    ).toEqual(
-      sortLibrary(media, "title-asc").map((m) => m.id),
-    );
+    ).toEqual(sortLibrary(media, "title-asc").map((m) => m.id));
 
     expect(
       sortLibrary(media, "year-asc", progressByMediaId).map((m) => m.id),
-    ).toEqual(
-      sortLibrary(media, "year-asc").map((m) => m.id),
-    );
+    ).toEqual(sortLibrary(media, "year-asc").map((m) => m.id));
 
     expect(
       sortLibrary(media, "rating-desc", progressByMediaId).map((m) => m.id),
-    ).toEqual(
-      sortLibrary(media, "rating-desc").map((m) => m.id),
-    );
+    ).toEqual(sortLibrary(media, "rating-desc").map((m) => m.id));
   });
 });
