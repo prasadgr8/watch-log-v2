@@ -1,5 +1,23 @@
 # Changelog
 
+## v2.0.0-alpha.23 — Richer Media Cards
+
+### Added
+
+- Richer Library media card and list presentation: poster artwork with lazy loading and async decoding plus onError fallback, locally derived release year (omitted when unavailable), user rating shown only when set above zero, an accessible notes-present indicator, watch status badge, and TV episode progress with a shared progress bar.
+- Local TV episode progress derivation: only regular episodes (`seasonNumber > 0`) count, percentage is `Math.round(watched / total * 100)`, shows with zero regular episodes have unknown progress and are omitted from the map, and movie progress is binary (completed = 100%, else 0%).
+- Progress sorting (ascending/descending) using the same progress map that drives card display.
+- Conditional episode loading: the movie-locked Movies view skips the episode store and builds binary movie progress from media alone, while the unlocked Library view loads episodes to derive TV progress.
+
+### Quality
+
+- Added source-contract tests for poster loading, fallback, year derivation, rating gating, notes indicator, progress display, navigation targets, and action placement.
+- Added full behavior coverage for `buildLibraryProgressMap` (empty inputs, TV 0%/partial/100%, Season 0 exclusion, unknown-progress omission, movie binary progress, mixed library, parity with `calculateShowProgress`).
+- Added `sortLibrary` progress-sorting coverage (ascending/descending, unknown-progress placement, stable sort, mixed TV/movie domain).
+- Validation completed with tests passing, TypeScript clean, lint clean, build clean, and `git diff --check` clean.
+- IndexedDB schema remains v5 and backup format remains v2; no migration was required.
+- Shipped through PR #107 as squash merge commit `aa09d74`.
+
 ## v2.0.0-alpha.22 — Movies Completion
 
 ### Added

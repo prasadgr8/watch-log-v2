@@ -218,6 +218,20 @@ Backup and recovery are application infrastructure concerns implemented outside 
 
 The backup service operates directly against the Dexie database because export requires a consistent snapshot across all application stores and restore requires a single atomic multi-store replacement transaction.
 
+### Library Progress Derivation
+
+TV episode progress on media cards is derived locally from IndexedDB data through `buildLibraryProgressMap()` in `src/features/library/services/libraryProgress.ts`:
+
+- Only regular episodes (`seasonNumber > 0`) count toward progress; Season 0 specials are excluded.
+- An episode is counted as watched when `watched === true`.
+- The percentage is `Math.round(watchedEpisodeCount / totalEpisodeCount * 100)`.
+- Shows with zero regular episodes have unknown progress and are omitted from the progress map.
+- Movie progress is binary: a completed movie is 100%, anything else is 0%. Movie cards never render a progress bar because card rendering gates progress display on `mediaType === "tv"`.
+
+`LibraryPage` loads episodes conditionally: the movie-locked Movies view skips the episode store entirely and builds binary movie progress from media alone, while the unlocked Library view loads episodes to derive TV progress. This avoids unnecessary IndexedDB reads when TV progress cannot be displayed.
+
+No new network or TMDB enrichment is introduced by this work. Existing persistence and schema semantics are unchanged (IndexedDB schema v5, backup format v2).
+
 ### Backup Format
 
 Watch Log V2 uses a versioned JSON backup envelope containing:
