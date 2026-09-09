@@ -26,6 +26,11 @@ const toggleSource = readFileSync(
   "utf-8",
 );
 
+const densityToggleSource = readFileSync(
+  join(featureDirectory, "..", "..", "components", "ui", "DensityToggle.tsx"),
+  "utf-8",
+);
+
 /*
  * Source-level regression coverage for the library Grid/List presentation
  * toggle, matching the libraryTheme and settingsResponsive test conventions.
@@ -76,5 +81,16 @@ describe("library grid/list view mode", () => {
     expect(toggleSource).toContain("aria-label");
     expect(toggleSource).toContain("title");
     expect(toggleSource).toContain("focus-visible:ring");
+  });
+
+  it("renders a DensityToggle in the library toolbar", () => {
+    expect(libraryPageSource).toContain("<DensityToggle");
+    expect(densityToggleSource).toContain('role="group"');
+    expect(densityToggleSource).toContain("aria-pressed");
+    expect(densityToggleSource).toContain("aria-label");
+  });
+
+  it("passes the density prop to MediaCard and MediaListItem", () => {
+    expect(libraryPageSource).toContain("density={density}");
   });
 });

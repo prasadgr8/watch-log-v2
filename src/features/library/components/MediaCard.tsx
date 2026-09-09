@@ -12,8 +12,12 @@ import type { LibraryProgress } from "../services/libraryProgress";
 
 import { watchStatusOptions } from "../libraryOptions";
 
+import type { CardDensity } from "../../ui/density";
+import { CARD_TITLE_SIZE } from "../../ui/density";
+
 interface MediaCardProps {
   media: PersistedMedia;
+  density?: CardDensity;
   progress?: LibraryProgress;
   onDelete: (id: number) => Promise<void>;
   onEdit: (media: PersistedMedia) => void;
@@ -44,6 +48,7 @@ function getReleaseYear(media: PersistedMedia): string | null {
 
 export default function MediaCard({
   media,
+  density = "comfortable",
   progress,
   onDelete,
   onEdit,
@@ -66,7 +71,7 @@ export default function MediaCard({
   const showProgress = media.mediaType === "tv" && progress !== undefined;
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-xl border border-border bg-surface">
+    <article className="flex flex-col overflow-hidden rounded-xl border border-border bg-surface w-full self-start">
       <Link
         to={
           media.mediaType === "tv"
@@ -76,7 +81,7 @@ export default function MediaCard({
         aria-label={`View ${media.title} details`}
         className="focus:outline-none focus:ring-2 focus:ring-accent-hover/40"
       >
-        <div className="aspect-[2/3] bg-app-bg">
+        <div className={`aspect-[2/3] bg-app-bg mx-auto ${density === "compact" ? "max-h-48" : density === "large" ? "max-h-80" : "max-h-64"}`}>
           {posterUrl !== null && failedPosterUrl !== posterUrl ? (
             <img
               src={posterUrl}
@@ -98,14 +103,14 @@ export default function MediaCard({
         </div>
 
         <h3
-          className="truncate px-4 pt-4 font-semibold text-primary"
+          className={`truncate px-4 pt-4 font-semibold text-primary ${CARD_TITLE_SIZE[density]}`}
           title={media.title}
         >
           {media.title}
         </h3>
       </Link>
 
-      <div className="flex flex-1 flex-col p-4 pt-1">
+              <div className={`flex flex-col pt-1 ${density === "compact" ? "p-3" : density === "large" ? "p-5" : "p-4"}`}>
         {releaseYear && <p className="text-sm text-muted">{releaseYear}</p>}
 
         {(showRating || showNotesIndicator) && (

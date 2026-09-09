@@ -10,8 +10,12 @@ import { tmdbConfig } from "../../../services/tmdb";
 
 import type { PersistedEpisode } from "../../../types";
 
+import type { CardDensity } from "../../ui/density";
+import { CARD_TITLE_SIZE } from "../../ui/density";
+
 interface EpisodeCardProps {
   episode: PersistedEpisode;
+  density?: CardDensity;
   isUpdating: boolean;
   onToggleWatched: (episode: PersistedEpisode) => Promise<void>;
 }
@@ -34,6 +38,7 @@ function getStillUrl(stillPath: string | undefined): string | null {
 
 export default function EpisodeCard({
   episode,
+  density = "comfortable",
   isUpdating,
   onToggleWatched,
 }: EpisodeCardProps) {
@@ -41,7 +46,7 @@ export default function EpisodeCard({
 
   return (
     <article className="overflow-hidden rounded-xl border border-border bg-surface">
-      <div className="aspect-video bg-app-bg">
+      <div className={`aspect-video bg-app-bg ${density === "compact" ? "max-h-36" : density === "large" ? "max-h-56" : "max-h-48"}`}>
         {stillUrl ? (
           <img
             src={stillUrl}
@@ -56,7 +61,7 @@ export default function EpisodeCard({
         )}
       </div>
 
-      <div className="p-4">
+      <div className={density === "compact" ? "p-3" : density === "large" ? "p-5" : "p-4"}>
         <div className="flex items-start gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-surface-elevated font-semibold text-accent-text">
             {episode.episodeNumber}
@@ -64,7 +69,7 @@ export default function EpisodeCard({
 
           <div className="min-w-0">
             <h3
-              className="truncate font-semibold text-primary"
+              className={`truncate font-semibold text-primary ${CARD_TITLE_SIZE[density]}`}
               title={episode.title}
             >
               {episode.title}

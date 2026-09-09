@@ -10,6 +10,7 @@ import { collectionRepository } from "../../database/repositories/collectionRepo
 import { LIBRARY_VIEW_MODE_SETTING_KEY, useViewMode } from "../../app/viewMode";
 import { useOnlineStatus } from "../../app/useOnlineStatus";
 import ViewModeToggle from "../../components/ui/ViewModeToggle";
+import DensityToggle from "../../components/ui/DensityToggle";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 import { filterLibrary, type MediaTypeFilter } from "./services/libraryFilter";
@@ -47,9 +48,17 @@ import {
 
 import { applyMovieStatusChange } from "../movies/services/movieService";
 
+import {
+  LIBRARY_GRID_COLUMNS,
+  CARD_GAP,
+} from "../ui/density";
+import { useDensity } from "../ui/useDensity";
+
 interface LibraryPageProps {
   lockedMediaType?: MediaType;
 }
+
+const LIBRARY_DENSITY_KEY = "library-card-density";
 
 interface AddMediaValues {
   title: string;
@@ -124,6 +133,7 @@ export default function LibraryPage({ lockedMediaType }: LibraryPageProps) {
   const [isAddToCollectionOpen, setIsAddToCollectionOpen] = useState(false);
 
   const { viewMode, setViewMode } = useViewMode(LIBRARY_VIEW_MODE_SETTING_KEY);
+  const { density, setDensity } = useDensity(LIBRARY_DENSITY_KEY);
   const isOnline = useOnlineStatus();
   const [isEnriching, setIsEnriching] = useState(false);
   const [enrichmentStatus, setEnrichmentStatus] = useState<string | null>(null);
@@ -692,6 +702,7 @@ export default function LibraryPage({ lockedMediaType }: LibraryPageProps) {
               {visibleMedia.length === 1 ? "item" : "items"}
             </span>
 
+            <DensityToggle density={density} onChange={setDensity} />
             <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
           </div>
         </div>
@@ -750,6 +761,7 @@ export default function LibraryPage({ lockedMediaType }: LibraryPageProps) {
               <MediaListItem
                 key={item.id}
                 media={item}
+                density={density}
                 progress={progressMap?.get(item.id)}
                 onDelete={handleRequestDelete}
                 onEdit={handleEdit}
@@ -761,11 +773,14 @@ export default function LibraryPage({ lockedMediaType }: LibraryPageProps) {
             ))}
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div
+            className={`grid items-start justify-items-start ${CARD_GAP[density]} ${LIBRARY_GRID_COLUMNS[density]}`}
+          >
             {visibleMedia.map((item) => (
               <MediaCard
                 key={item.id}
                 media={item}
+                density={density}
                 progress={progressMap?.get(item.id)}
                 onDelete={handleRequestDelete}
                 onEdit={handleEdit}

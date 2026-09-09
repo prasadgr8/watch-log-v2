@@ -2,12 +2,16 @@ import { Film } from "lucide-react";
 
 import type { PersistedEpisode, ViewMode } from "../../../types";
 
+import type { CardDensity } from "../../ui/density";
+import { CARD_GAP, EPISODE_GRID_COLUMNS } from "../../ui/density";
+
 import EpisodeCard from "./EpisodeCard";
 import EpisodeListItem from "./EpisodeListItem";
 
 interface EpisodeListProps {
   episodes: PersistedEpisode[];
   viewMode: ViewMode;
+  density?: CardDensity;
   updatingEpisodeId: number | null;
   onToggleWatched: (episode: PersistedEpisode) => Promise<void>;
 }
@@ -15,6 +19,7 @@ interface EpisodeListProps {
 export default function EpisodeList({
   episodes,
   viewMode,
+  density = "comfortable",
   updatingEpisodeId,
   onToggleWatched,
 }: EpisodeListProps) {
@@ -46,11 +51,12 @@ export default function EpisodeList({
       ))}
     </div>
   ) : (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className={`grid items-start ${CARD_GAP[density]} ${EPISODE_GRID_COLUMNS[density]}`}>
       {episodes.map((episode) => (
         <EpisodeCard
           key={episode.id}
           episode={episode}
+          density={density}
           isUpdating={updatingEpisodeId === episode.id}
           onToggleWatched={onToggleWatched}
         />
