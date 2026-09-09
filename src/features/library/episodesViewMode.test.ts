@@ -90,9 +90,10 @@ describe("episodes grid/list view mode", () => {
     expect(episodeListItemSource).not.toMatch(/seasonNumber === 0/);
   });
 
-  it("applies the approved grid breakpoints and list density conventions", () => {
-    expect(episodeListSource).toContain("sm:grid-cols-2");
-    expect(episodeListSource).toContain("lg:grid-cols-3");
+  it("applies the approved density-driven grid and list conventions", () => {
+    expect(episodeListSource).toContain("items-start");
+    expect(episodeListSource).toContain("CARD_GAP[density]");
+    expect(episodeListSource).toContain("EPISODE_GRID_COLUMNS[density]");
     expect(episodeListSource).toContain("space-y-3");
     expect(episodeListItemSource).toContain("min-w-0 flex-1");
     expect(episodeListItemSource).toContain("line-clamp-2");

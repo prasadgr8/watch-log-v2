@@ -2,8 +2,12 @@ import { Film, Star, Tv } from "lucide-react";
 
 import { tmdbConfig, type TmdbMediaSearchResult } from "../../../services/tmdb";
 
+import type { CardDensity } from "../../ui/density";
+import { CARD_TITLE_SIZE } from "../../ui/density";
+
 interface TmdbSearchResultCardProps {
   result: TmdbMediaSearchResult;
+  density?: CardDensity;
   isInLibrary: boolean;
   isAdding: boolean;
   onAdd: (result: TmdbMediaSearchResult) => Promise<void>;
@@ -38,6 +42,7 @@ function getPosterUrl(result: TmdbMediaSearchResult): string | null {
 
 export default function TmdbSearchResultCard({
   result,
+  density = "comfortable",
   isInLibrary,
   isAdding,
   onAdd,
@@ -47,8 +52,8 @@ export default function TmdbSearchResultCard({
   const posterUrl = getPosterUrl(result);
 
   return (
-    <article className="overflow-hidden rounded-xl border border-border bg-surface">
-      <div className="aspect-[2/3] bg-app-bg">
+    <article className="overflow-hidden rounded-xl border border-border bg-surface w-full self-start">
+      <div className={`aspect-[2/3] bg-app-bg mx-auto ${density === "compact" ? "max-h-40" : density === "large" ? "max-h-72" : "max-h-56"}`}>
         {posterUrl ? (
           <img
             src={posterUrl}
@@ -67,10 +72,10 @@ export default function TmdbSearchResultCard({
         )}
       </div>
 
-      <div className="p-4">
+      <div className={density === "compact" ? "p-3" : density === "large" ? "p-5" : "p-4"}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate font-semibold text-primary" title={title}>
+            <h3 className={`truncate font-semibold text-primary ${CARD_TITLE_SIZE[density]}`} title={title}>
               {title}
             </h3>
 

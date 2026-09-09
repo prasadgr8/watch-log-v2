@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { mediaRepository } from "../../database/repositories";
 
 import { SEARCH_VIEW_MODE_SETTING_KEY, useViewMode } from "../../app/viewMode";
+import DensityToggle from "../../components/ui/DensityToggle";
 import ViewModeToggle from "../../components/ui/ViewModeToggle";
 
 import { libraryService } from "../library/services/libraryService";
@@ -19,11 +20,19 @@ import type { MediaType } from "../../types";
 import TmdbSearchResultCard from "./components/TmdbSearchResultCard";
 import TmdbSearchResultListItem from "./components/TmdbSearchResultListItem";
 
+import {
+  SEARCH_GRID_COLUMNS,
+  CARD_GAP,
+} from "../ui/density";
+import { useDensity } from "../ui/useDensity";
+
 function isMediaResult(
   result: TmdbMultiSearchResult,
 ): result is TmdbMediaSearchResult {
   return result.media_type === "movie" || result.media_type === "tv";
 }
+
+const SEARCH_DENSITY_KEY = "search-card-density";
 
 function getMediaType(result: TmdbMediaSearchResult): MediaType {
   return "title" in result ? "movie" : "tv";
@@ -45,6 +54,7 @@ export default function SearchPage() {
   const [addingKey, setAddingKey] = useState<string | null>(null);
 
   const { viewMode, setViewMode } = useViewMode(SEARCH_VIEW_MODE_SETTING_KEY);
+  const { density, setDensity } = useDensity(SEARCH_DENSITY_KEY);
 
   const handleSubmit: FormEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault();
@@ -200,6 +210,7 @@ export default function SearchPage() {
                 {results.length} {results.length === 1 ? "result" : "results"}
               </span>
 
+              <DensityToggle density={density} onChange={setDensity} />
               <ViewModeToggle viewMode={viewMode} onChange={setViewMode} />
             </div>
           </div>
@@ -226,6 +237,7 @@ export default function SearchPage() {
                   <TmdbSearchResultListItem
                     key={mediaKey}
                     result={result}
+                    density={density}
                     isInLibrary={libraryKeys.has(mediaKey)}
                     isAdding={addingKey === mediaKey}
                     onAdd={handleAddToLibrary}
@@ -234,7 +246,9 @@ export default function SearchPage() {
               })}
             </div>
           ) : (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div
+              className={`grid items-start justify-items-start ${CARD_GAP[density]} ${SEARCH_GRID_COLUMNS[density]}`}
+            >
               {results.map((result) => {
                 const mediaType = getMediaType(result);
                 const mediaKey = getMediaKey(result.id, mediaType);
@@ -243,6 +257,7 @@ export default function SearchPage() {
                   <TmdbSearchResultCard
                     key={mediaKey}
                     result={result}
+                    density={density}
                     isInLibrary={libraryKeys.has(mediaKey)}
                     isAdding={addingKey === mediaKey}
                     onAdd={handleAddToLibrary}

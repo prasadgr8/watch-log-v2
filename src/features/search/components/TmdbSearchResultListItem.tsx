@@ -2,8 +2,12 @@ import { Film, Star, Tv } from "lucide-react";
 
 import { tmdbConfig, type TmdbMediaSearchResult } from "../../../services/tmdb";
 
+import type { CardDensity } from "../../ui/density";
+import { LIST_PADDING, LIST_THUMBNAIL, CARD_TITLE_SIZE } from "../../ui/density";
+
 interface TmdbSearchResultListItemProps {
   result: TmdbMediaSearchResult;
+  density?: CardDensity;
   isInLibrary: boolean;
   isAdding: boolean;
   onAdd: (result: TmdbMediaSearchResult) => Promise<void>;
@@ -43,6 +47,7 @@ function getPosterUrl(result: TmdbMediaSearchResult): string | null {
  */
 export default function TmdbSearchResultListItem({
   result,
+  density = "comfortable",
   isInLibrary,
   isAdding,
   onAdd,
@@ -52,8 +57,8 @@ export default function TmdbSearchResultListItem({
   const posterUrl = getPosterUrl(result);
 
   return (
-    <article className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-surface p-4">
-      <div className="h-16 w-12 shrink-0 overflow-hidden rounded-lg bg-app-bg">
+    <article className={`flex flex-wrap items-center gap-4 rounded-xl border border-border bg-surface ${LIST_PADDING[density]}`}>
+      <div className={`shrink-0 overflow-hidden rounded-lg bg-app-bg ${LIST_THUMBNAIL[density]}`}>
         {posterUrl ? (
           <img
             src={posterUrl}
@@ -73,7 +78,7 @@ export default function TmdbSearchResultListItem({
       </div>
 
       <div className="min-w-0 flex-1">
-        <h3 className="truncate font-semibold text-primary" title={title}>
+        <h3 className={`truncate font-semibold text-primary ${CARD_TITLE_SIZE[density]}`} title={title}>
           {title}
         </h3>
 

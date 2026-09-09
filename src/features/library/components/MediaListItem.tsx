@@ -12,8 +12,12 @@ import type { LibraryProgress } from "../services/libraryProgress";
 
 import { watchStatusOptions } from "../libraryOptions";
 
+import type { CardDensity } from "../../ui/density";
+import { LIST_PADDING, LIST_THUMBNAIL, CARD_TITLE_SIZE } from "../../ui/density";
+
 interface MediaListItemProps {
   media: PersistedMedia;
+  density?: CardDensity;
   progress?: LibraryProgress;
   onDelete: (id: number) => Promise<void>;
   onEdit: (media: PersistedMedia) => void;
@@ -51,6 +55,7 @@ function getReleaseYear(media: PersistedMedia): string | null {
  */
 export default function MediaListItem({
   media,
+  density = "comfortable",
   progress,
   onDelete,
   onEdit,
@@ -73,7 +78,7 @@ export default function MediaListItem({
   const showProgress = media.mediaType === "tv" && progress !== undefined;
 
   return (
-    <article className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-surface p-4">
+    <article className={`flex flex-wrap items-center gap-4 rounded-xl border border-border bg-surface ${LIST_PADDING[density]}`}>
       {isSelectionMode && (
         <input
           type="checkbox"
@@ -94,7 +99,7 @@ export default function MediaListItem({
           aria-label={`View ${media.title} details`}
           className="flex shrink-0 items-center gap-3 rounded-lg transition hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-accent-hover/40"
         >
-          <div className="h-16 w-12 shrink-0 overflow-hidden rounded-lg bg-app-bg">
+          <div className={`shrink-0 overflow-hidden rounded-lg bg-app-bg ${LIST_THUMBNAIL[density]}`}>
             {posterUrl !== null && failedPosterUrl !== posterUrl ? (
               <img
                 src={posterUrl}
@@ -117,7 +122,7 @@ export default function MediaListItem({
 
           <div className="min-w-0">
             <h3
-              className="truncate font-semibold text-primary"
+              className={`truncate font-semibold text-primary ${CARD_TITLE_SIZE[density]}`}
               title={media.title}
             >
               {media.title}

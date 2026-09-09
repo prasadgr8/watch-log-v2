@@ -20,8 +20,11 @@ import type { PersistedEpisode, PersistedMedia } from "../../types";
 import { EPISODES_VIEW_MODE_SETTING_KEY, useViewMode } from "../../app/viewMode";
 import { useOnlineStatus } from "../../app/useOnlineStatus";
 import ViewModeToggle from "../../components/ui/ViewModeToggle";
+import DensityToggle from "../../components/ui/DensityToggle";
 
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
+
+import { useDensity } from "../ui/useDensity";
 
 import EpisodeList from "./components/EpisodeList";
 
@@ -39,6 +42,8 @@ interface TvShowDetailsState {
   media: PersistedMedia;
   tvDetails: TmdbTvDetails | null;
 }
+
+const EPISODE_DENSITY_KEY = "episode-card-density";
 
 function getPosterUrl(posterPath: string | null): string | null {
   if (!posterPath) {
@@ -87,6 +92,8 @@ export default function TvShowDetailsPage() {
   const [reloadToken, setReloadToken] = useState(0);
 
   const { viewMode, setViewMode } = useViewMode(EPISODES_VIEW_MODE_SETTING_KEY);
+
+  const { density, setDensity } = useDensity(EPISODE_DENSITY_KEY);
 
   const isOnline = useOnlineStatus();
 
@@ -573,6 +580,12 @@ export default function TvShowDetailsPage() {
                 {episodes.length === 1 ? "episode" : "episodes"}
               </span>
 
+              <DensityToggle
+                density={density}
+                onChange={setDensity}
+                label="Episode density"
+              />
+
               <ViewModeToggle
                 viewMode={viewMode}
                 onChange={setViewMode}
@@ -671,6 +684,7 @@ export default function TvShowDetailsPage() {
               <EpisodeList
                 episodes={episodes}
                 viewMode={viewMode}
+                density={density}
                 updatingEpisodeId={updatingEpisodeId}
                 onToggleWatched={handleToggleWatched}
               />
