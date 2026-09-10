@@ -8,6 +8,8 @@ export { mapTmdbGenreIdsToNames } from "./tmdbGenres";
 
 export { mapTmdbResultToMedia } from "./tmdbMediaMapper";
 
+export { toFilterableMedia } from "./tmdbFilterAdapter";
+
 export { tmdbMovieService } from "./tmdbMovieService";
 
 export { tmdbSearchService } from "./tmdbSearchService";
