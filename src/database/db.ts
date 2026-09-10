@@ -7,6 +7,7 @@ import type {
   Episode,
   ImportHistory,
   Media,
+  SmartCollectionDefinition,
   WatchHistory,
 } from "../types";
 
@@ -18,6 +19,10 @@ export class WatchLogDatabase extends Dexie {
   importHistory!: Table<ImportHistory, number>;
   collections!: EntityTable<Collection, "id">;
   collectionMedia!: Table<CollectionMedia, number>;
+  smartCollectionDefinitions!: EntityTable<
+    SmartCollectionDefinition,
+    "id"
+  >;
 
   constructor() {
     super("WatchLogV2");
@@ -95,6 +100,23 @@ export class WatchLogDatabase extends Dexie {
       importHistory: "++id, startedAt, completedAt, status, provider",
       collections: "++id, createdAt, updatedAt",
       collectionMedia: "++id, collectionId, mediaId, &[collectionId+mediaId]",
+    });
+
+    // Version 6 is additive-only: it introduces the Smart Collection
+    // definition store and changes no existing records, so no upgrade
+    // callback is required. The unique collectionId index enforces
+    // "at most one definition per collection" at the database level.
+    this.version(6).stores({
+      media:
+        "++id, tmdbId, mediaType, [tmdbId+mediaType], title, userStatus, createdAt, updatedAt",
+      episodes:
+        "++id, showId, tmdbId, [showId+tmdbId], [showId+seasonNumber+episodeNumber], watchedAt, updatedAt",
+      watchHistory: "++id, episodeId, watchedAt, source, [episodeId+watchedAt]",
+      settings: "&key, updatedAt",
+      importHistory: "++id, startedAt, completedAt, status, provider",
+      collections: "++id, createdAt, updatedAt",
+      collectionMedia: "++id, collectionId, mediaId, &[collectionId+mediaId]",
+      smartCollectionDefinitions: "++id, &collectionId, updatedAt",
     });
   }
 }

@@ -75,6 +75,14 @@ export interface BackupCollectionMedia {
   createdAt: string;
 }
 
+export interface BackupSmartCollectionDefinition {
+  id: number;
+  collectionId: number;
+  filters: unknown;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface WatchLogBackupV1 {
   format: typeof WATCH_LOG_BACKUP_FORMAT;
   version: typeof LEGACY_WATCH_LOG_BACKUP_VERSION;
@@ -100,5 +108,6 @@ export interface WatchLogBackupV2 {
     settings: BackupSetting[];
     collections: BackupCollection[];
     collectionMedia: BackupCollectionMedia[];
+    smartCollectionDefinitions?: BackupSmartCollectionDefinition[];
   };
 }

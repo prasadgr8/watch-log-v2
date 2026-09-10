@@ -31,4 +31,6 @@ export type {
   CollectionMedia,
   PersistedCollection,
   PersistedCollectionMedia,
+  PersistedSmartCollectionDefinition,
+  SmartCollectionDefinition,
 } from "./collection";

@@ -4,6 +4,7 @@ import type {
   CollectionMedia,
   Episode,
   Media,
+  SmartCollectionDefinition,
   WatchHistory,
 } from "../../types";
 
@@ -26,6 +27,7 @@ export interface ValidatedRestoreData {
   settings: AppSetting[];
   collections: Collection[];
   collectionMedia: CollectionMedia[];
+  smartCollectionDefinitions: SmartCollectionDefinition[];
 }
 
 export class BackupValidationError extends Error {
@@ -117,6 +119,25 @@ function requireNonNegativeInteger(value: unknown, fieldName: string): number {
   }
 
   return integerValue;
+}
+
+function requireOptionalPositiveInteger(
+  value: unknown,
+  fieldName: string,
+): number | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  return requirePositiveInteger(value, fieldName);
+}
+
+function requireStringArray(value: unknown, fieldName: string): string[] {
+  const array = requireArray(value, fieldName);
+
+  return array.map((element, elementIndex) =>
+    requireString(element, `${fieldName}[${elementIndex}]`),
+  );
 }
 
 function requireBoolean(value: unknown, fieldName: string): boolean {
@@ -374,6 +395,51 @@ function hydrateCollectionMedia(value: unknown, index: number): CollectionMedia 
   };
 }
 
+function hydrateSmartCollectionDefinition(
+  value: unknown,
+  index: number,
+): SmartCollectionDefinition {
+  const fieldName = `data.smartCollectionDefinitions[${index}]`;
+  const record = requireRecord(value, fieldName);
+
+  const filters = requireRecord(record.filters, `${fieldName}.filters`);
+
+  return {
+    id: requirePositiveInteger(record.id, `${fieldName}.id`),
+    collectionId: requirePositiveInteger(
+      record.collectionId,
+      `${fieldName}.collectionId`,
+    ),
+    filters: {
+      search: requireString(filters.search, `${fieldName}.filters.search`),
+      mediaType: requireOneOf(
+        filters.mediaType,
+        [`all`, `tv`, `movie`],
+        `${fieldName}.filters.mediaType`,
+      ),
+      status: requireOneOf(
+        filters.status,
+        [`all`, `planned`, `watching`, `completed`, `on-hold`, `dropped`],
+        `${fieldName}.filters.status`,
+      ),
+      minRating: requireOptionalPositiveInteger(
+        filters.minRating,
+        `${fieldName}.filters.minRating`,
+      ),
+      favoritesOnly: requireBoolean(
+        filters.favoritesOnly,
+        `${fieldName}.filters.favoritesOnly`,
+      ),
+      selectedGenres: requireStringArray(
+        filters.selectedGenres,
+        `${fieldName}.filters.selectedGenres`,
+      ),
+    },
+    createdAt: requireIsoDate(record.createdAt, `${fieldName}.createdAt`),
+    updatedAt: requireIsoDate(record.updatedAt, `${fieldName}.updatedAt`),
+  };
+}
+
 function validateCollectionRelationships(
   collections: Collection[],
   collectionMedia: CollectionMedia[],
@@ -475,9 +541,14 @@ export function validateAndHydrateBackup(value: unknown): ValidatedRestoreData {
   );
 
   // Accept the current schema version and previous ones: backups exported
-  // before importHistory existed (v3) and before collections existed (v4)
-  // must remain restorable.
-  if (databaseVersion !== 3 && databaseVersion !== 4 && databaseVersion !== 5) {
+  // before importHistory existed (v3), before collections existed (v4), and
+  // before Smart Collections existed (v5) must remain restorable.
+  if (
+    databaseVersion !== 3 &&
+    databaseVersion !== 4 &&
+    databaseVersion !== 5 &&
+    databaseVersion !== 6
+  ) {
     fail("Unsupported backup database version.");
   }
 
@@ -504,12 +575,27 @@ export function validateAndHydrateBackup(value: unknown): ValidatedRestoreData {
       ? requireArray(data.collectionMedia, "data.collectionMedia")
       : [];
 
+  // Smart Collection definitions were added in schema v6. Backups created
+  // before this store existed (format v2 with databaseVersion < 6) carry no
+  // such data, so a missing field is treated as an empty array rather than a
+  // validation failure.
+  const smartCollectionDefinitionValues =
+    formatVersion === 2 && Array.isArray(data.smartCollectionDefinitions)
+      ? requireArray(
+          data.smartCollectionDefinitions,
+          "data.smartCollectionDefinitions",
+        )
+      : [];
+
   const media = mediaValues.map(hydrateMedia);
   const episodes = episodeValues.map(hydrateEpisode);
   const watchHistory = watchHistoryValues.map(hydrateWatchHistory);
   const settings = settingValues.map(hydrateSetting);
   const collections = collectionValues.map(hydrateCollection);
   const collectionMedia = collectionMediaValues.map(hydrateCollectionMedia);
+  const smartCollectionDefinitions = smartCollectionDefinitionValues.map(
+    hydrateSmartCollectionDefinition,
+  );
 
   validateUniqueIds(
     media.map((mediaItem) => requirePositiveInteger(mediaItem.id, "media.id")),
@@ -544,6 +630,13 @@ export function validateAndHydrateBackup(value: unknown): ValidatedRestoreData {
     "collectionMedia",
   );
 
+  validateUniqueIds(
+    smartCollectionDefinitions.map((definition) =>
+      requirePositiveInteger(definition.id, "smartCollectionDefinition.id"),
+    ),
+    "smartCollectionDefinitions",
+  );
+
   validateRelationships(media, episodes, watchHistory);
   validateCollectionRelationships(collections, collectionMedia, media);
 
@@ -555,6 +648,7 @@ export function validateAndHydrateBackup(value: unknown): ValidatedRestoreData {
     settings,
     collections,
     collectionMedia,
+    smartCollectionDefinitions,
   };
 }
 

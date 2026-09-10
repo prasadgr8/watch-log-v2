@@ -60,7 +60,7 @@ describe("backupService", () => {
     expect(backup).toMatchObject({
       format: WATCH_LOG_BACKUP_FORMAT,
       version: WATCH_LOG_BACKUP_VERSION,
-      databaseVersion: 5,
+      databaseVersion: 6,
     });
 
     expect(new Date(backup.exportedAt).toISOString()).toBe(backup.exportedAt);
@@ -117,7 +117,7 @@ describe("backupService", () => {
     expect(backup).toMatchObject({
       format: WATCH_LOG_BACKUP_FORMAT,
       version: WATCH_LOG_BACKUP_VERSION,
-      databaseVersion: 5,
+      databaseVersion: 6,
       data: {
         media: [],
         episodes: [],
@@ -472,7 +472,7 @@ describe("backupService", () => {
     const backup = await backupService.createBackup();
 
     expect(backup.version).toBe(2);
-    expect(backup.databaseVersion).toBe(5);
+    expect(backup.databaseVersion).toBe(6);
     expect(backup.data.collections).toHaveLength(1);
     expect(backup.data.collectionMedia).toHaveLength(1);
 
@@ -666,7 +666,7 @@ describe("backupService", () => {
     const backup = {
       format: "watch-log-v2-backup",
       version: 2,
-      databaseVersion: 5,
+      databaseVersion: 6,
       exportedAt: "2026-07-15T16:00:00.000Z",
       data: {
         media: [],
