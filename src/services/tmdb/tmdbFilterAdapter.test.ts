@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import { toFilterableMedia } from "./tmdbFilterAdapter";
 
+import { applyMediaFilters } from "../../domain/filters/mediaFilterEngine";
+import { EMPTY_MEDIA_FILTERS } from "../../domain/filters/mediaFilterModel";
+
 import type {
   TmdbMovieSearchResult,
   TmdbTvSearchResult,
@@ -89,18 +92,26 @@ describe("tmdbFilterAdapter - toFilterableMedia", () => {
 
   it("supports the shared engine for search, media type, rating and genre filters", () => {
     const results = [
-      toFilterableMedia(createMovieResult({ id: 1, title: "Action Movie", vote_average: 8, genre_ids: [28] })),
-      toFilterableMedia(createTvResult({ id: 2, name: "Drama Show", vote_average: 6, genre_ids: [18] })),
+      // Passes every active filter.
+      toFilterableMedia(createMovieResult({ id: 1, title: "Showcase One", vote_average: 8, genre_ids: [18] })),
+      // Fails only the search filter.
+      toFilterableMedia(createMovieResult({ id: 2, title: "The Big Movie", vote_average: 8, genre_ids: [18] })),
+      // Fails only the minimum rating filter.
+      toFilterableMedia(createMovieResult({ id: 3, title: "Showcase Two", vote_average: 5, genre_ids: [18] })),
+      // Fails only the genre filter.
+      toFilterableMedia(createMovieResult({ id: 4, title: "Showcase Three", vote_average: 8, genre_ids: [28] })),
+      // Fails only the media type filter.
+      toFilterableMedia(createTvResult({ id: 5, name: "Showcase Series", vote_average: 8, genre_ids: [18] })),
     ];
 
-    const matched = results.filter(
-      (item) =>
-        item.mediaType === "movie" &&
-        (item.rating ?? 0) >= 7 &&
-        (item.genres ?? []).includes("Action"),
-    );
+    const matched = applyMediaFilters(results, {
+      ...EMPTY_MEDIA_FILTERS,
+      search: "show",
+      mediaType: "movie",
+      minRating: 7,
+      selectedGenres: ["Drama"],
+    });
 
-    expect(matched).toHaveLength(1);
-    expect(matched[0]?.title).toBe("Action Movie");
+    expect(matched.map((item) => item.title)).toEqual(["Showcase One"]);
   });
 });
