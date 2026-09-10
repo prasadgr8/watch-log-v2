@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 
+import { useSidebarCollapsed } from "../../features/ui/sidebarCollapse";
+
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 
@@ -8,6 +10,8 @@ export default function AppLayout() {
   const location = useLocation();
 
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  const { isCollapsed, setCollapsed } = useSidebarCollapsed();
 
   // Close the mobile drawer on route navigation. The previous pathname is
   // tracked in a ref so the state update only fires when the route *changes*
@@ -39,6 +43,8 @@ export default function AppLayout() {
       <Sidebar
         isMobileNavOpen={isMobileNavOpen}
         onCloseMobileNav={() => setIsMobileNavOpen(false)}
+        isCollapsed={isCollapsed}
+        onToggleCollapsed={() => setCollapsed(!isCollapsed)}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
