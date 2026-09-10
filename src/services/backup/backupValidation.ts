@@ -121,7 +121,7 @@ function requireNonNegativeInteger(value: unknown, fieldName: string): number {
   return integerValue;
 }
 
-function requireOptionalPositiveInteger(
+function requireOptionalNumber(
   value: unknown,
   fieldName: string,
 ): number | null {
@@ -129,7 +129,7 @@ function requireOptionalPositiveInteger(
     return null;
   }
 
-  return requirePositiveInteger(value, fieldName);
+  return requireNumber(value, fieldName);
 }
 
 function requireStringArray(value: unknown, fieldName: string): string[] {
@@ -422,7 +422,7 @@ function hydrateSmartCollectionDefinition(
         [`all`, `planned`, `watching`, `completed`, `on-hold`, `dropped`],
         `${fieldName}.filters.status`,
       ),
-      minRating: requireOptionalPositiveInteger(
+      minRating: requireOptionalNumber(
         filters.minRating,
         `${fieldName}.filters.minRating`,
       ),
@@ -479,6 +479,25 @@ function validateCollectionRelationships(
     }
 
     membershipPairs.add(pairKey);
+  }
+}
+
+function validateSmartCollectionRelationships(
+  collections: Collection[],
+  smartCollectionDefinitions: SmartCollectionDefinition[],
+): void {
+  const collectionIds = new Set(
+    collections.map((collection) =>
+      requirePositiveInteger(collection.id, "collection.id"),
+    ),
+  );
+
+  for (const definition of smartCollectionDefinitions) {
+    if (!collectionIds.has(definition.collectionId)) {
+      fail(
+        `Smart Collection definition ${definition.id} references missing collection ${definition.collectionId}.`,
+      );
+    }
   }
 }
 
@@ -639,6 +658,7 @@ export function validateAndHydrateBackup(value: unknown): ValidatedRestoreData {
 
   validateRelationships(media, episodes, watchHistory);
   validateCollectionRelationships(collections, collectionMedia, media);
+  validateSmartCollectionRelationships(collections, smartCollectionDefinitions);
 
   return {
     formatVersion,
