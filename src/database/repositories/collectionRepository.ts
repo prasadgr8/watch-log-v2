@@ -80,14 +80,24 @@ export const collectionRepository = {
   },
 
   /**
-   * Deletes a collection and its membership rows. The underlying media,
+   * Deletes a collection and its membership rows. If the collection was a
+   * Smart Collection, its definition row is deleted in the same transaction so
+   * no orphan definition can outlive its collection. The underlying media,
    * episodes, ratings, and watch history are never touched.
    */
   async remove(id: number): Promise<void> {
-    await db.transaction("rw", db.collections, db.collectionMedia, async () => {
-      await db.collectionMedia.where("collectionId").equals(id).delete();
-      await db.collections.delete(id);
-    });
+    await db.transaction(
+      "rw",
+      [db.collections, db.collectionMedia, db.smartCollectionDefinitions],
+      async () => {
+        await db.collectionMedia.where("collectionId").equals(id).delete();
+        await db.smartCollectionDefinitions
+          .where("collectionId")
+          .equals(id)
+          .delete();
+        await db.collections.delete(id);
+      },
+    );
   },
 
   /**

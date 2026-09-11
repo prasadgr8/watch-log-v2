@@ -6,6 +6,7 @@ import type {
   CollectionMedia,
   Episode,
   Media,
+  SmartCollectionDefinition,
   WatchHistory,
 } from "../../types";
 
@@ -19,6 +20,7 @@ import {
   type BackupEpisode,
   type BackupMedia,
   type BackupSetting,
+  type BackupSmartCollectionDefinition,
   type BackupWatchHistory,
   type WatchLogBackupV2,
 } from "./backupTypes";
@@ -89,6 +91,18 @@ function serializeCollectionMedia(
   };
 }
 
+function serializeSmartCollectionDefinition(
+  definition: SmartCollectionDefinition,
+): BackupSmartCollectionDefinition {
+  return {
+    id: requireId(definition.id, "smart collection definition"),
+    collectionId: definition.collectionId,
+    filters: definition.filters,
+    createdAt: definition.createdAt.toISOString(),
+    updatedAt: definition.updatedAt.toISOString(),
+  };
+}
+
 export const backupService = {
   async createBackup(): Promise<WatchLogBackupV2> {
     const snapshot = await db.transaction(
@@ -100,17 +114,26 @@ export const backupService = {
         db.settings,
         db.collections,
         db.collectionMedia,
+        db.smartCollectionDefinitions,
       ],
       async () => {
-        const [media, episodes, watchHistory, settings, collections, collectionMedia] =
-          await Promise.all([
-            db.media.toArray(),
-            db.episodes.toArray(),
-            db.watchHistory.toArray(),
-            db.settings.toArray(),
-            db.collections.toArray(),
-            db.collectionMedia.toArray(),
-          ]);
+        const [
+          media,
+          episodes,
+          watchHistory,
+          settings,
+          collections,
+          collectionMedia,
+          smartCollectionDefinitions,
+        ] = await Promise.all([
+          db.media.toArray(),
+          db.episodes.toArray(),
+          db.watchHistory.toArray(),
+          db.settings.toArray(),
+          db.collections.toArray(),
+          db.collectionMedia.toArray(),
+          db.smartCollectionDefinitions.toArray(),
+        ]);
 
         return {
           media,
@@ -119,6 +142,7 @@ export const backupService = {
           settings,
           collections,
           collectionMedia,
+          smartCollectionDefinitions,
         };
       },
     );
@@ -135,6 +159,9 @@ export const backupService = {
         settings: snapshot.settings.map(serializeSetting),
         collections: snapshot.collections.map(serializeCollection),
         collectionMedia: snapshot.collectionMedia.map(serializeCollectionMedia),
+        smartCollectionDefinitions: snapshot.smartCollectionDefinitions.map(
+          serializeSmartCollectionDefinition,
+        ),
       },
     };
   },
@@ -151,6 +178,7 @@ export const backupService = {
         db.settings,
         db.collections,
         db.collectionMedia,
+        db.smartCollectionDefinitions,
       ],
       async () => {
         await db.watchHistory.clear();
@@ -177,6 +205,7 @@ export const backupService = {
           // uniqueness, and any failure here rolls back the whole restore.
           await db.collectionMedia.clear();
           await db.collections.clear();
+          await db.smartCollectionDefinitions.clear();
 
           if (restoreData.collections.length > 0) {
             await db.collections.bulkAdd(restoreData.collections);
@@ -184,6 +213,12 @@ export const backupService = {
 
           if (restoreData.collectionMedia.length > 0) {
             await db.collectionMedia.bulkAdd(restoreData.collectionMedia);
+          }
+
+          if (restoreData.smartCollectionDefinitions.length > 0) {
+            await db.smartCollectionDefinitions.bulkAdd(
+              restoreData.smartCollectionDefinitions,
+            );
           }
         } else {
           /*

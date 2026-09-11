@@ -6,7 +6,11 @@ import {
   episodeRepository,
   mediaRepository,
   settingsRepository,
+  smartCollectionRepository,
 } from "../../database/repositories";
+
+import { EMPTY_MEDIA_FILTERS } from "../../domain/filters/mediaFilterModel";
+import type { MediaFilterState } from "../../domain/filters/mediaFilterModel";
 
 import type { Episode, TVShow } from "../../types";
 
@@ -60,7 +64,7 @@ describe("backupService", () => {
     expect(backup).toMatchObject({
       format: WATCH_LOG_BACKUP_FORMAT,
       version: WATCH_LOG_BACKUP_VERSION,
-      databaseVersion: 5,
+      databaseVersion: 6,
     });
 
     expect(new Date(backup.exportedAt).toISOString()).toBe(backup.exportedAt);
@@ -117,7 +121,7 @@ describe("backupService", () => {
     expect(backup).toMatchObject({
       format: WATCH_LOG_BACKUP_FORMAT,
       version: WATCH_LOG_BACKUP_VERSION,
-      databaseVersion: 5,
+      databaseVersion: 6,
       data: {
         media: [],
         episodes: [],
@@ -472,7 +476,7 @@ describe("backupService", () => {
     const backup = await backupService.createBackup();
 
     expect(backup.version).toBe(2);
-    expect(backup.databaseVersion).toBe(5);
+    expect(backup.databaseVersion).toBe(6);
     expect(backup.data.collections).toHaveLength(1);
     expect(backup.data.collectionMedia).toHaveLength(1);
 
@@ -666,7 +670,7 @@ describe("backupService", () => {
     const backup = {
       format: "watch-log-v2-backup",
       version: 2,
-      databaseVersion: 5,
+      databaseVersion: 6,
       exportedAt: "2026-07-15T16:00:00.000Z",
       data: {
         media: [],
@@ -813,5 +817,197 @@ describe("backupService", () => {
     await backupService.restoreBackup(backup);
     const restoredMedia = await db.media.get(movieId);
     expect(restoredMedia?.genres).toBeUndefined();
+  });
+  it("exports Smart Collection definitions in the version 2 backup", async () => {
+    const filters: MediaFilterState = {
+      ...EMPTY_MEDIA_FILTERS,
+      search: "matrix",
+      mediaType: "movie",
+      status: "completed",
+      minRating: 7.5,
+      favoritesOnly: true,
+      selectedGenres: ["Action", "Sci-Fi"],
+    };
+
+    const { collection, definition } =
+      await smartCollectionRepository.createSmartCollection(
+        "Smart Action",
+        filters,
+      );
+
+    const backup = await backupService.createBackup();
+
+    expect(backup.version).toBe(2);
+    expect(backup.databaseVersion).toBe(6);
+    expect(backup.data.smartCollectionDefinitions).toBeDefined();
+    expect(backup.data.smartCollectionDefinitions).toHaveLength(1);
+
+    const backupDef = backup.data.smartCollectionDefinitions![0]!;
+    expect(backupDef.id).toBe(definition.id);
+    expect(backupDef.collectionId).toBe(collection.id);
+    expect(backupDef.filters).toEqual(filters);
+    expect(typeof backupDef.createdAt).toBe("string");
+    expect(typeof backupDef.updatedAt).toBe("string");
+    expect(new Date(backupDef.createdAt).toISOString()).toBe(
+      backupDef.createdAt,
+    );
+    expect(new Date(backupDef.updatedAt).toISOString()).toBe(
+      backupDef.updatedAt,
+    );
+
+    /*
+     * Only filter intent is persisted; evaluated media IDs and membership
+     * results must never be serialized into the backup.
+     */
+    expect(JSON.stringify(backupDef)).not.toMatch(/mediaIds/);
+    expect(JSON.stringify(backupDef)).not.toMatch(/members/);
+  });
+
+  it("round-trips Smart Collection definitions through export and restore", async () => {
+    const filters: MediaFilterState = {
+      ...EMPTY_MEDIA_FILTERS,
+      search: "matrix",
+      mediaType: "movie",
+      status: "completed",
+      minRating: 7.5,
+      favoritesOnly: true,
+      selectedGenres: ["Action", "Sci-Fi"],
+    };
+
+    const { collection } =
+      await smartCollectionRepository.createSmartCollection(
+        "Smart Action",
+        filters,
+      );
+
+    const backup = await backupService.createBackup();
+
+    // Clear all tables to simulate restoring into a fresh database.
+    await db.smartCollectionDefinitions.clear();
+    await db.collectionMedia.clear();
+    await db.collections.clear();
+    await db.media.clear();
+    await db.episodes.clear();
+    await db.watchHistory.clear();
+    await db.settings.clear();
+
+    await backupService.restoreBackup(backup);
+
+    const restoredCollection = await db.collections.get(collection.id);
+    expect(restoredCollection).toBeDefined();
+    expect(restoredCollection?.name).toBe("Smart Action");
+
+    const restoredDefinition =
+      await smartCollectionRepository.getByCollectionId(collection.id);
+    expect(restoredDefinition).toBeDefined();
+    expect(restoredDefinition?.collectionId).toBe(collection.id);
+    expect(restoredDefinition?.filters).toEqual(filters);
+    expect(restoredDefinition?.filters.minRating).toBe(7.5);
+    expect(restoredDefinition?.filters.selectedGenres).toEqual([
+      "Action",
+      "Sci-Fi",
+    ]);
+    expect(restoredDefinition?.createdAt).toBeInstanceOf(Date);
+    expect(restoredDefinition?.updatedAt).toBeInstanceOf(Date);
+  });
+  it("restores a version 2 backup without Smart Collection definitions (databaseVersion 5)", async () => {
+    const legacyBackup = {
+      format: "watch-log-v2-backup",
+      version: 2,
+      databaseVersion: 5,
+      exportedAt: "2026-07-15T16:00:00.000Z",
+      data: {
+        media: [
+          {
+            id: 41,
+            tmdbId: 1396,
+            mediaType: "tv",
+            title: "Breaking Bad",
+            userStatus: "watching",
+            createdAt: "2026-07-15T00:00:00.000Z",
+            updatedAt: "2026-07-15T00:00:00.000Z",
+          },
+        ],
+        episodes: [],
+        watchHistory: [],
+        settings: [],
+        collections: [],
+        collectionMedia: [],
+      },
+    };
+
+    await backupService.restoreBackup(legacyBackup);
+
+    const restoredMedia = await db.media.get(41);
+    expect(restoredMedia).toBeDefined();
+    expect(restoredMedia?.title).toBe("Breaking Bad");
+
+    /*
+     * A pre-v6 backup carries no Smart Collection definitions, so the store
+     * must be empty after restore.
+     */
+    const definitions = await smartCollectionRepository.getAll();
+    expect(definitions).toHaveLength(0);
+  });
+
+  it("round-trips multiple Smart Collection definitions through export and restore", async () => {
+    const filters1: MediaFilterState = {
+      ...EMPTY_MEDIA_FILTERS,
+      search: "matrix",
+      mediaType: "movie",
+      minRating: 7.5,
+      selectedGenres: ["Action"],
+    };
+    const filters2: MediaFilterState = {
+      ...EMPTY_MEDIA_FILTERS,
+      search: "friends",
+      mediaType: "tv",
+      status: "watching",
+      favoritesOnly: true,
+      selectedGenres: ["Comedy", "Drama"],
+    };
+
+    const { collection: collection1 } =
+      await smartCollectionRepository.createSmartCollection(
+        "Smart Movies",
+        filters1,
+      );
+    const { collection: collection2 } =
+      await smartCollectionRepository.createSmartCollection(
+        "Smart TV",
+        filters2,
+      );
+
+    const backup = await backupService.createBackup();
+
+    // Clear all tables to simulate restoring into a fresh database.
+    await db.smartCollectionDefinitions.clear();
+    await db.collectionMedia.clear();
+    await db.collections.clear();
+    await db.media.clear();
+    await db.episodes.clear();
+    await db.watchHistory.clear();
+    await db.settings.clear();
+
+    await backupService.restoreBackup(backup);
+
+    const restoredDefinition1 =
+      await smartCollectionRepository.getByCollectionId(collection1.id);
+    const restoredDefinition2 =
+      await smartCollectionRepository.getByCollectionId(collection2.id);
+
+    expect(restoredDefinition1).toBeDefined();
+    expect(restoredDefinition1?.collectionId).toBe(collection1.id);
+    expect(restoredDefinition1?.filters).toEqual(filters1);
+    expect(restoredDefinition1?.filters.minRating).toBe(7.5);
+
+    expect(restoredDefinition2).toBeDefined();
+    expect(restoredDefinition2?.collectionId).toBe(collection2.id);
+    expect(restoredDefinition2?.filters).toEqual(filters2);
+    expect(restoredDefinition2?.filters.favoritesOnly).toBe(true);
+    expect(restoredDefinition2?.filters.selectedGenres).toEqual([
+      "Comedy",
+      "Drama",
+    ]);
   });
 });

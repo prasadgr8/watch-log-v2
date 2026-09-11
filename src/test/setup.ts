@@ -17,6 +17,7 @@ async function clearDatabase(): Promise<void> {
       db.importHistory,
       db.collections,
       db.collectionMedia,
+      db.smartCollectionDefinitions,
     ],
     async () => {
       await Promise.all([
@@ -27,6 +28,7 @@ async function clearDatabase(): Promise<void> {
         db.importHistory.clear(),
         db.collections.clear(),
         db.collectionMedia.clear(),
+        db.smartCollectionDefinitions.clear(),
       ]);
     },
   );
