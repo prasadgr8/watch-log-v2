@@ -1,15 +1,23 @@
 import { collectionRepository } from "../../../database/repositories/collectionRepository";
 import { mediaRepository } from "../../../database/repositories/mediaRepository";
+import { smartCollectionRepository } from "../../../database/repositories/smartCollectionRepository";
 
 import type {
   PersistedCollection,
   PersistedCollectionMedia,
   PersistedMedia,
+  PersistedSmartCollectionDefinition,
 } from "../../../types";
 
 export interface CollectionWithMedia {
   collection: PersistedCollection;
   media: PersistedMedia[];
+}
+
+export interface CollectionClassification {
+  collection: PersistedCollection;
+  isSmart: boolean;
+  definition?: PersistedSmartCollectionDefinition;
 }
 
 export const collectionsService = {
@@ -29,6 +37,56 @@ export const collectionsService = {
     });
   },
 
+  async createSmartCollection(
+    name: string,
+    filters: PersistedSmartCollectionDefinition["filters"],
+  ): Promise<{ collection: PersistedCollection; definition: PersistedSmartCollectionDefinition }> {
+    const trimmed = name.trim();
+
+    if (trimmed.length === 0) {
+      throw new Error("Collection name is required.");
+    }
+
+    return smartCollectionRepository.createSmartCollection(trimmed, filters);
+  },
+
+  async updateSmartCollectionFilters(
+    collectionId: number,
+    filters: PersistedSmartCollectionDefinition["filters"],
+  ): Promise<void> {
+    await smartCollectionRepository.update(collectionId, { filters });
+  },
+
+  async getSmartCollectionDefinition(
+    collectionId: number,
+  ): Promise<PersistedSmartCollectionDefinition | undefined> {
+    return smartCollectionRepository.getByCollectionId(collectionId);
+  },
+
+  async classifyCollection(
+    collection: PersistedCollection,
+  ): Promise<CollectionClassification> {
+    const definition = await smartCollectionRepository.getByCollectionId(
+      collection.id,
+    );
+
+    return {
+      collection,
+      isSmart: definition !== undefined,
+      definition,
+    };
+  },
+
+  async classifyCollections(
+    collections: PersistedCollection[],
+  ): Promise<CollectionClassification[]> {
+    const classifications = await Promise.all(
+      collections.map((collection) => this.classifyCollection(collection)),
+    );
+
+    return classifications;
+  },
+
   async renameCollection(id: number, name: string): Promise<void> {
     const trimmed = name.trim();
 
@@ -40,6 +98,11 @@ export const collectionsService = {
   },
 
   async deleteCollection(id: number): Promise<void> {
+    await collectionRepository.remove(id);
+  },
+
+  async deleteSmartCollection(id: number): Promise<void> {
+    await smartCollectionRepository.removeByCollectionId(id);
     await collectionRepository.remove(id);
   },
 
@@ -122,5 +185,10 @@ export const collectionsService = {
     return allMedia.filter(
       (item): item is PersistedMedia => item.id !== undefined && !memberIds.has(item.id),
     );
+  },
+
+  async getAllLibraryMedia(): Promise<PersistedMedia[]> {
+    const media = await mediaRepository.getAll();
+    return media.filter((item): item is PersistedMedia => item.id !== undefined);
   },
 };

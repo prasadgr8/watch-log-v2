@@ -114,3 +114,42 @@ describe("collection detail page", () => {
     expect(deleteHandler).toContain("setIsSaving(false)");
   });
 });
+
+describe("collection detail page smart collections", () => {
+  it("detects Smart collections from the persisted definition", () => {
+    expect(pageSource).toContain("collectionsService.getSmartCollectionDefinition");
+    expect(pageSource).toContain("setIsSmart(smartDefinition !== undefined)");
+    expect(pageSource).toContain("const [isSmart, setIsSmart] = useState(false)");
+  });
+
+  it("evaluates members live from the current library snapshot", () => {
+    expect(pageSource).toContain("evaluateSmartCollection(definition, libraryMedia)");
+    expect(pageSource).toContain("collectionsService.getAllLibraryMedia()");
+  });
+
+  it("renders the Smart Collection indicator and filter summary", () => {
+    expect(pageSource).toContain("Smart Collection");
+    expect(pageSource).toContain("<SmartFilterSummary");
+    expect(pageSource).toContain("filters={definition.filters}");
+  });
+
+  it("provides Edit Filters for Smart collections", () => {
+    expect(pageSource).toContain("Edit Filters");
+    expect(pageSource).toContain("handleSmartEdit");
+  });
+
+  it("hides Add Media and manual membership controls for Smart collections", () => {
+    expect(pageSource).toContain("{!isSmart && (");
+    expect(pageSource).toContain("<SmartResultsSection");
+  });
+
+  it("renders Smart results through the shared results section", () => {
+    expect(pageSource).toContain("media={smartMedia}");
+    expect(pageSource).toContain("onDelete={handleRequestDeleteMedia}");
+  });
+
+  it("reopens the editor with the existing filter state", () => {
+    expect(pageSource).toContain("initialFilters={definition.filters}");
+    expect(pageSource).toContain("collectionId={collection.id}");
+  });
+});
