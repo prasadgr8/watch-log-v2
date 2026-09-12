@@ -1,4 +1,4 @@
-﻿import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { db } from "../../../database/db";
 
@@ -72,7 +72,7 @@ describe("collectionsService", () => {
   });
 
   describe("listCollections", () => {
-    it("returns collections sorted Aâ€“Z case-insensitively", async () => {
+    it("returns collections sorted A–Z case-insensitively", async () => {
       await collectionsService.createCollection("beta");
       await collectionsService.createCollection("Alpha");
       await collectionsService.createCollection("gamma");
