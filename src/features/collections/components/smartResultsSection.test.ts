@@ -43,4 +43,19 @@ describe("smart results section", () => {
     expect(resultsSource).not.toContain("Add to collection");
     expect(resultsSource).not.toContain("Remove from collection");
   });
+
+  it("distinguishes an empty library from zero matches", () => {
+    expect(resultsSource).toContain("libraryMediaCount === 0");
+    expect(resultsSource).toContain("Your library is empty");
+    expect(resultsSource).toContain(
+      "This Smart Collection will automatically show matching media when",
+    );
+  });
+
+  it("keeps the zero-match state separate from the empty-library state", () => {
+    expect(resultsSource).toContain("0 titles match");
+    expect(resultsSource).toContain(
+      "No media currently matches these filters.",
+    );
+  });
 });

@@ -16,6 +16,9 @@ import type { PersistedMedia } from "../../../types";
 
 interface SmartResultsSectionProps {
   media: PersistedMedia[];
+  /** Size of the current library snapshot, used to distinguish an empty
+   * library from a non-empty library with zero matches. */
+  libraryMediaCount: number;
   onToggleFavorite: (mediaItem: PersistedMedia) => Promise<void>;
   onEdit: (mediaItem: PersistedMedia) => void;
   onDelete: (mediaItem: PersistedMedia) => void;
@@ -33,6 +36,7 @@ const SMART_DENSITY_KEY = "library-card-density";
  */
 export default function SmartResultsSection({
   media,
+  libraryMediaCount,
   onToggleFavorite,
   onEdit,
   onDelete,
@@ -43,6 +47,20 @@ export default function SmartResultsSection({
   const { density, setDensity } = useDensity(SMART_DENSITY_KEY);
 
   if (media.length === 0) {
+    if (libraryMediaCount === 0) {
+      return (
+        <div className="rounded-xl border border-dashed border-border bg-surface/50 p-12 text-center">
+          <Layers className="mx-auto h-10 w-10 text-muted" />
+          <h3 className="mt-4 text-lg font-semibold text-primary">
+            Your library is empty
+          </h3>
+          <p className="mt-2 text-muted">
+            This Smart Collection will automatically show matching media when
+            you add titles.
+          </p>
+        </div>
+      );
+    }
     return (
       <div className="rounded-xl border border-dashed border-border bg-surface/50 p-12 text-center">
         <Layers className="mx-auto h-10 w-10 text-muted" />

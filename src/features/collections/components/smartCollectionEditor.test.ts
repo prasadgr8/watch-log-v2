@@ -156,3 +156,30 @@ describe("smart collection editor", () => {
     expect(editorSource).toContain("isSubmittingRef.current = false;");
   });
 });
+
+describe("SmartCollectionEditor library preview errors (source contract)", () => {
+  it("keeps a dedicated library error state separate from the zero-match state", () => {
+    expect(editorSource).toContain(
+      "const [libraryError, setLibraryError] = useState<string | null>(null);",
+    );
+    expect(editorSource).toContain(") : libraryError ? (");
+    expect(editorSource).toContain("role=\"alert\"");
+    expect(editorSource).toContain("{libraryError}");
+    expect(editorSource).toContain(") : previewMedia.length === 0 ? (");
+    expect(editorSource.indexOf(") : libraryError ? (")).toBeLessThan(
+      editorSource.indexOf(") : previewMedia.length === 0 ? ("),
+    );
+  });
+
+  it("surfaces library load failures and clears the error on success", () => {
+    expect(
+      (editorSource.match(/setLibraryError\(null\)/g) ?? []).length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(editorSource).toContain("setLibraryError(");
+  });
+
+  it("does not disable save because of a library preview failure", () => {
+    expect(editorSource).toContain("disabled={isBusy}");
+    expect(editorSource).not.toContain("disabled={libraryError");
+  });
+});

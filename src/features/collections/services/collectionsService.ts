@@ -102,7 +102,9 @@ export const collectionsService = {
   },
 
   async deleteSmartCollection(id: number): Promise<void> {
-    await smartCollectionRepository.removeByCollectionId(id);
+    // collectionRepository.remove runs the atomic Dexie transaction that
+    // removes the collection row, its media links AND the smart definition,
+    // so no separate definition removal is needed here.
     await collectionRepository.remove(id);
   },
 

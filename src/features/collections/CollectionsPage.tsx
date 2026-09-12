@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Layers, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -37,6 +37,48 @@ export default function CollectionsPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const navigate = useNavigate();
+
+  /*
+   * Manual-create dialog behavior mirrors RenameCollectionModal: initial
+   * focus on the name control, Escape/backdrop cancellation while a save is
+   * not running, and focus restoration to the previously focused element
+   * when the dialog closes. The saving ref lets the document-level Escape
+   * handler read the latest saving state without re-binding per render.
+   */
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  const isSavingRef = useRef(isSaving);
+
+  useEffect(() => {
+    isSavingRef.current = isSaving;
+  });
+
+  useEffect(() => {
+    if (!isCreateModalOpen) {
+      return undefined;
+    }
+
+    previouslyFocusedRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+
+    nameInputRef.current?.focus();
+
+    function handleDocumentKeyDown(event: KeyboardEvent): void {
+      if (event.key === "Escape" && !isSavingRef.current) {
+        setIsCreateModalOpen(false);
+      }
+    }
+
+    document.addEventListener("keydown", handleDocumentKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleDocumentKeyDown);
+      previouslyFocusedRef.current?.focus();
+      previouslyFocusedRef.current = null;
+    };
+  }, [isCreateModalOpen]);
 
   useEffect(() => {
     let isActive = true;
@@ -397,6 +439,7 @@ export default function CollectionsPage() {
               </label>
               <input
                 id="new-collection-name"
+                ref={nameInputRef}
                 type="text"
                 value={newCollectionName}
                 onChange={(event) =>
@@ -416,7 +459,8 @@ export default function CollectionsPage() {
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="rounded-lg border border-border px-4 py-2 text-muted transition hover:bg-surface-elevated hover:text-primary"
+                  disabled={isSaving}
+                  className="rounded-lg border border-border px-4 py-2 text-muted transition hover:bg-surface-elevated hover:text-primary disabled:opacity-50"
                 >
                   Cancel
                 </button>

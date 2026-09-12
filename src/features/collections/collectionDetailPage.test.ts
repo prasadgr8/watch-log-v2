@@ -153,3 +153,9 @@ describe("collection detail page smart collections", () => {
     expect(pageSource).toContain("collectionId={collection.id}");
   });
 });
+
+describe("smart collection heading accessibility (source contract)", () => {
+  it("exposes the full collection name through the heading title", () => {
+    expect(pageSource).toContain("title={collection.name}");
+  });
+});

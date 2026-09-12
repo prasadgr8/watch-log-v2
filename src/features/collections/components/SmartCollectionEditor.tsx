@@ -59,6 +59,7 @@ export default function SmartCollectionEditor({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [libraryMedia, setLibraryMedia] = useState<PersistedMedia[]>([]);
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(false);
+  const [libraryError, setLibraryError] = useState<string | null>(null);
   const [debouncedSearch, setDebouncedSearch] = useState(filters.search);
   /*
    * Tracks whether the dialog is currently open so the form is re-seeded on
@@ -81,6 +82,7 @@ export default function SmartCollectionEditor({
     setDebouncedSearch(initialFilters?.search ?? "");
     setError(null);
     setIsSubmitting(false);
+    setLibraryError(null);
     setIsLoadingLibrary(true);
     setSeededOpen(true);
   } else if (!isOpen && seededOpen) {
@@ -107,7 +109,26 @@ export default function SmartCollectionEditor({
   useEffect(() => {
     if (!isOpen) return;
     let active = true;
-    collectionsService.getAllLibraryMedia().then((m) => { if (active) setLibraryMedia(m); }).catch(() => {}).finally(() => { if (active) setIsLoadingLibrary(false); });
+    collectionsService.getAllLibraryMedia()
+      .then((m) => {
+        if (active) {
+          setLibraryMedia(m);
+          setLibraryError(null);
+        }
+      })
+      .catch(() => {
+        // A preview failure must never masquerade as a legitimate
+        // "0 titles match" result - surface it as an explicit error.
+        if (active) {
+          setLibraryMedia([]);
+          setLibraryError(
+            "Could not load your library, so the preview may be out of date.",
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setIsLoadingLibrary(false);
+      });
     return () => { active = false; };
   }, [isOpen]);
 
@@ -242,6 +263,10 @@ export default function SmartCollectionEditor({
               <div className="mt-3 flex-1 overflow-y-auto rounded-lg border border-border bg-surface/50 p-4">
                 {isLoadingLibrary ? (
                   <div className="flex h-full items-center justify-center p-8 text-muted"><LoaderCircle className="mr-2 h-4 w-4 animate-spin" />Loading library...</div>
+                ) : libraryError ? (
+                  <div role="alert" className="flex h-full flex-col items-center justify-center p-8 text-center">
+                    <p className="text-sm text-danger">{libraryError}</p>
+                  </div>
                 ) : previewMedia.length === 0 ? (
                   <div className="flex h-full flex-col items-center justify-center p-8 text-center">
                     <p className="text-sm text-muted">0 titles match</p>

@@ -400,7 +400,10 @@ export default function CollectionDetailPage() {
             )}
           </div>
           <div className="min-w-0">
-            <h1 className="truncate text-2xl font-bold text-primary">
+            <h1
+              className="truncate text-2xl font-bold text-primary"
+              title={collection.name}
+            >
               {collection.name}
             </h1>
             {isSmart && (
@@ -464,6 +467,7 @@ export default function CollectionDetailPage() {
       {isSmart ? (
         <SmartResultsSection
           media={smartMedia}
+          libraryMediaCount={libraryMedia.length}
           onToggleFavorite={handleToggleFavorite}
           onEdit={handleEditMedia}
           onDelete={handleRequestDeleteMedia}
