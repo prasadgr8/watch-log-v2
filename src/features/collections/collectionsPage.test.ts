@@ -71,3 +71,49 @@ describe("collections page", () => {
     expect(pageSource).toContain("isRenameModalOpen");
   });
 });
+describe("collections page smart collection UI", () => {
+  it("renders All/Manual/Smart navigation tabs", () => {
+    expect(pageSource).toContain('{ key: "all", label: "All" }');
+    expect(pageSource).toContain('{ key: "manual", label: "Manual" }');
+    expect(pageSource).toContain('{ key: "smart", label: "Smart" }');
+    expect(pageSource).toContain('aria-label="Filter collections"');
+    expect(pageSource).toContain("setActiveFilter(tab.key)");
+  });
+
+  it("opens the Create Collection chooser from the primary action", () => {
+    expect(pageSource).toContain("+ Create Collection");
+    expect(pageSource).toContain('aria-haspopup="dialog"');
+    expect(pageSource).toContain("setIsTypeSelectorOpen(true)");
+  });
+
+  it("wires the CollectionTypeSelector to manual and smart flows", () => {
+    expect(pageSource).toContain("<CollectionTypeSelector");
+    expect(pageSource).toContain("onSelectManual={openCreateManualModal}");
+    expect(pageSource).toContain("onSelectSmart={openSmartEditor}");
+  });
+
+  it("classifies collections through the smart definition source of truth", () => {
+    expect(pageSource).toContain("collectionsService.classifyCollections");
+    expect(pageSource).toContain("classification.isSmart");
+  });
+
+  it("marks Smart collections with an accessible indicator", () => {
+    expect(pageSource).toContain('aria-label="Smart Collection"');
+    expect(pageSource).toContain("isSmart ? \"Auto-updating\" : \"Manual\"");
+  });
+
+  it("keeps the manual creation form as the Manual flow", () => {
+    expect(pageSource).toContain("htmlFor=\"new-collection-name\"");
+    expect(pageSource).toContain("isCreateModalOpen");
+  });
+
+  it("opens the Smart Collection editor for Smart creation", () => {
+    expect(pageSource).toContain("<SmartCollectionEditor");
+    expect(pageSource).toContain("onSaved={(smartCollectionId: number) =>");
+  });
+
+  it("deletes Smart collections through the definition-aware service", () => {
+    expect(pageSource).toContain("collectionsService.deleteSmartCollection");
+    expect(pageSource).toContain("Deleting this Smart Collection will delete its saved filters");
+  });
+});

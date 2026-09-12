@@ -1,11 +1,14 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { db } from "../../../database/db";
 
 import {
   collectionRepository,
   mediaRepository,
+  smartCollectionRepository,
 } from "../../../database/repositories";
+
+import { EMPTY_MEDIA_FILTERS } from "../../../domain/filters/mediaFilterModel";
 
 import { collectionsService } from "./collectionsService";
 
@@ -257,6 +260,54 @@ describe("collectionsService", () => {
 
       expect(picker.map((m) => m.id)).toContain(second);
       expect(picker.map((m) => m.id)).not.toContain(first);
+    });
+  });
+
+  describe("deleteSmartCollection", () => {
+    it("delegates to the atomic collection deletion path and never independently removes the smart definition", async () => {
+      const mediaId = await mediaRepository.add({
+        tmdbId: 100,
+        mediaType: "tv",
+        title: "Smart Show",
+        userStatus: "watching",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const { collection } =
+        await collectionsService.createSmartCollection(
+          "Smart Deleted",
+          EMPTY_MEDIA_FILTERS,
+        );
+
+      await collectionsService.addMediaToCollection(collection.id, mediaId);
+
+      const removeByCollectionIdSpy = vi.spyOn(
+        smartCollectionRepository,
+        "removeByCollectionId",
+      );
+      const removeSpy = vi.spyOn(collectionRepository, "remove");
+
+      await collectionsService.deleteSmartCollection(collection.id);
+
+      // Delegation proof: only the transactional collection removal ran.
+      expect(removeSpy).toHaveBeenCalledWith(collection.id);
+      expect(removeByCollectionIdSpy).not.toHaveBeenCalled();
+
+      removeSpy.mockRestore();
+      removeByCollectionIdSpy.mockRestore();
+
+      // Atomicity proof: collection, definition and media links are all gone.
+      expect(
+        await collectionRepository.getById(collection.id),
+      ).toBeFalsy();
+      expect(
+        await smartCollectionRepository.getByCollectionId(collection.id),
+      ).toBeFalsy();
+      expect(await smartCollectionRepository.getAll()).toHaveLength(0);
+      expect(
+        await collectionRepository.getMembershipsByCollection(collection.id),
+      ).toHaveLength(0);
     });
   });
 });
