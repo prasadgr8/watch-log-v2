@@ -111,8 +111,10 @@ describe("smart collection editor", () => {
   });
 
   it("locks the form while saving", () => {
-    expect(editorSource).toContain("disabled={isSaving}");
-    expect(editorSource).toContain("isSaving ? \"Saving...\" ");
+    expect(editorSource).toContain("const isBusy = isSaving || isSubmitting;");
+    expect(editorSource).toContain('isBusy ? "Saving..." : isEditing ? "Save Changes" : "Create Smart Collection"');
+    const lockedControls = editorSource.split("disabled={isBusy}").length - 1;
+    expect(lockedControls).toBeGreaterThanOrEqual(3);
   });
 
   it("loads the current library snapshot once when the editor opens", () => {
@@ -123,5 +125,34 @@ describe("smart collection editor", () => {
   it("restores focus and closes on Escape like the other dialogs", () => {
     expect(editorSource).toContain("prevFocus.current?.focus()");
     expect(editorSource).toContain('e.key === "Escape"');
+  });
+
+  it("blocks re-entrant submits while a save is already in flight", () => {
+    expect(editorSource).toContain("if (isSubmittingRef.current || isSavingRef.current) return;");
+  });
+
+  it("raises the local busy flag before awaiting persistence and clears it afterwards", () => {
+    expect(editorSource).toContain("isSubmittingRef.current = true;");
+    expect(editorSource).toContain("setIsSubmitting(true);");
+    const handler = editorSource.slice(
+      editorSource.indexOf("async function submitHandler"),
+      editorSource.indexOf("if (!isOpen) return null;"),
+    );
+    expect(handler).toContain("finally {");
+    expect(handler).toContain("isSubmittingRef.current = false;");
+    expect(handler).toContain("setIsSubmitting(false);");
+    expect(handler.indexOf("finally {")).toBeGreaterThan(
+      handler.indexOf("await collectionsService.createSmartCollection"),
+    );
+  });
+
+  it("prevents closing the dialog while the editor save is in flight", () => {
+    expect(editorSource).toContain("if (!isBusy) onClose();");
+    expect(editorSource).toContain("!isSavingRef.current && !isSubmittingRef.current) onCloseRef.current();");
+  });
+
+  it("resets the busy state when the editor is reopened", () => {
+    expect(editorSource).toContain("setIsSubmitting(false);");
+    expect(editorSource).toContain("isSubmittingRef.current = false;");
   });
 });

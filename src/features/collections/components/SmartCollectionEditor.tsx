@@ -56,6 +56,7 @@ export default function SmartCollectionEditor({
   const [name, setName] = useState(initialName);
   const [filters, setFilters] = useState<MediaFilterState>(initialFilters ?? EMPTY_MEDIA_FILTERS);
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [libraryMedia, setLibraryMedia] = useState<PersistedMedia[]>([]);
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(false);
   const [debouncedSearch, setDebouncedSearch] = useState(filters.search);
@@ -69,14 +70,17 @@ export default function SmartCollectionEditor({
   const nameRef = useRef<HTMLInputElement | null>(null);
   const prevFocus = useRef<HTMLElement | null>(null);
   const isSavingRef = useRef(isSaving);
+  const isSubmittingRef = useRef(false);
   const onCloseRef = useRef(onClose);
   const isEditing = collectionId !== undefined;
+  const isBusy = isSaving || isSubmitting;
 
   if (isOpen && !seededOpen) {
     setName(initialName);
     setFilters(initialFilters ?? EMPTY_MEDIA_FILTERS);
     setDebouncedSearch(initialFilters?.search ?? "");
     setError(null);
+    setIsSubmitting(false);
     setIsLoadingLibrary(true);
     setSeededOpen(true);
   } else if (!isOpen && seededOpen) {
@@ -87,6 +91,7 @@ export default function SmartCollectionEditor({
 
   useEffect(() => {
     if (!isOpen) return undefined;
+    isSubmittingRef.current = false;
     prevFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const t = setTimeout(() => { nameRef.current?.focus(); nameRef.current?.select(); }, 0);
     return () => clearTimeout(t);
@@ -94,7 +99,7 @@ export default function SmartCollectionEditor({
 
   useEffect(() => {
     if (!isOpen) return undefined;
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape" && !isSavingRef.current) onCloseRef.current(); };
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape" && !isSavingRef.current && !isSubmittingRef.current) onCloseRef.current(); };
     document.addEventListener("keydown", handler);
     return () => { document.removeEventListener("keydown", handler); prevFocus.current?.focus(); prevFocus.current = null; };
   }, [isOpen]);
@@ -140,8 +145,11 @@ export default function SmartCollectionEditor({
 
   async function submitHandler(e: React.FormEvent) {
     e.preventDefault();
+    if (isSubmittingRef.current || isSavingRef.current) return;
     const t = name.trim();
     if (t.length === 0) { setError("Collection name is required."); return; }
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
     try {
       if (isEditing && collectionId !== undefined) {
         await collectionsService.updateSmartCollectionFilters(collectionId, filters);
@@ -152,6 +160,9 @@ export default function SmartCollectionEditor({
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save Smart Collection.");
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
     }
   }
 
@@ -159,14 +170,14 @@ export default function SmartCollectionEditor({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div aria-hidden="true" onClick={() => { if (!isSaving) onClose(); }} className="absolute inset-0 bg-app-bg/80" />
+      <div aria-hidden="true" onClick={() => { if (!isBusy) onClose(); }} className="absolute inset-0 bg-app-bg/80" />
       <div role="dialog" aria-modal="true" aria-labelledby="sce-title" className="relative flex h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-xl">
         <div className="flex items-center justify-between border-b border-border p-6">
           <div className="flex items-center gap-3">
             <div className="rounded-lg bg-accent/15 p-2 text-accent-text"><Sparkles className="h-5 w-5" /></div>
             <h2 id="sce-title" className="text-lg font-semibold text-primary">{isEditing ? "Edit Smart Collection" : "Create Smart Collection"}</h2>
           </div>
-          <button type="button" onClick={onClose} disabled={isSaving} aria-label="Close" className="rounded-lg p-2 text-muted hover:bg-surface-elevated hover:text-primary disabled:opacity-50"><X className="h-5 w-5" /></button>
+          <button type="button" onClick={onClose} disabled={isBusy} aria-label="Close" className="rounded-lg p-2 text-muted hover:bg-surface-elevated hover:text-primary disabled:opacity-50"><X className="h-5 w-5" /></button>
         </div>
         <form className="flex flex-1 flex-col overflow-y-auto" onSubmit={submitHandler}>
           <div className="grid flex-1 gap-6 overflow-y-auto p-6 md:grid-cols-2">
@@ -257,9 +268,9 @@ export default function SmartCollectionEditor({
           <div className="border-t border-border p-6">
             {error && <p role="alert" className="mb-4 text-sm text-danger">{error}</p>}
             <div className="flex justify-end gap-3">
-              <button type="button" onClick={onClose} disabled={isSaving} className="rounded-lg border border-border px-4 py-2 text-muted hover:bg-surface-elevated hover:text-primary disabled:opacity-50">Cancel</button>
-              <button type="submit" disabled={isSaving} className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-inverted hover:bg-accent-hover disabled:cursor-wait disabled:opacity-50">
-                {isSaving && <LoaderCircle className="h-4 w-4 animate-spin" />}{isSaving ? "Saving..." : isEditing ? "Save Changes" : "Create Smart Collection"}
+              <button type="button" onClick={onClose} disabled={isBusy} className="rounded-lg border border-border px-4 py-2 text-muted hover:bg-surface-elevated hover:text-primary disabled:opacity-50">Cancel</button>
+              <button type="submit" disabled={isBusy} className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-inverted hover:bg-accent-hover disabled:cursor-wait disabled:opacity-50">
+                {isBusy && <LoaderCircle className="h-4 w-4 animate-spin" />}{isBusy ? "Saving..." : isEditing ? "Save Changes" : "Create Smart Collection"}
               </button>
             </div>
           </div>
