@@ -4,10 +4,12 @@ import { Link } from "react-router-dom";
 import { tmdbConfig } from "../../../services/tmdb";
 
 import type { UpcomingEpisodeItem } from "../services/upcomingEpisodesService";
+import { CARD_TITLE_SIZE, type CardDensity } from "../../ui/density";
 
 interface UpcomingEpisodeListItemProps {
   item: UpcomingEpisodeItem;
   relativeLabel: string;
+  density?: CardDensity;
 }
 
 function getPosterUrl(posterPath: string | null | undefined): string | null {
@@ -28,6 +30,7 @@ function formatEpisodeCode(seasonNumber: number, episodeNumber: number): string 
 export default function UpcomingEpisodeListItem({
   item,
   relativeLabel,
+  density = "comfortable",
 }: UpcomingEpisodeListItemProps) {
   const { media, episode } = item;
   const posterUrl = getPosterUrl(media.posterPath);
@@ -37,7 +40,7 @@ export default function UpcomingEpisodeListItem({
   );
 
   return (
-    <article className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-surface p-4">
+    <article className={`flex flex-wrap items-center gap-4 rounded-xl border border-border bg-surface ${density === "compact" ? "p-3" : density === "large" ? "p-5" : "p-4"}`}>
       <div className="aspect-video w-24 shrink-0 overflow-hidden rounded-lg bg-app-bg">
         {posterUrl ? (
           <img
@@ -59,7 +62,7 @@ export default function UpcomingEpisodeListItem({
 
       <div className="min-w-0 flex-1">
         <h3
-          className="truncate font-semibold text-primary"
+          className={`truncate font-semibold text-primary ${CARD_TITLE_SIZE[density]}`}
           title={media.title}
         >
           <Link

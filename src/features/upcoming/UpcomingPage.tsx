@@ -3,6 +3,8 @@ import { CalendarDays, Tv } from "lucide-react";
 
 import { mediaRepository } from "../../database/repositories";
 
+import DensityToggle from "../../components/ui/DensityToggle";
+
 import UpcomingEpisodeListItem from "./components/UpcomingEpisodeListItem";
 import {
   upcomingEpisodesService,
@@ -13,6 +15,9 @@ import {
   getLocalDateString,
   getRelativeAirDateLabel,
 } from "../../domain/dates/airDate";
+
+import { CARD_GAP, UPCOMING_GRID_COLUMNS } from "../ui/density";
+import { useDensity } from "../ui/useDensity";
 
 interface DateGroup {
   airDate: string;
@@ -35,11 +40,14 @@ function groupByAirDate(items: UpcomingEpisodeItem[]): DateGroup[] {
   return groups;
 }
 
+const UPCOMING_DENSITY_KEY = "upcoming-card-density";
+
 export default function UpcomingPage() {
   const [items, setItems] = useState<UpcomingEpisodeItem[]>([]);
   const [hasLibrary, setHasLibrary] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { density, setDensity } = useDensity(UPCOMING_DENSITY_KEY);
 
   useEffect(() => {
     let isActive = true;
@@ -86,10 +94,14 @@ export default function UpcomingPage() {
   return (
     <div className="space-y-8">
       <div>
-        <div className="flex items-center gap-3">
-          <Tv className="text-accent-text" size={32} />
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Tv className="text-accent-text" size={32} />
 
-          <h1 className="text-3xl font-bold text-primary">Upcoming Episodes</h1>
+            <h1 className="text-3xl font-bold text-primary">Upcoming Episodes</h1>
+          </div>
+
+          <DensityToggle density={density} onChange={setDensity} />
         </div>
 
         <p className="mt-2 text-muted">
@@ -148,7 +160,9 @@ export default function UpcomingPage() {
                 </p>
               </div>
 
-              <div className="space-y-3">
+              <div
+                className={`grid items-start justify-items-start ${CARD_GAP[density]} ${UPCOMING_GRID_COLUMNS[density]}`}
+              >
                 {group.items.map((item) => (
                   <UpcomingEpisodeListItem
                     key={`${item.media.id}-${item.episode.seasonNumber}-${item.episode.episodeNumber}`}
@@ -156,6 +170,7 @@ export default function UpcomingPage() {
                     relativeLabel={
                       getRelativeAirDateLabel(item.airDate, today) ?? item.airDate
                     }
+                    density={density}
                   />
                 ))}
               </div>

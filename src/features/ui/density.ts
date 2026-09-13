@@ -59,6 +59,18 @@ export const EPISODE_GRID_COLUMNS: Record<CardDensity, string> = {
 };
 
 /**
+ * Grid column lengths for Upcoming Episodes card grid at each density.
+ * Upcoming cards are horizontal metadata cards (poster + title + episode code +
+ * air date + relative label + watched indicator), so they use intermediate
+ * tracks between Library poster cards and Episode still cards.
+ */
+export const UPCOMING_GRID_COLUMNS: Record<CardDensity, string> = {
+  compact: "grid-cols-[repeat(auto-fill,_minmax(200px,_200px))]",
+  comfortable: "grid-cols-[repeat(auto-fill,_minmax(260px,_260px))]",
+  large: "grid-cols-[repeat(auto-fill,_minmax(320px,_320px))]",
+};
+
+/**
  * Card gap classes for each density.
  */
 export const CARD_GAP: Record<CardDensity, string> = {
