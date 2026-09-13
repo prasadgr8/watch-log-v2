@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Clock3, Film, ListVideo, Play, Tv } from "lucide-react";
+import { ArrowRight, CalendarDays, Clock3, Film, ListVideo, Play, Tv } from "lucide-react";
 
 import {
   episodeRepository,
@@ -13,6 +13,15 @@ import {
   continueWatchingService,
   type ContinueWatchingItem,
 } from "./services/continueWatchingService";
+
+import {
+  upcomingEpisodesService,
+  type UpcomingEpisodeItem,
+} from "../upcoming/services/upcomingEpisodesService";
+
+import UpcomingEpisodeListItem from "../upcoming/components/UpcomingEpisodeListItem";
+
+import { getLocalDateString, getRelativeAirDateLabel } from "../../domain/dates/airDate";
 
 interface DashboardStatistics {
   tvShows: number;
@@ -50,6 +59,8 @@ export default function DashboardPage() {
     ContinueWatchingItem[]
   >([]);
 
+  const [upcomingItems, setUpcomingItems] = useState<UpcomingEpisodeItem[]>([]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,12 +75,14 @@ export default function DashboardPage() {
           watchedEpisodes,
           watchedRuntimeMinutes,
           continueWatching,
+          upcoming,
         ] = await Promise.all([
           mediaRepository.countByType("tv"),
           mediaRepository.countByType("movie"),
           episodeRepository.countWatched(),
           episodeRepository.getWatchedRuntimeMinutes(),
           continueWatchingService.getItems(),
+          upcomingEpisodesService.getItems(),
         ]);
 
         setStatistics({
@@ -80,6 +93,7 @@ export default function DashboardPage() {
         });
 
         setContinueWatchingItems(continueWatching);
+        setUpcomingItems(upcoming.slice(0, 5));
       } catch (loadError) {
         console.error("Failed to load dashboard:", loadError);
 
@@ -233,6 +247,49 @@ export default function DashboardPage() {
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {!isLoading && upcomingItems.length > 0 && (
+        <section aria-labelledby="upcoming-heading">
+          <div className="mb-5 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-accent/15 p-2 text-accent-text">
+                <CalendarDays className="h-5 w-5" />
+              </div>
+
+              <div>
+                <h2 id="upcoming-heading" className="text-2xl font-bold text-primary">
+                  Upcoming Episodes
+                </h2>
+
+                <p className="mt-1 text-sm text-muted">
+                  TV episodes airing today, tomorrow, and in the future.
+                </p>
+              </div>
+            </div>
+
+            <Link
+              to="/upcoming"
+              className="inline-flex items-center gap-2 text-sm font-medium text-accent-text transition hover:text-accent-hover"
+              aria-label="View all upcoming episodes"
+            >
+              View all
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+
+          <div className="space-y-3">
+            {upcomingItems.map((item) => (
+              <UpcomingEpisodeListItem
+                key={`${item.media.id}-${item.episode.seasonNumber}-${item.episode.episodeNumber}`}
+                item={item}
+                relativeLabel={
+                  getRelativeAirDateLabel(item.airDate, getLocalDateString(new Date())) ?? item.airDate
+                }
+              />
             ))}
           </div>
         </section>
