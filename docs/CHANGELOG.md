@@ -1,5 +1,32 @@
 # Changelog
 
+## v2.0.0-alpha.24 — Smart Collections
+
+### Added
+
+- Added rule-based Smart Collections: a collection becomes Smart through a persisted `SmartCollectionDefinition` record referencing its collection, while collections without a definition remain manual.
+- Added persisted filter configuration (title search, media type, watch status, minimum rating, favorites-only, and genre multi-select) reusing the shared Library filter semantics; definitions store filter intent only and never persist evaluated media IDs, result counts, or membership rows.
+- Added live evaluation of Smart Collections against the current library snapshot through the shared media filter engine, so results re-derive automatically as the library changes.
+- Added All/Manual/Smart tabs to the Collections home and a create-collection type chooser for manual or Smart collections.
+- Added a Smart editor with live preview (matching count and sample cards), all shared filter controls, clear-filters, and required-name validation.
+- Added a Smart detail view with a readable filter summary (with a `+N more` collapse), live results reusing existing media cards, density, and grid/list view modes, and independent edit-filters and rename with a delete confirmation that media and watch history are preserved.
+- Added atomic creation of the collection and its definition in one transaction.
+- Added transactional Smart deletion through the existing collection-removal path, removing the definition, memberships, and collection together while preserving media and watch history.
+- Added smart collection definitions to backup format version 2 envelopes as an optional field; existing backups without the field remain restorable.
+
+### Changed
+
+- IndexedDB schema is now version 6, adding the `smartCollectionDefinitions` store with a unique `collectionId` index; the migration is additive, requires no backfill, and existing collections continue to work unchanged.
+
+### Quality
+
+- Added dedicated behavior and source-contract coverage for definition persistence, evaluation, editor validation, detail rendering, deletion, and backup handling.
+- Validation completed with 910 tests passing.
+- TypeScript check passed.
+- ESLint passed with 0 errors and only the pre-existing router warnings.
+- Production build passed.
+- `git diff --check` passed.
+
 ## v2.0.0-alpha.23 — Richer Media Cards
 
 ### Added

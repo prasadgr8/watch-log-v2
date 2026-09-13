@@ -329,6 +329,21 @@ Status: Complete (shipped on `main` via squash merge commit `aa09d74`, PR #107)
 - `sortLibrary` progress-sorting coverage (ascending/descending, unknown-progress placement, stable sort, mixed TV/movie domain)
 - IndexedDB schema v5 and backup format v2 unchanged; no migration required
 
+## v2.0.0-alpha.24 — Smart Collections
+
+Status: Complete
+
+- Rule-based Smart Collections: a collection becomes Smart through a persisted `SmartCollectionDefinition` record referencing its collection; collections without a definition remain manual
+- Persisted filter configuration (title search, media type, watch status, minimum rating, favorites-only, and genre multi-select) reusing the shared Library filter semantics; definitions store filter intent only, never evaluated media IDs, result counts, or membership rows
+- Live evaluation against the current library snapshot through the shared media filter engine; results re-derive automatically as the library changes
+- Atomic creation of the collection and its definition in one transaction, and transactional deletion through the existing collection-removal path that removes the definition, memberships, and collection together while preserving media and watch history
+- Collections home with All/Manual/Smart tabs and a create-collection type chooser
+- Smart editor with live preview (matching count and sample cards), all shared Library filter controls, clear-filters, and required-name validation
+- Smart detail with a readable filter summary (with a `+N more` collapse), live results reusing existing media cards, density, and grid/list view modes, independent edit-filters and rename, and delete confirmation that media and watch history are preserved
+- Backup format version 2 envelopes include smart collection definitions as an optional field; existing backups without the field remain restorable
+- IndexedDB schema v6 adds the additive `smartCollectionDefinitions` store; no migration backfill required
+- Dedicated behavior and source-contract coverage for definition persistence, evaluation, editor validation, detail rendering, deletion, and backup handling
+
 ## Future Milestones
 
 Planned or exploratory features include:
@@ -389,7 +404,7 @@ The Alpha 15 import refinements shipped on `main` as follows:
 
 ## Current Implementation Status
 
-*Reconciled with verified implementation on September 9, 2026, following v2.0.0-alpha.23.*
+*Reconciled with verified implementation on September 12, 2026, following v2.0.0-alpha.24.*
 
 Status markers: ✅ Implemented · ⚠️ Known defect · ❌ Not implemented · ⏸️ Deferred · 🔮 Future
 
@@ -430,6 +445,12 @@ The Collections pages support:
 - ✅ Collections list (A-Z) and collection detail with an add-media picker
 - ✅ Dedicated `/collections` routes with sidebar navigation
 - ✅ Persistence in the `collections` and `collectionMedia` stores (schema version 5), included in backups (format version 2)
+- ✅ Smart Collections through persisted `SmartCollectionDefinition` records (schema version 6, `smartCollectionDefinitions` store) with live evaluation against the current library snapshot
+- ✅ All/Manual/Smart tabs on the Collections home and a create-collection type chooser
+- ✅ Smart editor with live preview using the shared Library filter controls, clear-filters, and required-name validation
+- ✅ Smart detail with a readable filter summary, live results, independent edit-filters and rename, and delete confirmation
+- ✅ Transactional Smart deletion removing the definition, memberships, and collection together while preserving media and watch history
+- ✅ Smart collection definitions included in backups (format version 2 optional field)
 
 ### Gaps
 
@@ -440,5 +461,5 @@ No Library capability gaps remain.
 ## Planned Milestones
 
 No further milestones are currently defined. The most recently shipped
-milestone is v2.0.0-alpha.23. Exploratory work is tracked under Future
+milestone is v2.0.0-alpha.24. Exploratory work is tracked under Future
 Milestones above and in `future-enhhancements.md`.

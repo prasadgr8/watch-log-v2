@@ -386,3 +386,34 @@ The version 5 schema adds the `collections` and `collectionMedia` stores. The mi
 ### Backup Inclusion
 
 Collections and memberships are user-owned data and are included in backup format version 2 envelopes. Format version 1 backups remain restorable: they replace the original four stores while preserving existing collections and pruning memberships whose media no longer exists.
+
+## Smart Collection Definitions
+
+Database schema version 6 introduces the `smartCollectionDefinitions` store.
+
+A smart collection definition records the filter configuration that makes a collection Smart:
+
+- `id` — generated definition identifier
+- `collectionId` — reference to the owning collection
+- `filters` — the persisted media filter state (title search, media type, watch status, minimum rating, favorites-only, and genre selection), reusing the shared Library filter semantics
+- `createdAt` — timestamp when the definition was created
+- `updatedAt` — timestamp when the definition was last updated
+
+The `smartCollectionDefinitions` store uses the following indexes:
+
+- `updatedAt`
+- a unique `collectionId` index, so a collection has at most one smart collection definition
+
+### Relationship Semantics
+
+A definition is a derived-view specification, not a watch-state source of truth and not a membership list. It stores filter intent only: evaluated media IDs, result counts, and membership rows are never persisted. Smart results are always derived from the current library state at evaluation time.
+
+Definitions reference existing collections. Creating a Smart collection writes the collection and its definition in one transaction, and deleting a collection removes its definition and membership rows together without ever modifying the underlying media, episodes, or watch history. Collections without a definition remain manual collections.
+
+### Version 5 to Version 6 Migration
+
+The version 6 schema adds the `smartCollectionDefinitions` store. The migration is additive: it creates the empty store and changes no existing records, so version 5 data requires no backfill.
+
+### Backup Inclusion
+
+Smart collection definitions are user-owned data and are included in backup format version 2 envelopes as an optional field. Envelopes exported before smart collections existed, and format version 1 backups, remain restorable: they preserve existing collections, memberships, and smart collection definitions.

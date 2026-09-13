@@ -212,6 +212,28 @@ Statistics are derived at read time from existing persisted data.
 
 The Statistics page is loaded through a read-only statistics facade that calls `mediaRepository.getAll()`, `episodeRepository.getAll()`, and `watchHistoryRepository.count()` once in parallel per page view. Per-show progress and recently watched activity derive from the `Episode` watch-state cache (the hybrid model), while the `WatchHistory` store contributes the raw event count; re-watching or importing an episode can create multiple events for one episode without altering progress aggregates.
 
+## Smart Collections
+
+A collection becomes Smart through a persisted smart collection definition. Database schema version 6 adds the `smartCollectionDefinitions` store, which holds at most one definition per collection through a unique `collectionId` index. A collection without a definition remains a manual collection; no type discriminator is persisted on the collection record itself.
+
+### Definition-Driven Model
+
+A definition stores filter criteria, not results:
+
+- The persisted `MediaFilterState` reuses the shared Library filter semantics (title search, media type, watch status, minimum rating, favorites-only, and genre selection).
+- Evaluated media IDs, result counts, and membership rows are never persisted.
+- Smart results are derived from the current library state at evaluation time and re-derive automatically as the library changes.
+
+### Evaluation
+
+Smart evaluation delegates to the shared media filter engine used by the Library page and runs against the current in-memory library snapshot. Evaluation is read-only with respect to persistence: it produces the visible result set without writing to IndexedDB, so evaluated output can never drift from the underlying library data.
+
+### Lifecycle
+
+Creating a Smart collection writes the collection and its definition in one transaction. Deleting a Smart collection removes the definition, memberships, and collection through the existing transactional collection-removal path, preserving the underlying media, episodes, and watch history. Editing filters and renaming remain independent operations on the definition and the collection.
+
+Smart collection definitions are user-owned data: backup export, validation, and restore include them as described under Backup and Recovery below.
+
 ## Backup and Recovery
 
 Backup and recovery are application infrastructure concerns implemented outside feature repositories.
@@ -230,7 +252,7 @@ TV episode progress on media cards is derived locally from IndexedDB data throug
 
 `LibraryPage` loads episodes conditionally: the movie-locked Movies view skips the episode store entirely and builds binary movie progress from media alone, while the unlocked Library view loads episodes to derive TV progress. This avoids unnecessary IndexedDB reads when TV progress cannot be displayed.
 
-No new network or TMDB enrichment is introduced by this work. Existing persistence and schema semantics are unchanged (IndexedDB schema v5, backup format v2).
+No new network or TMDB enrichment is introduced by this work. Existing persistence and schema semantics are unchanged (IndexedDB schema v6, backup format v2).
 
 ### Backup Format
 
@@ -245,6 +267,7 @@ Watch Log V2 uses a versioned JSON backup envelope containing:
 - watch history records
 - collection records
 - collection-media membership records
+- smart collection definition records (optional; present in envelopes exported from database schema version 6)
 - application settings
 
 Backup format versioning is independent of IndexedDB schema versioning. A change to the database schema does not implicitly redefine the backup wire format.
@@ -253,13 +276,13 @@ Application `Date` values are explicitly serialized as ISO-8601 UTC strings. Bac
 
 Persisted numeric IDs are retained in backup data. This preserves the relationships from `Media.id` to `Episode.showId` and from `Episode.id` to `WatchHistory.episodeId`, and from `CollectionMedia.collectionId` and `CollectionMedia.mediaId` to their `Collection` and `Media` records.
 
-The current backup format version is 2, which added collections and memberships. Format version 1 envelopes contain only media, episodes, watch history, and settings and remain valid restore inputs.
+The current backup format version is 2, which added collections and memberships. Envelopes exported from database schema version 6 may additionally carry smart collection definition records as an optional field; envelopes without the field remain valid restore inputs. Format version 1 envelopes contain only media, episodes, watch history, and settings and remain valid restore inputs.
 
 ### Backup Snapshot
 
-Export reads media, episodes, watch history, collections, collectionMedia, and settings within one read transaction.
+Export reads media, episodes, watch history, collections, collectionMedia, smartCollectionDefinitions, and settings within one read transaction.
 
-The transaction defines the backup snapshot boundary across all six stores.
+The transaction defines the backup snapshot boundary across all seven stores.
 
 ### Backup Validation
 
@@ -282,8 +305,13 @@ Before any replacement transaction starts, the backup validator verifies:
 - watch-history references to existing episode records
 - collection-media references to existing collections and media records
 - duplicate collection-media (collectionId, mediaId) pairs
+- smart collection definition field types and ISO-8601 UTC timestamps
+- positive smart collection definition identifiers
+- smart collection definition references to existing collections
 
 Validated timestamp strings are hydrated to application `Date` values.
+
+Smart collection definitions are an optional envelope field: envelopes that omit it, including those exported before database schema version 6, remain valid restore inputs.
 
 Validation failure occurs before database replacement and therefore leaves current application data untouched.
 
@@ -291,17 +319,17 @@ Validation failure occurs before database replacement and therefore leaves curre
 
 Backup restore uses replace semantics rather than merge semantics.
 
-A validated restore clears and replaces media, episodes, watch history, collections, collectionMedia, and settings within one read-write transaction.
+A validated restore clears and replaces media, episodes, watch history, collections, collectionMedia, smartCollectionDefinitions, and settings within one read-write transaction.
 
 Records are restored using their original persisted IDs.
 
-The logical restore order is media, episodes, watch history, collections, collectionMedia, and settings.
+The logical restore order is media, episodes, watch history, collections, collectionMedia, smart collection definitions, and settings.
 
 If any write fails during the replacement transaction, the transaction is rolled back and the previous database state is preserved.
 
 A valid empty backup intentionally clears all application data.
 
-A format version 1 backup replaces the media, episodes, watch history, and settings stores while preserving existing collections and their memberships; collection-media memberships whose media no longer exists after the restore are pruned.
+A format version 1 backup replaces the media, episodes, watch history, and settings stores while preserving existing collections, their memberships, and existing smart collection definitions; collection-media memberships whose media no longer exists after the restore are pruned.
 
 ### Recovery User Experience
 
