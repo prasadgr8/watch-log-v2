@@ -89,6 +89,25 @@ Episode metadata may be synchronized from TMDB.
 
 Local watch state is owned by Watch Log V2 and must be preserved when TMDB metadata is synchronized.
 
+### Episode airDate
+
+The `airDate` field on the `Episode` entity stores a date-only `YYYY-MM-DD` string:
+
+- It carries no time-of-day and no timezone information.
+- No JavaScript `Date` object is persisted for airDate.
+- No timezone normalization is applied.
+- It is validated and compared using pure integer calendar arithmetic in `src/domain/dates/airDate.ts`.
+
+### Upcoming Episodes (Derived)
+
+The Upcoming Episodes feature is derived from existing persisted episode data:
+
+- The upcoming projection (`src/features/upcoming/services/upcomingEpisodesService.ts`) reads the `episode` and `media` stores and filters on `airDate`, `seasonNumber`, and `watched` state.
+- No evaluated upcoming IDs are persisted; no new IndexedDB store is introduced.
+- No new index is required; the projection uses existing indexes on `showId` and `mediaType`.
+- The current database schema version is unchanged.
+- No migration is required.
+
 ### Settings
 
 Stores local application preferences.
