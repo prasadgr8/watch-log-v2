@@ -35,6 +35,7 @@ describe("desktop sidebar collapse", () => {
       ["Library", "/library"],
       ["Collections", "/collections"],
       ["Movies", "/movies"],
+      ["Upcoming", "/upcoming"],
       ["Statistics", "/statistics"],
       ["Settings", "/settings"],
     ];

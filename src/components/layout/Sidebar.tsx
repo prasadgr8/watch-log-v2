@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import {
   BarChart3,
+  CalendarDays,
   Film,
   LayoutDashboard,
   Library,
@@ -24,6 +25,7 @@ const menu = [
   { name: "Library", path: "/library", icon: Library },
   { name: "Collections", path: "/collections", icon: Layers },
   { name: "Movies", path: "/movies", icon: Film },
+  { name: "Upcoming", path: "/upcoming", icon: CalendarDays },
   { name: "Statistics", path: "/statistics", icon: BarChart3 },
   { name: "Settings", path: "/settings", icon: Settings },
 ];
