@@ -30,15 +30,9 @@ describe("upcoming episodes page", () => {
   it("consumes upcomingEpisodesService.getItems", () => {
     expect(pageSource).toContain("upcomingEpisodesService");
     expect(pageSource).toContain("getItems");
-    expect(pageSource).toContain(
-      'import {',
-    );
-    expect(pageSource).toContain(
-      'upcomingEpisodesService,',
-    );
-    expect(pageSource).toContain(
-      'type UpcomingEpisodeItem,',
-    );
+    expect(pageSource).toContain("import {");
+    expect(pageSource).toContain("upcomingEpisodesService,");
+    expect(pageSource).toContain("type UpcomingEpisodeItem,");
     expect(pageSource).toContain(
       '} from "./services/upcomingEpisodesService";',
     );
@@ -56,7 +50,9 @@ describe("upcoming episodes page", () => {
 
   it("renders a no-upcoming state when the library has media but no upcoming episodes", () => {
     expect(pageSource).toContain("No upcoming episodes");
-    expect(pageSource).toContain("Episodes airing today, tomorrow, and in the future");
+    expect(pageSource).toContain(
+      "Episodes airing today, tomorrow, and in the future",
+    );
   });
 
   it("renders an error state with role=alert on service failure", () => {
@@ -64,16 +60,15 @@ describe("upcoming episodes page", () => {
     expect(pageSource).toContain("Unable to load upcoming episodes.");
   });
 
-  it("groups episodes by air date", () => {
-    expect(pageSource).toContain("groupByAirDate");
-    expect(pageSource).toContain("airDate");
+  it("groups episodes by Month/Year then show (release-card projection)", () => {
+    expect(pageSource).toContain("groupUpcomingByMonthAndShow");
+    expect(pageSource).toContain("airDate.slice(0, 7)");
   });
 
-  it("uses the shared getRelativeAirDateLabel — no duplicated date logic", () => {
-    expect(pageSource).toContain("getRelativeAirDateLabel");
-    expect(pageSource).toContain(
-      'from "../../domain/dates/airDate"',
-    );
+  it("renders Month/Year section labels in chronological order", () => {
+    expect(pageSource).toContain("MONTH_NAMES");
+    expect(pageSource).toContain("OCTOBER");
+    expect(pageSource).toContain("yearMonth < b.yearMonth");
   });
 });
 
@@ -89,7 +84,7 @@ describe("upcoming episode list item", () => {
 
   it("displays the SxxEyy episode code", () => {
     expect(listItemSource).toContain("S${season}E${episode}");
-    expect(listItemSource).toContain("padStart(2, \"0\")");
+    expect(listItemSource).toContain('padStart(2, "0")');
   });
 
   it("displays the episode title", () => {
