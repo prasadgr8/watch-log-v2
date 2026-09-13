@@ -35,6 +35,7 @@ const LAZY_ROUTES = [
   },
   { name: "MovieDetailsPage", module: "../features/movies/MovieDetailsPage" },
   { name: "MoviesPage", module: "../features/movies/MoviesPage" },
+  { name: "UpcomingPage", module: "../features/upcoming/UpcomingPage" },
 ] as const;
 
 /*
@@ -60,7 +61,7 @@ describe("route-level code splitting", () => {
       );
     }
 
-    expect(normalizedRouterSource.match(/=> import\(/g)?.length).toBe(10);
+    expect(normalizedRouterSource.match(/=> import\(/g)?.length).toBe(11);
   });
 
   it("keeps the application shell eager", () => {
@@ -77,7 +78,7 @@ describe("route-level code splitting", () => {
     );
     expect(
       normalizedRouterSource.match(/suspended\(<[A-Z]/g)?.length,
-    ).toBe(10);
+    ).toBe(11);
   });
 
   it("styles the fallback with the muted loading-text convention", () => {
@@ -106,8 +107,9 @@ describe("route-level code splitting", () => {
     expect(normalizedRouterSource).toContain('path: "movies"');
     expect(normalizedRouterSource).toContain('path: "statistics"');
     expect(normalizedRouterSource).toContain('path: "settings"');
+    expect(normalizedRouterSource).toContain('path: "upcoming"');
     expect(normalizedRouterSource).toContain('path: "library/movie/:mediaId"');
-    expect(normalizedRouterSource.match(/path: "/g)?.length).toBe(10);
+    expect(normalizedRouterSource.match(/path: "/g)?.length).toBe(11);
   });
 
   it("does not silence the chunk size warning instead of splitting", () => {

@@ -33,6 +33,7 @@ const MovieDetailsPage = lazy(
 );
 
 const MoviesPage = lazy(() => import("../features/movies/MoviesPage"));
+const UpcomingPage = lazy(() => import("../features/upcoming/UpcomingPage"));
 
 /*
  * Route-level loading fallback shown while a lazily loaded page chunk is
@@ -95,6 +96,10 @@ export const router = createBrowserRouter([
       {
         path: "settings",
         element: suspended(<SettingsPage />),
+      },
+      {
+        path: "upcoming",
+        element: suspended(<UpcomingPage />),
       },
     ],
   },
