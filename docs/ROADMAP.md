@@ -344,6 +344,85 @@ Status: Complete
 - IndexedDB schema v6 adds the additive `smartCollectionDefinitions` store; no migration backfill required
 - Dedicated behavior and source-contract coverage for definition persistence, evaluation, editor validation, detail rendering, deletion, and backup handling
 
+## v2.0.0-alpha.25.1 — Date Domain Foundation
+
+Status: Complete (shipped on `main`)
+
+- Pure date-only domain utilities for episode air dates: `isValidAirDate`, `getLocalDateString`, `compareAirDates`, `getAirDateRelation`, `getRelativeAirDateLabel`
+- Strict YYYY-MM-DD semantics enforced through pattern validation; no `Date` parsing of air date strings
+- Pure integer-calendar-arithmetic day-number conversion; no timezone normalization, no DST-sensitive local-midnight arithmetic
+- Leap-year and century-year rules (divisible by 400) applied; malformed, missing, and impossible dates handled safely as invalid
+- Local-calendar today via injected `Date` parameter; deterministic and testable
+- No database changes; no migrations
+
+## v2.0.0-alpha.25.2 — Upcoming Episode Projection
+
+Status: Complete (shipped on `main`)
+
+- Local-only `upcomingEpisodesService` deriving the Upcoming Episodes projection from one IndexedDB snapshot
+- Regular seasons only (`seasonNumber > 0`); valid `YYYY-MM-DD` air dates only; today, tomorrow, and future only
+- Past, missing, malformed, and impossible air dates excluded; watched future episodes included; episodes whose show is missing or is not a TV show skipped
+- Deterministic ordering by air date ascending, then show title, then season number, then episode number
+- Pure projection: no network, no writes, no global state, no duplicate date-selection logic (reuses A25.1 utilities)
+- Comprehensive service-level test coverage (11 tests)
+
+## v2.0.0-alpha.25.3 — Upcoming Episodes Page
+
+Status: Complete (shipped on `main`)
+
+- Dedicated `/upcoming` page titled "Upcoming Episodes"
+- Local-first: renders the derived projection directly; no network/TMDB calls
+- Future regular TV episodes grouped by air date; watched future episodes visible with a watched indicator
+- Show poster/title, `SxxEyy` episode code, episode title, air date, and relative date label
+- Link to `/library/tv/:showId` from each episode
+- Loading, empty-library, no-upcoming, error (`role="alert"`), and populated states
+- Accessible heading hierarchy (`h1`/`h2`/`h3`), `aria-label` on date groups, semantic focus rings
+- No month-grid, no filters, no Smart Collection coupling, no notifications, no streaming availability, no direct watch controls
+- Page-level and list-item source-contract coverage (21 tests)
+
+## v2.0.0-alpha.25.4 — Upcoming Navigation
+
+Status: Complete (shipped on `main`)
+
+- "Upcoming" entry added to the sidebar navigation (`/upcoming`) with `CalendarDays` icon
+- Existing sidebar architecture reused: desktop expanded/collapsed support and mobile drawer support unchanged
+- No router, schema, or network changes (route already added in A25.3; sidebar entry is declarative)
+
+## v2.0.0-alpha.25.5 — Dashboard Upcoming Preview
+
+Status: Complete (shipped on `main`)
+
+- Dashboard "Upcoming Episodes" preview section positioned after Continue Watching
+- Existing `upcomingEpisodesService` and `UpcomingEpisodeListItem` reused; shared A25.1 `getRelativeAirDateLabel` reused
+- Maximum 5 episodes; canonical service ordering preserved (slice only)
+- Section hidden when there are no upcoming episodes; "View all" link to `/upcoming`
+- Accessible section (`aria-labelledby`), heading, and link (`aria-label`)
+- Local-first; no network, no schema changes, no filters, no Smart Collections, no watch/toggle controls
+- Source-contract coverage pinning the reuse contract and confirming no duplication (13 tests)
+
+## v2.0.0-alpha.25.6 — Documentation Reconciliation and Final Validation
+
+Status: Complete
+
+- ROADMAP reconciled to reflect A25.1–A25.6
+- CHANGELOG updated with Alpha 25 entries
+- ARCHITECTURE updated to document the Upcoming Episodes architecture
+- DATABASE documentation cross-references `airDate` usage for the upcoming projection
+- Final validation: full test suite, TypeScript, ESLint, production build, `git diff --check`
+- No application/schema changes
+
+### Deferred (out of scope for Alpha 25)
+
+- Notifications/reminders
+- Streaming availability
+- TMDB recommendations
+- Advanced statistics
+- Library filter persistence
+- Import robustness
+- Organization tooling
+- Social/community
+- Cloud sync
+
 ## Future Milestones
 
 Planned or exploratory features include:
@@ -404,7 +483,7 @@ The Alpha 15 import refinements shipped on `main` as follows:
 
 ## Current Implementation Status
 
-*Reconciled with verified implementation on September 12, 2026, following v2.0.0-alpha.24.*
+*Reconciled with verified implementation on September 14, 2026, following v2.0.0-alpha.25.6.*
 
 Status markers: ✅ Implemented · ⚠️ Known defect · ❌ Not implemented · ⏸️ Deferred · 🔮 Future
 
@@ -452,14 +531,34 @@ The Collections pages support:
 - ✅ Transactional Smart deletion removing the definition, memberships, and collection together while preserving media and watch history
 - ✅ Smart collection definitions included in backups (format version 2 optional field)
 
+### Upcoming Episodes
+
+The Upcoming Episodes feature supports:
+
+- ✅ Date-only domain utilities (`src/domain/dates/airDate.ts`) with pure YYYY-MM-DD semantics and no timezone normalization
+- ✅ Local-only upcoming episode projection (`upcomingEpisodesService`) reusing shared date utilities
+- ✅ Regular-season-only selection; valid air dates only; today/tomorrow/future only
+- ✅ Past, missing, malformed, and impossible air dates excluded
+- ✅ Watched future episodes remain visible
+- ✅ Deterministic ordering by air date, show title, season number, episode number
+- ✅ Dedicated `/upcoming` page with loading, empty-library, no-upcoming, error, and populated states
+- ✅ Episodes grouped by air date with relative date labels
+- ✅ Show poster/title, `SxxEyy` episode code, episode title, air date
+- ✅ Link to `/library/tv/:showId` from each episode
+- ✅ Sidebar navigation entry for Upcoming (desktop collapsed and mobile drawer)
+- ✅ Dashboard Upcoming Episodes preview (max 5) positioned after Continue Watching
+- ✅ "View all" link to `/upcoming`
+- ✅ Local-first/offline behavior; no network/TMDB calls in the upcoming pipeline
+- ✅ No database schema changes
+- ✅ No filters, no Smart Collection coupling, no notifications, no streaming availability, no direct watch controls
+
 ### Gaps
 
-No Library capability gaps remain.
+No Library capability gaps remain. Alpha 25 is complete. Deferred items (notifications, streaming availability, advanced statistics, social/community, cloud sync) are tracked under Future Milestones above and in `future-enhancements.md`.
 
 ---
 
 ## Planned Milestones
 
 No further milestones are currently defined. The most recently shipped
-milestone is v2.0.0-alpha.24. Exploratory work is tracked under Future
-Milestones above and in `future-enhhancements.md`.
+milestone is v2.0.0-alpha.25.6 (documentation reconciliation and final validation). Exploratory work is tracked under Future Milestones above and in `future-enhancements.md`.

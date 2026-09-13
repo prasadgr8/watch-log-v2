@@ -1,5 +1,90 @@
 # Changelog
 
+## v2.0.0-alpha.25.6 — Documentation Reconciliation and Final Validation
+
+### Documentation
+
+- Reconciled ROADMAP.md with the completed Alpha 25 implementation (A25.1–A25.6).
+- Added Alpha 25 changelog entries documenting the Upcoming Episodes pipeline.
+- Updated ARCHITECTURE.md to document the Upcoming Episodes architecture and data flow.
+- Updated DATABASE.md to cross-reference the episode `airDate` field usage for the upcoming projection.
+
+### Quality
+
+- Final validation completed with 988 tests passing.
+- TypeScript check passed.
+- ESLint passed with 0 errors and only the pre-existing router warnings.
+- Production build passed.
+- `git diff --check` passed.
+
+## v2.0.0-alpha.25.5 — Dashboard Upcoming Preview
+
+### Added
+
+- Added an "Upcoming Episodes" preview section to the Dashboard, positioned after Continue Watching.
+- The preview reuses the existing `upcomingEpisodesService` and `UpcomingEpisodeListItem` component.
+- The preview shows up to 5 upcoming episodes, preserving the canonical service ordering.
+- The section is hidden when there are no upcoming episodes.
+- Added a "View all" link to the dedicated `/upcoming` page.
+- The section, heading, and link are accessible (`aria-labelledby`, `aria-label`).
+
+### Quality
+
+- Added source-contract coverage pinning the reuse contract and confirming no duplication of upcoming-selection logic (13 tests).
+
+## v2.0.0-alpha.25.4 — Upcoming Navigation
+
+### Added
+
+- Added an "Upcoming" entry to the sidebar navigation (`/upcoming`) with a calendar icon.
+- The existing sidebar architecture is reused for both desktop (expanded/collapsed) and mobile drawer support.
+
+## v2.0.0-alpha.25.3 — Upcoming Episodes Page
+
+### Added
+
+- Added a dedicated `/upcoming` page titled "Upcoming Episodes".
+- The page is local-first: it renders the derived upcoming projection directly with no network or TMDB calls.
+- Future regular TV episodes are grouped by air date with relative date labels.
+- Watched future episodes remain visible with a watched indicator.
+- Each episode shows the show poster/title, `SxxEyy` episode code, episode title, air date, and a link to `/library/tv/:showId`.
+- Loading, empty-library, no-upcoming, error (`role="alert"`), and populated states are all supported.
+- Accessible heading hierarchy (`h1`/`h2`/`h3`), `aria-label` on date groups, and semantic focus rings.
+
+### Quality
+
+- Added page-level and list-item source-contract coverage (21 tests).
+
+## v2.0.0-alpha.25.2 — Upcoming Episode Projection
+
+### Added
+
+- Added `upcomingEpisodesService`, a local-only service that derives the Upcoming Episodes projection from one IndexedDB snapshot.
+- The projection selects regular seasons only (`seasonNumber > 0`), valid `YYYY-MM-DD` air dates only, and today/tomorrow/future dates only.
+- Past, missing, malformed, and impossible air dates are excluded; watched future episodes are included.
+- Episodes whose show is missing or is not a TV show are skipped.
+- Deterministic ordering by air date ascending, then show title, then season number, then episode number.
+- The projection is pure: no network, no writes, no global state, and no duplicate date-selection logic (reuses A25.1 utilities).
+
+### Quality
+
+- Added comprehensive service-level test coverage (11 tests).
+
+## v2.0.0-alpha.25.1 — Date Domain Foundation
+
+### Added
+
+- Added pure date-only domain utilities for episode air dates: `isValidAirDate`, `getLocalDateString`, `compareAirDates`, `getAirDateRelation`, `getRelativeAirDateLabel`.
+- Strict `YYYY-MM-DD` semantics enforced through pattern validation; no `Date` parsing of air date strings.
+- Pure integer-calendar-arithmetic day-number conversion; no timezone normalization and no DST-sensitive local-midnight arithmetic.
+- Leap-year and century-year rules (divisible by 400) applied; malformed, missing, and impossible dates are handled safely as invalid.
+- Local-calendar today via an injected `Date` parameter; deterministic and testable.
+- No database changes; no migrations.
+
+### Quality
+
+- Added full domain test coverage (~20 tests) including leap years, century rules, and calendar boundaries.
+
 ## v2.0.0-alpha.24 — Smart Collections
 
 ### Added

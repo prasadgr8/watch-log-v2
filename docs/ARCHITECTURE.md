@@ -199,6 +199,67 @@ The `Episode.watchedAt` field is used for this current-state projection because 
 
 Progress, next-episode information, and Continue Watching ordering are not persisted to the `Media` entity.
 
+## Upcoming Episodes
+
+The Upcoming Episodes feature is a derived projection over persisted episode data. It introduces no new persisted state, no background polling, and no network calls in its read path.
+
+### Data Flow
+
+```
+TMDB / TV Time
+       ↓
+  Episode persistence (airDate stored as YYYY-MM-DD string)
+       ↓
+  Date-only airDate domain utilities (src/domain/dates/airDate.ts)
+       ↓
+  upcomingEpisodesService (src/features/upcoming/services/upcomingEpisodesService.ts)
+       ↓
+  Upcoming Episodes Page (src/features/upcoming/UpcomingPage.tsx)
+       ↓
+  Dashboard Upcoming Preview (src/features/dashboard/DashboardPage.tsx)
+```
+
+### Date-Only Domain Semantics
+
+- Air dates arrive from TMDB as date-only `YYYY-MM-DD` strings and are persisted verbatim: they carry no time-of-day and no timezone information.
+- The `airDate` field on the `Episode` entity is validated and compared using pure integer calendar arithmetic. No JavaScript `Date` is constructed from an air date string, and no timezone normalization is applied.
+- The current clock never enters the domain module directly; callers pass the relevant `Date` (or its derived local `YYYY-MM-DD` string) so behavior stays deterministic and testable.
+
+### Projection
+
+The `upcomingEpisodesService` derives the Upcoming Episodes projection from one local IndexedDB snapshot:
+
+- Only regular episodes (`seasonNumber > 0`) are included; Season 0 specials are excluded.
+- Only valid date-only air dates are included; missing, malformed, and impossible dates are excluded through the shared A25.1 validator.
+- Only today, tomorrow, and future dates are included; past episodes are excluded.
+- Watched future episodes are included: airing schedule is independent of the user's progress.
+- Episodes whose show is missing or is not a TV show are skipped.
+- Ordering is deterministic: air date ascending, then show title, then season number, then episode number.
+- The projection is pure and read-only: it never writes to IndexedDB, never touches the network, and never mutates its inputs.
+
+### Presentation
+
+- The Upcoming Episodes page (`/upcoming`) groups episodes by air date and renders them through the shared `UpcomingEpisodeListItem` component. No selection or filtering logic is duplicated.
+- The Dashboard reuses the same projection and list item component for its Upcoming Episodes preview (capped at 5 items).
+- Both presentations are local-first: they render directly from the derived projection with no network or TMDB calls.
+
+### Architecture Boundaries
+
+```
+UI (UpcomingPage, DashboardPage)
+       ↓
+upcomingEpisodesService (feature service)
+       ↓
+episodeRepository + mediaRepository (repositories)
+       ↓
+IndexedDB
+```
+
+- UI business logic is not duplicated: the date-selection rules live in the domain module and the service; the UI only renders.
+- No global state: the service is stateless and the `now` boundary is injectable.
+- No Smart Collection coupling: the projection does not reference collections.
+- Notifications and streaming availability are deferred.
+
 ## Statistics
 
 Statistics are derived at read time from existing persisted data.
