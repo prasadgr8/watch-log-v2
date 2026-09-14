@@ -5,12 +5,18 @@ import { useOnlineStatus } from "../../app/useOnlineStatus";
 
 import { useTheme } from "../../app/theme";
 
+import { useRegion } from "../../features/settings/region/regionContext";
+
+import RegionSelect from "../../features/settings/region/RegionSelect";
+
 interface HeaderProps {
   onMenuClick?: () => void;
 }
 
 export default function Header({ onMenuClick }: HeaderProps) {
   const { resolvedTheme, setPreference } = useTheme();
+
+  const { region, selectRegion } = useRegion();
 
   const isOnline = useOnlineStatus();
 
@@ -60,6 +66,12 @@ export default function Header({ onMenuClick }: HeaderProps) {
         >
           <Search />
         </NavLink>
+
+        <RegionSelect
+          variant="compact"
+          value={region}
+          onChange={selectRegion}
+        />
 
         {/*
           Decorative placeholder. Notifications do not exist yet, so the bell

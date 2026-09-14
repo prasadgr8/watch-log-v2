@@ -12,12 +12,16 @@ import { RouterProvider } from "react-router-dom";
 
 import ThemeProvider from "./app/providers";
 
+import RegionProvider from "./features/settings/region/RegionProvider";
+
 import { router } from "./app/router";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ThemeProvider>
-      <RouterProvider router={router} />
+      <RegionProvider>
+        <RouterProvider router={router} />
+      </RegionProvider>
     </ThemeProvider>
   </React.StrictMode>
 

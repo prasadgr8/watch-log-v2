@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   Download,
   FileJson,
+  Globe,
   History,
   LoaderCircle,
   RotateCcw,
@@ -35,6 +36,10 @@ import type { WatchLogBackupV1 } from "../../services/backup/backupTypes";
 
 import ImportHistoryList from "./components/ImportHistoryList";
 import TvTimeImportPreview from "./components/TvTimeImportPreview";
+
+import RegionSelect from "./region/RegionSelect";
+
+import { useRegion } from "./region/regionContext";
 
 interface SelectedBackup {
   backup: WatchLogBackupV1;
@@ -290,6 +295,9 @@ export default function SettingsPage() {
   // Bumped after every import run (success or failure) so the history list
   // reloads; both outcomes persist an import-history record.
   const [importHistoryRefreshToken, setImportHistoryRefreshToken] = useState(0);
+
+  const { region, selectRegion } = useRegion();
+
   async function handleExportBackup(): Promise<void> {
     try {
       setIsExporting(true);
@@ -559,6 +567,48 @@ export default function SettingsPage() {
           Manage your Watch Log V2 data and recovery options.
         </p>
       </div>
+
+      <section className="rounded-xl border border-border bg-surface p-6">
+        <div className="flex items-start gap-4">
+          <div className="rounded-lg bg-accent/15 p-3 text-accent-text">
+            <Globe className="h-6 w-6" />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <h2 className="text-xl font-semibold text-primary">
+              Preferences
+            </h2>
+
+            <div className="mt-4">
+              <h3 className="text-sm font-medium text-primary">
+                Streaming Availability
+              </h3>
+
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+                Choose the country used to check streaming availability. The
+                suggested country comes from your browser settings and is only
+                a starting point.
+              </p>
+
+              <div className="mt-4">
+                <label
+                  htmlFor="availability-region"
+                  className="block text-sm font-medium text-primary"
+                >
+                  Region
+                </label>
+
+                <RegionSelect
+                  id="availability-region"
+                  className="mt-2 max-w-md"
+                  value={region}
+                  onChange={selectRegion}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section className="rounded-xl border border-border bg-surface p-6">
         <div className="flex items-start gap-4">
