@@ -1,0 +1,13 @@
+# WatchLog V2 — AI Agent Rules
+
+1. Verify repository/Git state independently. Never rely solely on prior
+   agent claims about branch, HEAD, PR, or merge state.
+
+2. Implement only approved scope. Do not modify unrelated files, refactor
+   unrelated code, or expand requirements without authorization.
+
+3. Do not commit, push, merge, or approve a PR without explicit human
+   authorization.
+
+4. Consult authoritative WatchLog documentation instead of inventing
+   project rules or architectural decisions.
