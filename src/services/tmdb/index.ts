@@ -10,6 +10,8 @@ export { mapTmdbResultToMedia } from "./tmdbMediaMapper";
 
 export { toFilterableMedia } from "./tmdbFilterAdapter";
 
+export { tmdbAvailabilityAdapter } from "./tmdbAvailabilityAdapter";
+
 export { tmdbMovieService } from "./tmdbMovieService";
 
 export { tmdbSearchService } from "./tmdbSearchService";
