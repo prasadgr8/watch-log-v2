@@ -24,6 +24,7 @@ import DensityToggle from "../../components/ui/DensityToggle";
 
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
+import MediaAvailabilitySection from "../availability/MediaAvailabilitySection";
 import { useDensity } from "../ui/useDensity";
 
 import EpisodeList from "./components/EpisodeList";
@@ -509,6 +510,8 @@ export default function TvShowDetailsPage() {
           </div>
         </div>
       </section>
+
+      <MediaAvailabilitySection media={details.media} />
 
       <section>
         <div className="mb-4">

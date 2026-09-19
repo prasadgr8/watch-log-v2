@@ -19,6 +19,7 @@ import type { PersistedMedia } from "../../types";
 import { useOnlineStatus } from "../../app/useOnlineStatus";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
+import MediaAvailabilitySection from "../availability/MediaAvailabilitySection";
 import EditMediaModal from "../library/components/EditMediaModal";
 
 import {
@@ -317,6 +318,8 @@ export default function MovieDetailsPage() {
           </div>
         </div>
       </div>
+
+      <MediaAvailabilitySection media={movie} />
 
       <EditMediaModal
         media={movie}
