@@ -15,7 +15,10 @@ import {
   type ResolutionState,
 } from "../../domain/availability/types";
 
-import { toAvailabilityViewModel } from "./availabilityPresentation";
+import {
+  createAvailabilityRequestKey,
+  toAvailabilityViewModel,
+} from "./availabilityPresentation";
 
 /*
  * Mapper unit tests for the availability presentation layer (A26.5 S1).
@@ -471,6 +474,184 @@ describe("toAvailabilityViewModel - retry contract", () => {
     );
     expect(errorState.state).toBe("error");
     expect(errorState.isRetryable).toBe(true);
+  });
+});
+
+describe("createAvailabilityRequestKey - request identity (A26.6-S1)", () => {
+  const mediaBase = { mediaType: "movie" as const };
+
+  it("produces identical keys for identical request identities", () => {
+    const keyA = createAvailabilityRequestKey(
+      { id: 1, tmdbId: 603, ...mediaBase },
+      "IN",
+      "ready",
+      true,
+      0,
+    );
+    const keyB = createAvailabilityRequestKey(
+      { id: 1, tmdbId: 603, ...mediaBase },
+      "IN",
+      "ready",
+      true,
+      0,
+    );
+
+    expect(keyA).toBe(keyB);
+    expect(keyA).toBe("1|movie|603|IN|ready|online|0");
+  });
+
+  it("changes when the media id changes (media transition)", () => {
+    const keyA = createAvailabilityRequestKey(
+      { id: 1, tmdbId: 603, ...mediaBase },
+      "IN",
+      "ready",
+      true,
+      0,
+    );
+    const keyB = createAvailabilityRequestKey(
+      { id: 2, tmdbId: 603, ...mediaBase },
+      "IN",
+      "ready",
+      true,
+      0,
+    );
+
+    expect(keyA).not.toBe(keyB);
+  });
+
+  it("changes when the media type changes (media transition)", () => {
+    const keyA = createAvailabilityRequestKey(
+      { id: 1, tmdbId: 603, ...mediaBase },
+      "IN",
+      "ready",
+      true,
+      0,
+    );
+    const keyB = createAvailabilityRequestKey(
+      { id: 1, tmdbId: 603, mediaType: "tv" },
+      "IN",
+      "ready",
+      true,
+      0,
+    );
+
+    expect(keyA).not.toBe(keyB);
+  });
+
+  it("changes when tmdbId changes (media transition)", () => {
+    const keyA = createAvailabilityRequestKey(
+      { id: 1, tmdbId: 603, ...mediaBase },
+      "IN",
+      "ready",
+      true,
+      0,
+    );
+    const keyB = createAvailabilityRequestKey(
+      { id: 1, tmdbId: 1399, ...mediaBase },
+      "IN",
+      "ready",
+      true,
+      0,
+    );
+
+    expect(keyA).not.toBe(keyB);
+  });
+
+  it("changes when the region changes (region transition)", () => {
+    const keyA = createAvailabilityRequestKey(
+      { id: 1, tmdbId: 603, ...mediaBase },
+      "IN",
+      "ready",
+      true,
+      0,
+    );
+    const keyB = createAvailabilityRequestKey(
+      { id: 1, tmdbId: 603, ...mediaBase },
+      "US",
+      "ready",
+      true,
+      0,
+    );
+
+    expect(keyA).not.toBe(keyB);
+  });
+
+  it("changes when the readiness status changes (unset-region transition)", () => {
+    const keyA = createAvailabilityRequestKey(
+      { id: 1, tmdbId: 603, ...mediaBase },
+      "IN",
+      "ready",
+      true,
+      0,
+    );
+    const keyB = createAvailabilityRequestKey(
+      { id: 1, tmdbId: 603, ...mediaBase },
+      "IN",
+      "choose",
+      true,
+      0,
+    );
+
+    expect(keyA).not.toBe(keyB);
+  });
+
+  it("changes when connectivity changes (connectivity transition)", () => {
+    const keyA = createAvailabilityRequestKey(
+      { id: 1, tmdbId: 603, ...mediaBase },
+      "IN",
+      "ready",
+      true,
+      0,
+    );
+    const keyB = createAvailabilityRequestKey(
+      { id: 1, tmdbId: 603, ...mediaBase },
+      "IN",
+      "ready",
+      false,
+      0,
+    );
+
+    expect(keyA).not.toBe(keyB);
+  });
+
+  it("changes when the retry generation changes (manual retry)", () => {
+    const keyA = createAvailabilityRequestKey(
+      { id: 1, tmdbId: 603, ...mediaBase },
+      "IN",
+      "ready",
+      true,
+      0,
+    );
+    const keyB = createAvailabilityRequestKey(
+      { id: 1, tmdbId: 603, ...mediaBase },
+      "IN",
+      "ready",
+      true,
+      1,
+    );
+
+    expect(keyA).not.toBe(keyB);
+  });
+
+  it("handles unsaved media and missing tmdbId without ambiguity", () => {
+    const unsaved = createAvailabilityRequestKey(
+      { mediaType: "movie" },
+      "IN",
+      "ready",
+      true,
+      0,
+    );
+    const noTmdb = createAvailabilityRequestKey(
+      { id: 1, mediaType: "movie" },
+      "IN",
+      "ready",
+      true,
+      0,
+    );
+
+    expect(unsaved).toBe("unsaved|movie|no-tmdb|IN|ready|online|0");
+    expect(noTmdb).toBe("1|movie|no-tmdb|IN|ready|online|0");
+    expect(unsaved).not.toBe(noTmdb);
   });
 });
 

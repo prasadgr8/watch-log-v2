@@ -3,10 +3,41 @@ import type {
   AvailabilityType,
   ProviderErrorKind,
 } from "../../domain/availability/types";
+import type { Media } from "../../types/media";
 import {
   getRegionName,
   type AvailabilityRegionCode,
+  type AvailabilityRegionStatus,
 } from "../settings/region/availabilityRegion";
+
+/**
+ * Builds the deterministic identity of one availability request (A26.6-S1).
+ *
+ * Two calls return the same key if and only if the request would be identical:
+ * the media identity (id, mediaType, tmdbId), the region, the region
+ * readiness status, the connectivity state, and the manual-retry generation.
+ * The availability section uses this key to tag in-flight/committed request
+ * state so an obsolete request (previous region, previous title, previous
+ * connectivity, previous attempt, or a request from before a re-render) can
+ * never be displayed for a newer identity. Pure and side-effect free.
+ */
+export function createAvailabilityRequestKey(
+  media: Pick<Media, "id" | "mediaType" | "tmdbId">,
+  region: AvailabilityRegionCode,
+  status: AvailabilityRegionStatus,
+  isOnline: boolean,
+  attempt: number,
+): string {
+  return [
+    media.id === undefined ? "unsaved" : String(media.id),
+    media.mediaType,
+    media.tmdbId === undefined ? "no-tmdb" : String(media.tmdbId),
+    region,
+    status,
+    isOnline ? "online" : "offline",
+    String(attempt),
+  ].join("|");
+}
 
 /**
  * Presentation-only mirror of the domain's private `AVAILABILITY_TYPE_ORDER`
