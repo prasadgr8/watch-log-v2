@@ -618,7 +618,7 @@ The Upcoming Episodes feature supports:
 
 ### Gaps
 
-No Library capability gaps remain. Alpha 25 is complete. Deferred items (notifications, streaming availability, advanced statistics, social/community, cloud sync) are tracked under Future Milestones above and in `future-enhancements.md`.
+No Library capability gaps remain. Alpha 25 is complete. Notifications, advanced statistics, social/community, and cloud sync remain deferred; basic streaming availability shipped in Alpha 26. Further availability expansion is tracked in `future-enhancements.md`.
 
 ---
 
