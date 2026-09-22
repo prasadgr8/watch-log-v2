@@ -64,6 +64,20 @@ The following import improvements shipped and are no longer future work:
 - Release reminders
 - Watch reminders
 
+## Streaming Availability
+
+Basic provider-backed streaming availability is no longer future work. Alpha 26 shipped a TMDB-backed, region-aware availability path using a provider-neutral domain, application-level availability service, and shared "Where to watch" presentation on Movie Details and TV Details.
+
+The following remain future work:
+
+- Additional availability providers
+- Availability result persistence or caching
+- Background polling or proactive availability refresh
+- Availability-driven notifications and reminders
+- Broader integrations built on availability data
+
+The shipped availability feature intentionally does not persist availability results in IndexedDB and does not introduce background polling or notifications.
+
 ## Advanced Statistics
 
 The Statistics Dashboard is already shipped on `main`: the basic dashboard
