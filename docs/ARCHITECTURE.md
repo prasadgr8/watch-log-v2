@@ -258,7 +258,61 @@ IndexedDB
 - UI business logic is not duplicated: the date-selection rules live in the domain module and the service; the UI only renders.
 - No global state: the service is stateless and the `now` boundary is injectable.
 - No Smart Collection coupling: the projection does not reference collections.
-- Notifications and streaming availability are deferred.
+- Notifications remain deferred.
+- Streaming availability is now implemented separately from the Upcoming Episodes projection; the availability architecture is documented below.
+
+## Streaming Availability
+
+Streaming availability is a provider-neutral, region-aware feature integrated into Movie Details and TV Details. It is an enrichment path over persisted WatchLog media, not a replacement for user-owned local media state.
+
+### Availability Architecture
+
+The availability flow is layered as follows:
+
+```
+Region Preference
+       ↓
+Provider-neutral Availability Domain
+       ↓
+TMDB Availability Adapter
+       ↓
+Streaming Availability Service
+       ↓
+Movie Details / TV Details
+       ↓
+"Where to watch" Presentation
+```
+
+- **Region Preference:** the user-selected region is explicit application state. Availability does not infer a region from locale or network conditions.
+- **Provider-neutral Availability Domain:** shared types represent media identity, region, provider, availability type, verdict, and resolution state without exposing TMDB-specific contracts to the UI.
+- **TMDB Availability Adapter:** typed TMDB watch-provider responses are mapped into the provider-neutral domain, including subscription, free, ad-supported, rent, and buy access.
+- **Streaming Availability Service:** application-facing service logic maps WatchLog media into the availability identity and accepts explicit region and network/timeout options.
+- **Details Integration:** Movie Details and TV Details consume the shared service and render a common "Where to watch" section rather than issuing provider-specific requests themselves.
+- **Presentation:** availability results are presented deterministically with access-type grouping/badges and explicit loading, error, retry, offline, and region-aware states.
+
+### Request and Resilience Semantics
+
+Availability requests are guarded against stale or out-of-order results.
+
+- A deterministic request identity is derived from the media, region, readiness/status, connectivity state, and retry attempt.
+- Responses are applied only when they correspond to the current request identity, preventing a previous media or region request from overwriting newer state.
+- Request cancellation is used during effect cleanup.
+- Transitions across media changes, region changes, connectivity changes, readiness, loading, errors, and retries are treated as explicit state changes.
+- The availability section uses semantic labeling and accessible loading/error/result announcements.
+- External provider links retain correct external-link semantics.
+
+### Persistence and Offline Boundary
+
+Availability results are not persisted in IndexedDB and no availability cache has been introduced.
+
+- The existing IndexedDB schema remains unchanged by Alpha 26 availability work.
+- TMDB availability data is fetched through the network when the availability path is eligible to use it.
+- Offline state is represented explicitly in the UI; the feature does not claim that previously fetched availability results remain available offline.
+- No background polling, notifications, or availability-driven Smart Collection coupling has been introduced.
+
+### Current Scope
+
+Alpha 26 currently provides TMDB-backed streaming availability through the provider-neutral service boundary. The architecture deliberately leaves broader provider coverage, availability persistence/caching, polling, notifications, and other future integrations outside the shipped scope.
 
 ## Statistics
 
