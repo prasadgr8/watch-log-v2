@@ -423,6 +423,70 @@ Status: Complete
 - Social/community
 - Cloud sync
 
+## v2.0.0-alpha.26.1 — Region Preference & Availability Foundation
+
+Status: Complete (shipped on `main` via PR #122)
+
+- Added persisted region preference with an explicit region selector for availability-aware features.
+- Established the provider-neutral streaming availability domain foundation and explicit region boundary.
+- Region is user-selected application state; availability logic does not infer a region from locale or network conditions.
+- No availability results are persisted or cached in IndexedDB.
+
+## v2.0.0-alpha.26.2 — Availability Domain & Provider Foundation
+
+Status: Reconciled historical planning step; no separate merged PR is asserted.
+
+- The A26.2 planning decomposition defined the provider-neutral availability domain and provider abstraction used by the subsequent availability implementation.
+- The verified Git history does not establish a separate A26.2 merge, so this roadmap does not invent a commit or PR for it.
+- The foundation is represented in the verified A26.1 lineage and is consumed by the later A26.3–A26.6 implementation steps.
+
+## v2.0.0-alpha.26.3 — TMDB Availability Adapter
+
+Status: Complete (shipped on `main` via PR #125)
+
+- Added typed TMDB watch-provider contracts and a provider-neutral TMDB availability adapter.
+- Mapped subscription, free, ad-supported, rent, and buy availability into the provider-neutral domain.
+- Added region-aware availability handling for supported regions including IN, US, GB, CA, and AU.
+- Preserved the provider-neutral domain boundary; no UI, persistence, caching, polling, notifications, bulk actions, or additional providers were introduced.
+
+## v2.0.0-alpha.26.4 — Streaming Availability Service
+
+Status: Complete (shipped on `main` via PR #126)
+
+- Added the application-level streaming availability service.
+- The service maps WatchLog media to the provider-neutral availability identity and accepts explicit region and network/timeout options.
+- Kept provider-specific API details behind the TMDB adapter boundary.
+- No availability UI, persistence, caching, polling, notifications, or additional providers were introduced.
+
+## v2.0.0-alpha.26.5 — Media Details Availability
+
+Status: Complete (shipped on `main` via PR #127)
+
+- Added the shared "Where to watch" availability section to Movie Details and TV Details.
+- Added availability result presentation, access-type badges, and explicit region/offline/error/retry states.
+- Reused the application availability service rather than introducing feature-specific provider calls.
+- Added dedicated presentation and integration coverage.
+
+## v2.0.0-alpha.26.6 — Availability Resilience & Accessibility
+
+Status: Complete (shipped on `main` via PR #128)
+
+- Added deterministic availability request identity and stale-response protection.
+- Hardened transitions across media, region, connectivity, readiness, loading, error, and retry states.
+- Added semantic availability section labeling and accessible loading/error/result announcements.
+- Preserved correct external-link semantics.
+- Added regression coverage for request identity, stale responses, lifecycle transitions, and accessibility behavior.
+
+## v2.0.0-alpha.26.7 — Documentation Reconciliation & Final Validation
+
+Status: In progress
+
+- Reconcile roadmap and changelog with the verified Alpha 26 implementation history.
+- Reconcile the architecture documentation with the provider-neutral availability domain, TMDB adapter, service, Details integration, and resilience/accessibility boundaries.
+- Reconcile deferred/future-enhancement documentation so shipped streaming availability is not represented as entirely deferred.
+- Perform final documentation consistency and project validation.
+- No application behavior, persistence schema, availability caching, notifications, or additional provider work is part of this milestone.
+
 ## Future Milestones
 
 Planned or exploratory features include:
@@ -554,7 +618,7 @@ The Upcoming Episodes feature supports:
 
 ### Gaps
 
-No Library capability gaps remain. Alpha 25 is complete. Deferred items (notifications, streaming availability, advanced statistics, social/community, cloud sync) are tracked under Future Milestones above and in `future-enhancements.md`.
+No Library capability gaps remain. Alpha 25 is complete. Notifications, advanced statistics, social/community, and cloud sync remain deferred; basic streaming availability shipped in Alpha 26. Further availability expansion is tracked in `future-enhancements.md`.
 
 ---
 

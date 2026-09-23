@@ -1,4 +1,39 @@
 # Changelog
+## v2.0.0-alpha.26.1 — Region Preference & Availability Foundation
+
+- Added explicit region preference and region-aware availability foundation.
+- Established the provider-neutral availability domain boundary used by subsequent availability work.
+- Availability results are not persisted or cached in IndexedDB.
+
+## v2.0.0-alpha.26.2 — Availability Domain & Provider Foundation
+
+- Historical planning/foundation step reconciled from the verified repository history.
+- No separate A26.2 merge or PR is asserted; the foundation is represented in the A26.1 lineage and consumed by A26.3–A26.6.
+
+## v2.0.0-alpha.26.3 — TMDB Availability Adapter
+
+- Added typed TMDB watch-provider contracts and a provider-neutral TMDB availability adapter.
+- Mapped subscription, free, ad-supported, rent, and buy availability by region.
+- Kept provider-specific details behind the adapter boundary.
+
+## v2.0.0-alpha.26.4 — Streaming Availability Service
+
+- Added the application-level streaming availability service.
+- Wired WatchLog media to the provider-neutral availability identity with explicit region and network/timeout options.
+- No persistence, caching, polling, notifications, or additional providers were introduced.
+
+## v2.0.0-alpha.26.5 — Media Details Availability
+
+- Added the shared "Where to watch" section to Movie Details and TV Details.
+- Added access-type presentation plus explicit region, offline, error, and retry states.
+- Added dedicated availability presentation/integration coverage.
+
+## v2.0.0-alpha.26.6 — Availability Resilience & Accessibility
+
+- Added deterministic availability request identity and stale-response protection.
+- Hardened media, region, connectivity, readiness, loading, error, and retry transitions.
+- Added semantic section labeling and accessible loading/error/result announcements.
+- Preserved correct external-link semantics and added regression coverage for resilience/accessibility behavior.
 
 ## v2.0.0-alpha.25.6 — Documentation Reconciliation and Final Validation
 
