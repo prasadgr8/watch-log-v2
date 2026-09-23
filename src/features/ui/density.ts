@@ -59,6 +59,33 @@ export const EPISODE_GRID_COLUMNS: Record<CardDensity, string> = {
 };
 
 /**
+ * Grid column classes for the Dashboard Continue Watching summary grid at
+ * each density.
+ *
+ * Continue Watching cards are posterless summary cards with a dense content
+ * stack (title, progress, up-next, full-width action), so they need wider
+ * tracks than poster cards. From lg upwards the tracks are fluid: each density
+ * sets a minimum track width (240px / 320px / 400px) and the tracks then share
+ * the row width, so cards stretch to fill their row evenly instead of leaving
+ * fixed-width slack. Below the lg breakpoint the grid intentionally stays a
+ * single full-width column, so narrow screens never overflow and the card
+ * keeps its established full-width presentation.
+ *
+ * auto-fill is used deliberately: it keeps a stable number of tracks per row
+ * derived from the density minimum and shares the leftover row width across
+ * those tracks. auto-fit must not be used because it collapses the empty
+ * tracks of a partially filled row, which would stretch the remaining cards
+ * (a single item would become full width) and break the row-width sharing
+ * contract that density is supposed to control.
+ */
+export const DASHBOARD_GRID_COLUMNS: Record<CardDensity, string> = {
+  compact: "grid-cols-1 lg:grid-cols-[repeat(auto-fill,_minmax(240px,_1fr))]",
+  comfortable:
+    "grid-cols-1 lg:grid-cols-[repeat(auto-fill,_minmax(320px,_1fr))]",
+  large: "grid-cols-1 lg:grid-cols-[repeat(auto-fill,_minmax(400px,_1fr))]",
+};
+
+/**
  * Card gap classes for each density.
  */
 export const CARD_GAP: Record<CardDensity, string> = {

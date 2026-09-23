@@ -7,6 +7,8 @@ import {
   mediaRepository,
 } from "../../database/repositories";
 
+import DensityToggle from "../../components/ui/DensityToggle";
+
 import ProgressBar from "../statistics/components/ProgressBar";
 
 import {
@@ -20,6 +22,14 @@ import {
 } from "../upcoming/services/upcomingEpisodesService";
 
 import UpcomingEpisodeListItem from "../upcoming/components/UpcomingEpisodeListItem";
+
+import { useDensity } from "../ui/useDensity";
+import {
+  CARD_GAP,
+  CARD_TITLE_SIZE,
+  DASHBOARD_GRID_COLUMNS,
+  LIST_PADDING,
+} from "../ui/density";
 
 import { getLocalDateString, getRelativeAirDateLabel } from "../../domain/dates/airDate";
 
@@ -51,6 +61,13 @@ function getEpisodeCode(item: ContinueWatchingItem): string {
   )}E${formatEpisodeNumber(item.nextEpisode.episodeNumber)}`;
 }
 
+/**
+ * Continue Watching reuses the shared library density preference so the
+ * dashboard honours the same card-density choice as the Library. Density is
+ * presentation-only; it never changes the data shown or the available actions.
+ */
+const DASHBOARD_DENSITY_KEY = "library-card-density";
+
 export default function DashboardPage() {
   const [statistics, setStatistics] =
     useState<DashboardStatistics>(initialStatistics);
@@ -63,6 +80,8 @@ export default function DashboardPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { density, setDensity } = useDensity(DASHBOARD_DENSITY_KEY);
 
   useEffect(() => {
     async function loadDashboard(): Promise<void> {
@@ -177,31 +196,43 @@ export default function DashboardPage() {
 
       {!isLoading && continueWatchingItems.length > 0 && (
         <section>
-          <div className="mb-5 flex items-center gap-3">
-            <div className="rounded-lg bg-accent/15 p-2 text-accent-text">
-              <Play className="h-5 w-5" />
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-accent/15 p-2 text-accent-text">
+                <Play className="h-5 w-5" />
+              </div>
+
+              <div>
+                <h2 className="text-2xl font-bold text-primary">
+                  Continue Watching
+                </h2>
+
+                <p className="mt-1 text-sm text-muted">
+                  Pick up where you left off.
+                </p>
+              </div>
             </div>
 
-            <div>
-              <h2 className="text-2xl font-bold text-primary">
-                Continue Watching
-              </h2>
-
-              <p className="mt-1 text-sm text-muted">
-                Pick up where you left off.
-              </p>
-            </div>
+            <DensityToggle
+              density={density}
+              onChange={setDensity}
+              label="Continue Watching density"
+            />
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-2">
+          <div
+            className={`grid ${CARD_GAP[density]} ${DASHBOARD_GRID_COLUMNS[density]}`}
+          >
             {continueWatchingItems.map((item) => (
               <article
                 key={item.media.id}
-                className="rounded-xl border border-border bg-surface p-6"
+                className={`rounded-xl border border-border bg-surface ${LIST_PADDING[density]}`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <h3 className="truncate text-xl font-semibold text-primary">
+                    <h3
+                      className={`truncate font-semibold text-primary ${CARD_TITLE_SIZE[density]}`}
+                    >
                       {item.media.title}
                     </h3>
 
