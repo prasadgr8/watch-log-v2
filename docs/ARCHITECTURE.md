@@ -83,6 +83,59 @@ Accessibility:
 - The hamburger and close controls are labelled buttons with visible `focus-visible` keyboard indicators.
 - The drawer keeps exactly one `nav` landmark, and the shell keeps exactly one `main` landmark.
 
+## Shared Card Density and Grid Architecture
+
+Watch Log renders card grids through a shared card-density infrastructure that is already shipped: the Library, Search results, TV show Episode cards, the Upcoming page, Smart Collection results, and Dashboard Continue Watching all consume it.
+
+Density affects presentation only — poster size, spacing, grid columns, and typography. It never changes which metadata is displayed or which actions are available, and all three densities are information-equivalent.
+
+### Shared Density Tokens
+
+`src/features/ui/density.ts` is the single source of the shared density constants:
+
+- the `CardDensity` type over `DENSITIES` (`compact`, `comfortable`, `large`), `DEFAULT_DENSITY` (`comfortable`), `DENSITY_LABELS`, and the `isCardDensity` type guard;
+- presentation mappings keyed by `CardDensity`: `CARD_GAP`, `LIST_PADDING`, `LIST_THUMBNAIL`, `CARD_TITLE_SIZE`, and the grid mappings `LIBRARY_GRID_COLUMNS`, `SEARCH_GRID_COLUMNS`, `EPISODE_GRID_COLUMNS`, and `DASHBOARD_GRID_COLUMNS`.
+
+The `useDensity(key)` hook in `src/features/ui/useDensity.ts` loads and persists each page's preference in the settings store, following the established `useViewMode` persistence pattern: loading never writes and falls back to `DEFAULT_DENSITY` when nothing valid is stored; only an explicit user selection persists. The shared `DensityToggle` component renders the control. Consuming pages declare their preference key: `library-card-density` (Library, Smart Collection results, and Dashboard Continue Watching), `search-card-density`, `episode-card-density`, and `upcoming-card-density`.
+
+### Grid Composition
+
+Consumers compose grids directly from the shared mappings — for example the Library grid:
+
+```
+grid items-start justify-items-start ${CARD_GAP[density]} ${LIBRARY_GRID_COLUMNS[density]}
+```
+
+Dashboard Continue Watching reuses this infrastructure instead of introducing a Dashboard-specific one. `DashboardPage` loads density through `useDensity` with the shared `library-card-density` key, so the Dashboard honours the same card-density choice as the Library, and renders its summary grid as:
+
+```
+grid ${CARD_GAP[density]} ${DASHBOARD_GRID_COLUMNS[density]}
+```
+
+The same density value also drives `LIST_PADDING` and `CARD_TITLE_SIZE` in the Dashboard list and typography presentation.
+
+### Responsive Track Behavior
+
+`LIBRARY_GRID_COLUMNS`, `SEARCH_GRID_COLUMNS`, and `EPISODE_GRID_COLUMNS` use `auto-fill` with density-specific fixed tracks (`minmax(Npx, Npx)`): cards stay content-sized, and unused horizontal space appears only after the final card in a row instead of fractional stretching.
+
+`DASHBOARD_GRID_COLUMNS` is fluid:
+
+- Below the `lg` breakpoint every density renders a single full-width column (`grid-cols-1`), so narrow screens never overflow.
+- From `lg` upward each density sets a minimum track width (240px compact, 320px comfortable, 400px large) with a `1fr` maximum, so the tracks share the row width and cards stretch to fill the row evenly instead of leaving fixed-width slack.
+- `auto-fill` is required and `auto-fit` is prohibited: `auto-fit` collapses the empty tracks of a partially filled row, which would stretch the remaining cards (a single card would become full width) and break the row-width sharing contract density controls.
+
+Responsive behavior is CSS-only: density adds no viewport-measurement JavaScript (`matchMedia`, `ResizeObserver`, `window.innerWidth`, or a media-query hook).
+
+### Enforced Invariants
+
+Source-contract tests (`dashboardContinueWatchingDensity.test.ts`, `episodesDensity.test.ts`, `upcomingDensity.test.ts`, `smartResultsSection.test.ts`, and `useDensity.test.ts`) pin the architectural constraints:
+
+- Pages consume density tokens only from `src/features/ui/density`; no page declares a duplicate `Record<CardDensity, ...>` mapping or a second persistence path (the Dashboard has exactly one `useDensity` call and no direct `settingsRepository` use).
+- The Dashboard grid composes `DASHBOARD_GRID_COLUMNS` with the shared `CARD_GAP`, and never `LIBRARY_GRID_COLUMNS`, `EPISODE_GRID_COLUMNS`, or a fixed `lg:grid-cols-2`.
+- The `DASHBOARD_GRID_COLUMNS` declaration contains `auto-fill` and no `auto-fit`.
+- Density controls render through the shared `DensityToggle` with `role="group"`, `aria-pressed`, and an accessible label.
+- Density adds no network, TMDB, or online-status logic, and Dashboard Continue Watching does not reuse the poster-oriented `MediaCard`/`MediaListItem` presentations.
+
 ## Library
 
 ### Data Flow

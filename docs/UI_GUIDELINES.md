@@ -92,6 +92,7 @@ Shipped reusable components include:
 - MediaCard and MediaListItem
 - ProgressBar (also reused by the Dashboard Continue Watching cards)
 - ViewModeToggle
+- DensityToggle
 - ConfirmDialog
 - EpisodeList, EpisodeCard, and EpisodeListItem
 - BulkActionsToolbar
@@ -116,6 +117,32 @@ Mobile navigation uses a responsive drawer (shipped in v2.0.0-alpha.16):
 - Styling uses semantic theme tokens; arbitrary Tailwind widths and colors are not introduced.
 - The backdrop is decorative and marked `aria-hidden`.
 
+### Card Density and Responsive Grids
+
+Card grids on Library, Movies, Media Search, TV show Episode cards, the Upcoming page, Smart Collection results, and Dashboard Continue Watching share a single density preference with three `CardDensity` options: `compact`, `comfortable` (default), and `large`.
+
+Density rules:
+
+- Density is a presentation preference, not a data distinction: it changes spacing (`CARD_GAP`), list padding (`LIST_PADDING`), thumbnail sizing (`LIST_THUMBNAIL`), title sizing (`CARD_TITLE_SIZE`), poster sizing, and grid tracks (the shared grid mappings such as `LIBRARY_GRID_COLUMNS` and `DASHBOARD_GRID_COLUMNS`) only.
+- All three densities are information-equivalent. Changing density must not hide or remove metadata, indicators, or actions; the same information and controls stay available at every density.
+- Each surface persists its density independently through the shared `useDensity` hook (the settings-store pattern shared with `useViewMode`): only an explicit selection is stored, and a missing or invalid value falls back to `comfortable`.
+
+Density control:
+
+- Density selection uses the shared `DensityToggle` component: a `role="group"` container with a meaningful accessible name (for example "Card density", "Episode density", "Continue Watching density").
+- The active option is exposed through `aria-pressed`, so the selected state never relies on color alone. Options are native buttons with visible `focus-visible` states, and each carries both an accessible name and a `title`.
+
+Responsive grid behavior:
+
+- Grid responsiveness is CSS-only and driven by the density mapping; no viewport-measurement JavaScript is introduced.
+- Library, Movies, Search, Upcoming, and Episode grids use `auto-fill` with density-specific fixed tracks: cards stay content-sized, and unused horizontal space appears only after the final card in a row instead of fractionally stretching cards.
+- Dashboard Continue Watching is fluid: below the `lg` breakpoint every density renders a single full-width column, and from `lg` upward each density sets a minimum track width (240px / 320px / 400px) whose tracks share the row width so cards fill the row evenly.
+
+Dashboard Continue Watching:
+
+- Continue Watching reuses the shared density infrastructure and the Library `library-card-density` preference, so the Dashboard honours the same card-density choice as the Library; there is no Dashboard-specific density system.
+- Its section header renders the shared `DensityToggle` labelled "Continue Watching density", and its cards follow the same information-equivalence rule as every other card grid.
+
 ## Library
 
 The Library supports:
@@ -139,7 +166,7 @@ Both `MediaCard` and `MediaListItem` share the same presentation contract:
 - User rating is rendered only when set above zero.
 - A notes-present indicator (StickyNote icon with screen-reader text "Has notes") appears for non-blank notes.
 - TV shows display watched/total episode counts and a shared `ProgressBar` when progress is known. Movies never show a progress bar.
-- Grid view uses `md:grid-cols-2 xl:grid-cols-3`. List view uses stacked rows.
+- Grid view uses the shared density-driven card grid (see "Card Density and Responsive Grids"); list view uses stacked rows.
 - The title links to the details route; selection checkboxes and quick actions (favorite, edit, delete) remain outside the link so they never trigger navigation.
 
 ### Selection Mode

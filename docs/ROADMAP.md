@@ -624,5 +624,7 @@ No Library capability gaps remain. Alpha 25 is complete. Notifications, advanced
 
 ## Planned Milestones
 
-No further milestones are currently defined. The most recently shipped
-milestone is v2.0.0-alpha.25.6 (documentation reconciliation and final validation). Exploratory work is tracked under Future Milestones above and in `future-enhancements.md`.
+Alpha 26.1 through Alpha 26.6 are complete. Alpha 26.7 — Documentation
+Reconciliation & Final Validation — is currently in progress (see the
+v2.0.0-alpha.26.7 section above). Exploratory work is tracked under Future Milestones
+above and in `future-enhancements.md`.
