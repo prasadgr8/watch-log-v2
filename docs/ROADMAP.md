@@ -479,7 +479,7 @@ Status: Complete (shipped on `main` via PR #128)
 
 ## v2.0.0-alpha.26.7 — Documentation Reconciliation & Final Validation
 
-Status: In progress
+Status: Complete (shipped on `main`)
 
 - Reconcile roadmap and changelog with the verified Alpha 26 implementation history.
 - Reconcile the architecture documentation with the provider-neutral availability domain, TMDB adapter, service, Details integration, and resilience/accessibility boundaries.
@@ -625,6 +625,6 @@ No Library capability gaps remain. Alpha 25 is complete. Notifications, advanced
 ## Planned Milestones
 
 Alpha 26.1 through Alpha 26.6 are complete. Alpha 26.7 — Documentation
-Reconciliation & Final Validation — is currently in progress (see the
+Reconciliation & Final Validation — is complete (shipped on `main`; see the
 v2.0.0-alpha.26.7 section above). Exploratory work is tracked under Future Milestones
 above and in `future-enhancements.md`.
