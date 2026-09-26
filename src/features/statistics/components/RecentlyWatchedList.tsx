@@ -29,7 +29,7 @@ export default function RecentlyWatchedList({
   if (activity.recentlyWatched.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border bg-surface/50 p-8 text-center">
-        <Film className="mx-auto h-8 w-8 text-muted" />
+        <Film aria-hidden="true" className="mx-auto h-8 w-8 text-muted" />
 
         <p className="mt-3 text-muted">
           No watched episodes yet.
@@ -59,7 +59,7 @@ export default function RecentlyWatchedList({
             </span>
 
             <span className="inline-flex items-center gap-1.5 text-sm text-muted">
-              <Clock3 className="h-4 w-4" />
+              <Clock3 aria-hidden="true" className="h-4 w-4" />
 
               {formatWatchedDate(item.watchedAt)}
             </span>
