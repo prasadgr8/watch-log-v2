@@ -68,7 +68,7 @@ export default function ShowProgressTable({
   if (shows.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border bg-surface/50 p-8 text-center">
-        <Film className="mx-auto h-8 w-8 text-muted" />
+        <Film aria-hidden="true" className="mx-auto h-8 w-8 text-muted" />
 
         <p className="mt-3 text-muted">
           No TV shows in your library yet.
@@ -95,9 +95,15 @@ export default function ShowProgressTable({
                 aria-expanded={isExpanded}
               >
                 {isExpanded ? (
-                  <ChevronDown className="h-4 w-4 shrink-0 text-muted" />
+                  <ChevronDown
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 text-muted"
+                  />
                 ) : (
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
+                  <ChevronRight
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 text-muted"
+                  />
                 )}
 
                 <h3 className="truncate text-lg font-semibold text-primary">
