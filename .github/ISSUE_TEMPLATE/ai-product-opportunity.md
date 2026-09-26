@@ -8,13 +8,14 @@ title: "[AI Product Review] "
 
 ### Category
 
-- [ ] UX
-- [ ] Accessibility
-- [ ] Performance
-- [ ] Architecture
-- [ ] Feature Enhancement
-- [ ] New Feature
-- [ ] Bug
+- [ ] BUG
+- [ ] UX IMPROVEMENT
+- [ ] ACCESSIBILITY
+- [ ] PERFORMANCE
+- [ ] ARCHITECTURE
+- [ ] FEATURE ENHANCEMENT
+- [ ] NEW FEATURE
+- [ ] PRODUCT OPPORTUNITY
 
 ### Problem / Opportunity
 
@@ -42,7 +43,6 @@ title: "[AI Product Review] "
 
 ### Human Decision
 
-- [ ] Accept
-- [ ] Defer
-- [ ] Reject
-- [ ] Needs Investigation
+- [ ] ACCEPT
+- [ ] DEFER
+- [ ] REJECT
