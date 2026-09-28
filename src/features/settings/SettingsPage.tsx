@@ -20,6 +20,7 @@ import {
   FileJson,
   Globe,
   History,
+  Info,
   LoaderCircle,
   RotateCcw,
   Upload,
@@ -27,6 +28,7 @@ import {
 } from "lucide-react";
 import { ChangeEvent, useRef, useState } from "react";
 
+import { APP_VERSION } from "../../app/version";
 import { backupService } from "../../services/backup/backupService";
 import {
   BackupValidationError,
@@ -1072,6 +1074,30 @@ export default function SettingsPage() {
             </p>
 
             <ImportHistoryList refreshToken={importHistoryRefreshToken} />
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-border bg-surface p-6">
+        <div className="flex items-start gap-4">
+          <div className="rounded-lg bg-accent/15 p-3 text-accent-text">
+            <Info className="h-6 w-6" />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <h2 className="text-xl font-semibold text-primary">
+              Application Information
+            </h2>
+
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+              Details about this Watch Log V2 installation.
+            </p>
+
+            <div className="mt-4">
+              <h3 className="text-sm font-medium text-primary">Version</h3>
+
+              <p className="mt-2 text-sm text-muted">{APP_VERSION}</p>
+            </div>
           </div>
         </div>
       </section>
