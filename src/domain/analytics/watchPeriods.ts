@@ -148,12 +148,33 @@ export function isWithinPeriod(date: Date, start: Date, end: Date): boolean {
 }
 
 /**
- * Deterministic ordering for watch events: chronological by watched time,
- * tie-broken by ascending episode id.
+ * Compares two optional persisted ids.
+ *
+ * Deterministic and never `NaN`: when both ids are present the comparison is
+ * the numeric difference, and when either is absent the events are treated as
+ * equal so the caller's earlier criteria decide. Events without ids remain
+ * orderable, just not strictly ordered against each other.
+ */
+function compareOptionalIds(
+  firstId: number | undefined,
+  secondId: number | undefined,
+): number {
+  if (firstId === undefined || secondId === undefined) {
+    return 0;
+  }
+
+  return firstId - secondId;
+}
+
+/**
+ * Deterministic total order for watch events: watched time, then episode id,
+ * then persisted id.
  *
  * Watched times are not unique (a bulk mark-watched or an import can stamp
- * several events with one instant), so the tie-breaker makes the order total
- * and therefore reproducible regardless of input order.
+ * several events with one instant), so the episode-id and persisted-id
+ * tie-breakers make the order total and therefore reproducible regardless of
+ * input order. The persisted-id tier mirrors the repository's own historical
+ * read order, so domain and storage agree on which event is "first".
  */
 function compareWatchEvents(
   firstEvent: WatchActivityEvent,
@@ -166,7 +187,13 @@ function compareWatchEvents(
     return watchedAtDifference;
   }
 
-  return firstEvent.episodeId - secondEvent.episodeId;
+  const episodeIdDifference = firstEvent.episodeId - secondEvent.episodeId;
+
+  if (episodeIdDifference !== 0) {
+    return episodeIdDifference;
+  }
+
+  return compareOptionalIds(firstEvent.id, secondEvent.id);
 }
 
 /**

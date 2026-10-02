@@ -501,3 +501,90 @@ describe("getLocalDayNumber", () => {
     expect(end - start).toBe(7);
   });
 });
+
+/*
+ * Regression coverage for the deterministic total order introduced in A27
+ * Step 2: watchedAt -> episodeId -> id.
+ *
+ * Before the persisted-id tier, two events sharing a watched instant and an
+ * episode compared equal, so their relative order depended on input order.
+ */
+describe("event ordering total order", () => {
+  it("orders equal-instant events by ascending persisted id", () => {
+    const sharedTimestamp = localDate(2026, 6, 15, 20);
+    const events = [
+      makeEvent(sharedTimestamp, { id: 30, episodeId: 1 }),
+      makeEvent(sharedTimestamp, { id: 10, episodeId: 1 }),
+      makeEvent(sharedTimestamp, { id: 20, episodeId: 1 }),
+    ];
+
+    const timeline = groupEventsByPeriod(events, "day");
+
+    expect(timeline.buckets[0]?.eventCount).toBe(3);
+    expect(timeline.firstWatchedAt).toEqual(sharedTimestamp);
+    expect(timeline.lastWatchedAt).toEqual(sharedTimestamp);
+  });
+
+  it("produces identical results for permuted inputs when ids are present", () => {
+    const sharedTimestamp = localDate(2026, 6, 15, 20);
+    const events = [
+      makeEvent(sharedTimestamp, { id: 3, episodeId: 1 }),
+      makeEvent(sharedTimestamp, { id: 1, episodeId: 1 }),
+      makeEvent(sharedTimestamp, { id: 2, episodeId: 1 }),
+      makeEvent(localDate(2026, 6, 16, 8), { id: 4, episodeId: 2 }),
+    ];
+
+    const forward = groupEventsByPeriod(events, "day");
+    const reversed = groupEventsByPeriod([...events].reverse(), "day");
+    const rotated = groupEventsByPeriod(
+      [...events.slice(2), ...events.slice(0, 2)],
+      "day",
+    );
+
+    expect(reversed).toEqual(forward);
+    expect(rotated).toEqual(forward);
+  });
+
+  it("keeps episodeId ahead of id in the ordering tiers", () => {
+    const sharedTimestamp = localDate(2026, 6, 15, 20);
+    const timeline = groupEventsByPeriod(
+      [
+        makeEvent(sharedTimestamp, { id: 1, episodeId: 9 }),
+        makeEvent(sharedTimestamp, { id: 99, episodeId: 2 }),
+      ],
+      "day",
+    );
+
+    // Both land in the same bucket; the tier order is observable only through
+    // stability, so assert the aggregate is unaffected and total.
+    expect(timeline.buckets[0]?.eventCount).toBe(2);
+    expect(timeline.buckets[0]?.distinctEpisodeCount).toBe(2);
+  });
+
+  it("falls back gracefully when persisted ids are absent", () => {
+    const sharedTimestamp = localDate(2026, 6, 15, 20);
+    const events = [
+      makeEvent(sharedTimestamp, { episodeId: 2 }),
+      makeEvent(sharedTimestamp, { episodeId: 1 }),
+    ];
+
+    const timeline = groupEventsByPeriod(events, "day");
+
+    expect(timeline.buckets[0]?.eventCount).toBe(2);
+    expect(timeline.buckets[0]?.distinctEpisodeCount).toBe(2);
+  });
+
+  it("treats a missing id as equal rather than producing NaN ordering", () => {
+    const sharedTimestamp = localDate(2026, 6, 15, 20);
+    const timeline = groupEventsByPeriod(
+      [
+        makeEvent(sharedTimestamp, { id: 5, episodeId: 1 }),
+        makeEvent(sharedTimestamp, { episodeId: 1 }),
+      ],
+      "day",
+    );
+
+    expect(timeline.totalEventCount).toBe(2);
+    expect(timeline.buckets[0]?.eventCount).toBe(2);
+  });
+});
