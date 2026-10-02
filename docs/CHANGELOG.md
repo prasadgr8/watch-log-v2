@@ -1,3 +1,13 @@
+# Unreleased — Documentation Reconciliation
+
+### Documentation
+
+- Reconciled the roadmap and future-enhancement inventory around 13 bounded future workstreams.
+- Added explicit planning coverage for **My Providers** and **Personal Journal**.
+- Documented the separation between backup, synchronization, availability, scrobbling, optional AI, cross-media expansion, and private social features.
+- Reconciled application version documentation with the existing `APP_VERSION` implementation and authoritative `package.json` version source.
+- Kept this change documentation-only; no application, schema, backup-format, or external-provider behavior is changed.
+
 # Changelog
 ## v2.0.0-alpha.26.1 — Region Preference & Availability Foundation
 
@@ -716,3 +726,6 @@ Foundation, which shipped earlier.
 - Tailwind CSS
 - Routing
 - Application Shell
+
+
+The feature existence audit subsequently confirmed that Workstreams 1–5 are shipped foundations with future extensions, while Workstreams 6–13 remain future capabilities. My Providers and Personal Journal remain future features. No duplicate implementation was identified for those future capabilities.

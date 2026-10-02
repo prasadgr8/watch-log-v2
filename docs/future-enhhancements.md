@@ -235,3 +235,113 @@ When evaluating a new feature, ask:
 
 If the answer to (4) is Yes, place it in this document rather than the
 active roadmap.
+
+
+---
+
+# Canonical Future Feature Inventory
+
+This section is the planning inventory for future WatchLog capabilities. It is not an implementation commitment by itself. Each capability must still pass the repository's discovery, architecture, planning, authorization, validation, and delivery gates before implementation.
+
+## Feature Audit Status
+
+The repository audit classifies Workstreams 1–5 as **shipped foundations with future extensions**. Workstreams 6–13 remain future capabilities in the audited main tree.
+
+| Workstream | Status |
+| --- | --- |
+| 1. Advanced Viewing Intelligence | Shipped foundation; future advanced intelligence |
+| 2. Release Radar & Calendar | Shipped foundation; future calendar/radar extensions |
+| 3. Streaming Availability Ecosystem | Shipped foundation; future provider expansion and **My Providers** |
+| 4. Library Organization & Personalization | Shipped foundation; future personalization including **Personal Journal** |
+| 5. Data Portability & Migration | Shipped foundation; future portability and migration extensions |
+| 6. Cross-Device Synchronization | Future |
+| 7. Automatic Scrobbling | Future |
+| 8. People & Content Tracking | Future |
+| 9. Spoiler-Safe Experience | Future |
+| 10. Anime / Complex Episode Ordering | Future |
+| 11. Local / Optional AI | Future |
+| 12. Cross-Media Library | Future |
+| 13. Private Social | Future / major architecture expansion |
+
+These classifications are documentation status only; each future capability still requires its own discovery, architecture, authorization, implementation, validation, and delivery gates.
+
+## Workstream 1 — Advanced Viewing Intelligence
+
+Future scope includes deeper viewing analytics, trends, historical insights, and other derived intelligence beyond the current Statistics Dashboard.
+
+## Workstream 2 — Release Radar & Calendar
+
+Future scope includes release calendars, upcoming-release organization, and personalized release-radar experiences.
+
+## Workstream 3 — Streaming Availability Ecosystem
+
+Future scope includes broader provider coverage and the **My Providers** preference model. Availability remains provider-adapted and provider-neutral at the domain boundary; availability is distinct from watch scrobbling.
+
+## Workstream 4 — Library Organization & Personalization
+
+Future scope includes richer library organization and personalization, including the **Personal Journal**, advanced collection behavior, and related personal metadata experiences.
+
+## Workstream 5 — Data Portability & Migration
+
+Future scope includes additional import/export formats, migration paths, and data portability improvements while preserving the local data model as the source of truth.
+
+## Workstream 6 — Cross-Device Synchronization
+
+Future scope includes optional synchronization across user devices. Sync is architecturally distinct from backup/export and must not turn the core application into a cloud-dependent product.
+
+## Workstream 7 — Automatic Scrobbling
+
+Future scope includes automatic watch-progress detection and integrations that record viewing activity in external services. Scrobbling is distinct from both streaming availability and cross-device synchronization.
+
+## Workstream 8 — People & Content Tracking
+
+Future scope includes actor/person tracking, related-content navigation, and people-centric library discovery.
+
+## Workstream 9 — Spoiler-Safe Experience
+
+Future scope includes spoiler-aware presentation and controls that protect unseen content while retaining useful discovery and tracking workflows.
+
+## Workstream 10 — Anime / Complex Episode Ordering
+
+Future scope includes alternate episode orders and domain rules needed for anime and other media with non-trivial episode sequencing.
+
+## Workstream 11 — Local / Optional AI
+
+Future scope includes optional local or user-enabled AI capabilities such as natural-language search and assistance. AI is an optional enhancement and must not become a required dependency for core WatchLog operation.
+
+## Workstream 12 — Cross-Media Library
+
+Future scope includes possible expansion beyond TV and movies into additional media domains such as books, podcasts, or music. Each media domain requires separate domain analysis before implementation.
+
+## Workstream 13 — Private Social
+
+Future scope includes optional private social capabilities. This is a major architectural expansion requiring explicit analysis of identity, accounts, authentication, authorization, backend services, privacy, and data ownership.
+
+## Planning Boundaries
+
+The following distinctions are mandatory planning boundaries:
+
+- Backup is not Sync.
+- Streaming Availability is not Scrobbling.
+- Scrobbling is not Sync.
+- AI is not a core dependency.
+- Cross-media support is not an extension of the existing TV/movie domain without dedicated domain analysis.
+- Private Social is not a local-only feature and requires explicit architecture review before any implementation.
+
+## Suggested Future Sequencing
+
+The future workstreams are currently sequenced conceptually as:
+
+1. Local Intelligence
+2. Release Experience
+3. Data Portability
+4. Availability Expansion
+5. Complex Tracking
+6. External Tracking
+7. Cross-Device
+8. People & Spoilers
+9. Optional AI
+10. Cross Media
+11. Private Social
+
+This is an architectural planning sequence, not a release prediction or authorization to implement the listed workstreams.

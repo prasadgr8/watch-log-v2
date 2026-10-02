@@ -512,3 +512,38 @@ The user must explicitly choose to restore and replace current data.
 After a successful restore, the application reloads so all feature projections are rebuilt from the restored database state.
 
 Watch Log backup restore is separate from future third-party import pipelines. External imports, including a possible TV Time GDPR import, require source-specific parsing, mapping, reconciliation, and merge semantics rather than backup replace semantics.
+
+
+---
+
+## Future Architecture Constraints
+
+The following constraints govern future feature planning and prevent accidental architectural coupling.
+
+### Local-First Boundary
+
+WatchLog remains usable from its local persisted state. Future cloud, synchronization, social, or AI capabilities must be optional extensions and must not silently become required dependencies for core tracking.
+
+### Backup vs Sync
+
+Backup/export is a user-controlled data portability and recovery mechanism. Synchronization is a separate capability for reconciling state across devices. They must not share an implicit product contract or be treated as interchangeable.
+
+### Availability vs Scrobbling
+
+Streaming availability answers where content can be watched. Scrobbling records viewing activity with an external service. They use different domain contracts and provider adapters.
+
+### Provider-Neutral Integration
+
+External providers must be isolated behind provider interfaces/adapters. Provider-specific response models must not leak into the UI or become the canonical domain model.
+
+### AI Boundary
+
+AI capabilities remain optional. Core library, tracking, backup/recovery, and offline workflows must continue to function without an AI service.
+
+### Cross-Media Boundary
+
+Adding books, podcasts, music, or another media domain requires dedicated domain analysis rather than forcing new concepts into the existing TV/movie models.
+
+### Social Boundary
+
+Private social functionality requires explicit architecture work for identity, authentication, authorization, privacy, data ownership, and backend services. It is not assumed to fit the current local-only persistence model.
