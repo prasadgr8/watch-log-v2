@@ -628,3 +628,54 @@ Alpha 26.1 through Alpha 26.6 are complete. Alpha 26.7 — Documentation
 Reconciliation & Final Validation — is complete (shipped on `main`; see the
 v2.0.0-alpha.26.7 section above). Exploratory work is tracked under Future Milestones
 above and in `future-enhancements.md`.
+
+
+---
+
+## Future Architecture Roadmap
+
+The current shipped application is the baseline.
+
+### Shipped Foundations vs Future Extensions
+
+The current repository audit shows that Workstreams 1–5 already contain substantial shipped foundations. Their future roadmap scope is therefore an extension of existing capabilities, not a replacement implementation. Workstreams 6–13 remain future capabilities in the audited repository.
+
+| Workstream | Current shipped foundation | Future extension |
+| --- | --- | --- |
+| 1. Advanced Viewing Intelligence | Continue Watching, progress, watch history, and Statistics Dashboard | Advanced derived viewing intelligence and analytics |
+| 2. Release Radar & Calendar | Upcoming episode and release-date foundations | Calendar, radar, reminders, and richer release planning |
+| 3. Streaming Availability Ecosystem | Region preference and TMDB-backed provider-neutral availability | Additional providers and **My Providers** |
+| 4. Library Organization & Personalization | Library filtering, bulk actions, Custom Collections, Smart Collections | **Personal Journal** and advanced personalization |
+| 5. Data Portability & Migration | Backup/restore, versioned backup, TV Time import and import history | Additional formats and migration paths |
+| 6. Cross-Device Synchronization | No sync domain found | Optional device synchronization |
+| 7. Automatic Scrobbling | No scrobbling domain found | External watch-progress integrations |
+| 8. People & Content Tracking | No dedicated people/actor tracking domain found | People-centric tracking and discovery |
+| 9. Spoiler-Safe Experience | No spoiler domain found | Spoiler-aware UX |
+| 10. Anime / Complex Episode Ordering | Standard season/episode ordering | Alternate and non-trivial ordering models |
+| 11. Local / Optional AI | No user-facing AI recommendation/search feature found | Optional local/user-enabled AI |
+| 12. Cross-Media Library | Current product is TV/movie focused | Additional media domains |
+| 13. Private Social | No account/social domain found | Separate identity/backend/privacy architecture |
+
+Future development is organized into bounded workstreams rather than a single feature queue:
+
+1. **Advanced Viewing Intelligence** — deeper derived viewing insights beyond the current Statistics Dashboard.
+2. **Release Radar & Calendar** — release calendars and personalized upcoming release experiences.
+3. **Streaming Availability Ecosystem** — provider expansion and **My Providers** preferences, while retaining the provider-neutral availability boundary.
+4. **Library Organization & Personalization** — including the **Personal Journal** and richer collection/personalization capabilities.
+5. **Data Portability & Migration** — additional import/export and migration paths.
+6. **Cross-Device Synchronization** — optional sync without making the core product cloud-dependent.
+7. **Automatic Scrobbling** — external watch-progress integrations.
+8. **People & Content Tracking** — actor/person and related-content tracking.
+9. **Spoiler-Safe Experience** — spoiler-aware discovery and presentation.
+10. **Anime / Complex Episode Ordering** — support for alternate/non-linear episode-ordering domains.
+11. **Local / Optional AI** — optional AI assistance and natural-language interaction.
+12. **Cross-Media Library** — potential expansion to additional media domains.
+13. **Private Social** — optional social/account architecture requiring a dedicated backend/privacy analysis.
+
+The sequencing is conceptual and dependency-oriented. Individual milestones must be separately discovered, architected, authorized, implemented, and validated.
+
+### Versioning Boundary
+
+Application version visibility is already implemented through the authoritative `version` field in `package.json`, exposed to the application through the `APP_VERSION` boundary. The current repository value is `1.0.0`. This product version is distinct from internal Alpha milestone/step labels, database schema version, backup format version, and Git commit history.
+
+Future release automation or automatic version management is not part of this documentation reconciliation step.
