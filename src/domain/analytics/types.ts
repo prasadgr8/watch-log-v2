@@ -19,6 +19,28 @@
  *
  * Every shape is `readonly`: analytics is a read-only projection over
  * historical data and must not let a consumer mutate the source records.
+ *
+ * DURABILITY OF THE WATCH-HISTORY SOURCE
+ * `WatchHistory` is the recorded watch-event history, but it is NOT an
+ * immutable, append-only viewing ledger, and analytics must not present it as
+ * one:
+ *
+ * - It is NOT append-only. `episodeRepository.markUnwatched` deletes the
+ *   `watchHistory` rows for that episode, so marking an episode unwatched
+ *   erases its recorded watch events.
+ * - Manual re-watching does NOT create another historical event:
+ *   `episodeRepository.applyManualWatch` skips episodes that are already
+ *   watched, so their cached timestamp and history stay untouched.
+ * - TV Time import can collapse duplicate / re-watch activity. Its parser keys
+ *   on (show, season, episode), retains the EARLIEST timestamp, and ignores
+ *   `rewatch_count` ("never produces a second candidate").
+ * - `watchHistory` references `episodeId`, so movie watches are not represented
+ *   at all: movies have no `Episode` rows and never produce history events.
+ *
+ * Consequently, counts derived here describe *recorded watch events that are
+ * still present*, not a complete or tamper-proof account of everything the
+ * user watched. Where the distinction matters, name the value in history terms
+ * (for example `firstWatchedAt`) rather than implying current-state meaning.
  */
 
 import type { WatchHistorySource } from "../../types/watchHistory";
@@ -43,6 +65,16 @@ export type AnalyticsPeriod = "day" | "week" | "month" | "year";
  * domain stays independent of the persistence layer.
  */
 export interface WatchActivityEvent {
+  /**
+   * Stable identity of the persisted event, when one is available.
+   *
+   * Optional so storage-independent fixtures, exports, and in-test events stay
+   * compatible. Two events can share a watched instant and an episode (for
+   * example a bulk mark-watched or an import), so `id` is what makes the
+   * ordering in `watchPeriods` a deterministic total order. When it is absent,
+   * ordering falls back to watched time then episode id.
+   */
+  readonly id?: number;
   /** The watched episode this event refers to. */
   readonly episodeId: number;
   /**
