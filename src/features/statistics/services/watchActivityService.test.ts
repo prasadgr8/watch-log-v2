@@ -1,3 +1,7 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it, vi } from "vitest";
 
 import type { WatchHistory } from "../../../types";
@@ -7,6 +11,7 @@ import { watchHistoryRepository } from "../../../database/repositories";
 
 import {
   loadWatchActivity,
+  loadWatchActivitySection,
   toWatchActivityEvents,
 } from "./watchActivityService";
 
@@ -15,8 +20,9 @@ import {
  *
  * These verify the facade's contract rather than re-testing the pure
  * aggregations (covered in src/domain/analytics/activity.test.ts): one
- * repository read per request, correct record-to-domain-event mapping,
- * delegation to the pure domain, and the absence of any write.
+ * repository read per request (including the combined summary + timeline
+ * snapshot), correct record-to-domain-event mapping, delegation to the pure
+ * domain, and the absence of any write, network, or clock access.
  */
 
 function createWatchHistory(
@@ -200,5 +206,142 @@ describe("toWatchActivityEvents", () => {
       expect(stored[0]?.watchedAt).toEqual(watchedAt);
       expect(stored[0]?.source).toBe("manual");
     });
+  });
+});
+
+describe("loadWatchActivitySection", () => {
+  it("reads the watch history exactly once for the combined snapshot", async () => {
+    await watchHistoryRepository.add(createWatchHistory());
+
+    const getAllSpy = vi.spyOn(watchHistoryRepository, "getAll");
+
+    const section = await loadWatchActivitySection("day");
+
+    expect(getAllSpy).toHaveBeenCalledTimes(1);
+    expect(section.summary.totalEventCount).toBe(1);
+    expect(section.timeline.buckets).toHaveLength(1);
+    expect(section.timeline.truncated).toBe(false);
+  });
+
+  it("derives summary and timeline from one shared in-memory snapshot", async () => {
+    await watchHistoryRepository.add(createWatchHistory());
+    await watchHistoryRepository.add(
+      createWatchHistory({
+        episodeId: 2,
+        watchedAt: new Date(2026, 6, 15, 20),
+      }),
+    );
+    await watchHistoryRepository.add(
+      createWatchHistory({
+        episodeId: 3,
+        watchedAt: new Date(2026, 6, 17, 10),
+        source: "import",
+      }),
+    );
+    const persisted = await watchHistoryRepository.getAll();
+
+    // A hypothetical second read would observe an "emptied" store, so any
+    // implementation reading more than once produces a summary/timeline
+    // disagreement or a second call on the spy.
+    const getAllSpy = vi
+      .spyOn(watchHistoryRepository, "getAll")
+      .mockResolvedValueOnce(persisted)
+      .mockResolvedValueOnce([]);
+
+    const section = await loadWatchActivitySection("day");
+
+    expect(getAllSpy).toHaveBeenCalledTimes(1);
+
+    const { summary, timeline } = section;
+
+    expect(summary.totalEventCount).toBe(3);
+    expect(summary.sourceEventCounts).toEqual({ manual: 2, import: 1 });
+    expect(summary.firstWatchedAt).toEqual(new Date(2026, 6, 15, 9));
+    expect(summary.lastWatchedAt).toEqual(new Date(2026, 6, 17, 10));
+
+    expect(timeline.buckets.map((bucket) => bucket.eventCount)).toEqual([
+      2, 0, 1,
+    ]);
+    expect(timeline.windowStart).toEqual(new Date(2026, 6, 15, 0, 0, 0, 0));
+    expect(timeline.windowEnd).toEqual(new Date(2026, 6, 18, 0, 0, 0, 0));
+
+    const bucketedEventCount = timeline.buckets.reduce(
+      (sum, bucket) => sum + bucket.eventCount,
+      0,
+    );
+
+    expect(bucketedEventCount).toBe(summary.totalEventCount);
+  });
+
+  it("keeps loadWatchActivity as a compatible summary-only view", async () => {
+    await watchHistoryRepository.add(createWatchHistory());
+    await watchHistoryRepository.add(
+      createWatchHistory({
+        episodeId: 2,
+        watchedAt: new Date(2026, 6, 16, 20),
+      }),
+    );
+
+    const summary = await loadWatchActivity("day");
+    const section = await loadWatchActivitySection("day");
+
+    expect(summary).toEqual(section.summary);
+    expect(summary.totalEventCount).toBe(2);
+    expect(section.timeline.naturalBucketCount).toBe(2);
+  });
+
+  it("introduces no writes while loading the section", async () => {
+    await watchHistoryRepository.add(createWatchHistory());
+    const countBefore = await watchHistoryRepository.count();
+
+    const addSpy = vi.spyOn(db.watchHistory, "add");
+    const updateSpy = vi.spyOn(db.watchHistory, "update");
+    const putSpy = vi.spyOn(db.watchHistory, "put");
+    const deleteSpy = vi.spyOn(db.watchHistory, "delete");
+    const bulkAddSpy = vi.spyOn(db.watchHistory, "bulkAdd");
+    const clearSpy = vi.spyOn(db.watchHistory, "clear");
+
+    await loadWatchActivitySection("day");
+
+    expect(addSpy).not.toHaveBeenCalled();
+    expect(updateSpy).not.toHaveBeenCalled();
+    expect(putSpy).not.toHaveBeenCalled();
+    expect(deleteSpy).not.toHaveBeenCalled();
+    expect(bulkAddSpy).not.toHaveBeenCalled();
+    expect(clearSpy).not.toHaveBeenCalled();
+    expect(await watchHistoryRepository.count()).toBe(countBefore);
+  });
+});
+
+describe("watchActivityService source contract", () => {
+  const serviceDirectory = dirname(fileURLToPath(import.meta.url));
+  const serviceSource = readFileSync(
+    join(serviceDirectory, "watchActivityService.ts"),
+    "utf-8",
+  );
+
+  it("performs exactly one repository read across the whole service", () => {
+    const readCount =
+      serviceSource.split("watchHistoryRepository.getAll(").length - 1;
+
+    expect(readCount).toBe(1);
+  });
+
+  it("issues no repository writes", () => {
+    expect(serviceSource).not.toMatch(
+      /watchHistoryRepository\.(add|put|update|delete|clear|bulk\w*)\(/,
+    );
+  });
+
+  it("has no network dependency", () => {
+    expect(serviceSource).not.toContain("fetch(");
+    expect(serviceSource).not.toContain("XMLHttpRequest");
+    expect(serviceSource).not.toContain("WebSocket");
+    expect(serviceSource).not.toContain("axios");
+  });
+
+  it("has no clock dependency", () => {
+    expect(serviceSource).not.toContain("Date.now(");
+    expect(serviceSource).not.toContain("new Date(");
   });
 });
