@@ -15,6 +15,11 @@
  * It deliberately contains no aggregation logic of its own: duplicating
  * arithmetic here would let the domain and the facade drift apart.
  *
+ * Both public loaders share one read-map-derive path:
+ * `loadWatchActivitySection` produces the combined `{ summary, timeline }`
+ * snapshot from a single repository read, and `loadWatchActivity` is the
+ * backward-compatible summary-only view of that same section.
+ *
  * Boundaries honoured here:
  *
  * - Read-only. No writes, no transactions, no data mutation.
@@ -32,8 +37,11 @@
 
 import { watchHistoryRepository } from "../../../database/repositories";
 import type { PersistedWatchHistory } from "../../../types";
-import { summarizeWatchActivity } from "../../../domain/analytics/activity";
-import type { ViewingActivitySummary } from "../../../domain/analytics/activity";
+import { buildWatchActivitySection } from "../../../domain/analytics/activity";
+import type {
+  ViewingActivitySummary,
+  WatchActivitySection,
+} from "../../../domain/analytics/activity";
 import type {
   AnalyticsPeriod,
   WatchActivityEvent,
@@ -58,7 +66,32 @@ export function toWatchActivityEvents(
 }
 
 /**
+ * Loads summary and timeline as ONE consistent snapshot for a period.
+ *
+ * Reads `watchHistory` exactly once, maps the persisted records onto
+ * storage-independent domain events, and derives BOTH the
+ * `ViewingActivitySummary` and the gap-free `WatchActivityTimelineProjection`
+ * from that single in-memory snapshot, so the two halves can never disagree
+ * the way independent reads could. Read-only and clock-free: no writes, no
+ * network access, no caching or memoization.
+ */
+export async function loadWatchActivitySection(
+  period: AnalyticsPeriod,
+): Promise<WatchActivitySection> {
+  const watchHistoryEvents = await watchHistoryRepository.getAll();
+
+  return buildWatchActivitySection(
+    toWatchActivityEvents(watchHistoryEvents),
+    period,
+  );
+}
+
+/**
  * Loads the full recorded watch history and derives a viewing-activity summary.
+ *
+ * A backward-compatible view over `loadWatchActivitySection`: the summary is
+ * derived through the same single-read section path instead of a parallel
+ * aggregation, so its semantics cannot drift from the combined snapshot.
  *
  * Reads `watchHistory` exactly once per call. The returned values are
  * history-derived: they describe recorded events that are still present, so
@@ -69,10 +102,7 @@ export function toWatchActivityEvents(
 export async function loadWatchActivity(
   period: AnalyticsPeriod,
 ): Promise<ViewingActivitySummary> {
-  const watchHistoryEvents = await watchHistoryRepository.getAll();
+  const section = await loadWatchActivitySection(period);
 
-  return summarizeWatchActivity(
-    toWatchActivityEvents(watchHistoryEvents),
-    period,
-  );
+  return section.summary;
 }

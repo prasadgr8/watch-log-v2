@@ -36,7 +36,13 @@ import type {
   WatchActivityTimeline,
   WatchHistorySource,
 } from "./types";
-import { getLocalDayNumber, groupEventsByPeriod } from "./watchPeriods";
+import {
+  enumeratePeriods,
+  getLocalDayNumber,
+  getPeriodEnd,
+  getPeriodStart,
+  groupEventsByPeriod,
+} from "./watchPeriods";
 
 /**
  * Watch-event counts split by how the event was recorded.
@@ -88,6 +94,95 @@ export interface ViewingActivitySummary {
   readonly lastWatchedAt?: Date;
   /** Busiest period, omitted when there are no events. */
   readonly mostActivePeriod?: MostActivePeriod;
+}
+
+/**
+ * Maximum number of buckets a timeline projection may return.
+ *
+ * The approved cap for the visible timeline window. When the natural
+ * historical window is larger, only the NEWEST buckets are retained and the
+ * omission is reported explicitly through the projection's truncation
+ * metadata, so history is never silently discarded.
+ */
+export const WATCH_ACTIVITY_TIMELINE_MAX_BUCKETS = 120;
+
+/**
+ * One bucket of the gap-free timeline projection.
+ *
+ * Complements the sparse `WatchActivityBucket` vocabulary with everything the
+ * future timeline UI needs per period: a deterministic bucket identity, the
+ * local active-day count, and how the bucket's events were recorded. Periods
+ * with no recorded events still appear, with zero counts.
+ */
+export interface WatchActivityTimelineBucket {
+  /** The granularity this bucket aggregates. */
+  readonly period: AnalyticsPeriod;
+  /**
+   * Deterministic bucket identity, `"<period>:<localDayNumber>"`, where the
+   * day number is the local calendar day of `periodStart`.
+   *
+   * Machine-derived and never a formatted or locale-dependent label, stable
+   * across runs and timezones, and unique within a timeline because distinct
+   * periods never share a `periodStart`.
+   */
+  readonly key: string;
+  /** Inclusive local-calendar start of the bucket's period. */
+  readonly periodStart: Date;
+  /** Exclusive local-calendar end of the bucket's period. */
+  readonly periodEnd: Date;
+  /** Recorded watch events in the bucket; zero for gap-filled periods. */
+  readonly eventCount: number;
+  /** Distinct episodes appearing in the bucket's events. */
+  readonly distinctEpisodeCount: number;
+  /** Distinct local calendar days containing at least one bucket event. */
+  readonly activeDayCount: number;
+  /** The bucket's events split by recording source. */
+  readonly sourceEventCounts: SourceEventCounts;
+}
+
+/**
+ * Gap-free, capped per-period timeline derived from watch history.
+ *
+ * `buckets` contains EVERY period between the periodized first and last
+ * watched instants — zero-filled where no events were recorded — ascending by
+ * `periodStart` and deterministic for equivalent inputs, capped at
+ * `WATCH_ACTIVITY_TIMELINE_MAX_BUCKETS` with the most recent buckets retained.
+ *
+ * Truncation metadata is explicit rather than implied by array length:
+ *
+ * - `naturalBucketCount` — buckets the natural window contains before capping.
+ * - `omittedBucketCount` — earlier buckets dropped by the cap; 0 when intact.
+ * - `truncated` — true exactly when earlier buckets were omitted.
+ * - `windowStart` / `windowEnd` — the NATURAL periodized window (inclusive
+ *   start, exclusive end), so a UI can communicate the full range next to the
+ *   retained slice. Both are omitted when history is empty, so no date range
+ *   is ever fabricated for zero history.
+ */
+export interface WatchActivityTimelineProjection {
+  readonly period: AnalyticsPeriod;
+  /** Ascending, gap-free, capped buckets. */
+  readonly buckets: readonly WatchActivityTimelineBucket[];
+  /** Buckets in the natural window before the cap was applied. */
+  readonly naturalBucketCount: number;
+  /** Earlier buckets omitted from `buckets` by the cap. */
+  readonly omittedBucketCount: number;
+  /** Whether earlier buckets were omitted by the cap. */
+  readonly truncated: boolean;
+  /** Inclusive start of the natural window; omitted for empty history. */
+  readonly windowStart?: Date;
+  /** Exclusive end of the natural window; omitted for empty history. */
+  readonly windowEnd?: Date;
+}
+
+/**
+ * One consistent snapshot of history-derived watch activity at a granularity.
+ *
+ * Both halves derive from the SAME event snapshot, so `summary` and `timeline`
+ * can never disagree the way results of independent reads could.
+ */
+export interface WatchActivitySection {
+  readonly summary: ViewingActivitySummary;
+  readonly timeline: WatchActivityTimelineProjection;
 }
 
 /**
@@ -245,13 +340,127 @@ export function getMostActivePeriod(
  *
  * An explicit pass-through to the Step 1 primitive so Step 2 consumers have a
  * single entry point into the analytics domain, without duplicating period
- * logic here.
+ * logic here. Returns only the periods that contain events; use
+ * `buildWatchActivityTimeline` for the gap-free, capped projection.
  */
 export function getWatchActivityTimeline(
   events: readonly WatchActivityEvent[],
   period: AnalyticsPeriod,
 ): WatchActivityTimeline {
   return groupEventsByPeriod(events, period);
+}
+
+/**
+ * Groups events by the start instant of their calendar period.
+ *
+ * Period semantics are delegated entirely to `getPeriodStart`, so the map's
+ * keys align exactly with the axis produced by `enumeratePeriods`. The input
+ * array is never mutated.
+ */
+function groupEventsByPeriodStart(
+  events: readonly WatchActivityEvent[],
+  period: AnalyticsPeriod,
+): Map<number, WatchActivityEvent[]> {
+  const eventsByPeriodStart = new Map<number, WatchActivityEvent[]>();
+
+  for (const event of events) {
+    const periodStart = getPeriodStart(event.watchedAt, period).getTime();
+    const bucketEvents = eventsByPeriodStart.get(periodStart);
+
+    if (bucketEvents === undefined) {
+      eventsByPeriodStart.set(periodStart, [event]);
+    } else {
+      bucketEvents.push(event);
+    }
+  }
+
+  return eventsByPeriodStart;
+}
+
+/**
+ * Enriches one gap-free axis bucket with the counts of its events.
+ *
+ * An axis bucket without recorded events keeps every count at zero. All
+ * metrics are order-independent, so the bucket's value does not depend on the
+ * order its events were supplied in.
+ */
+function toTimelineBucket(
+  axisBucket: WatchActivityBucket,
+  bucketEvents: readonly WatchActivityEvent[],
+): WatchActivityTimelineBucket {
+  return {
+    period: axisBucket.period,
+    key: `${axisBucket.period}:${getLocalDayNumber(axisBucket.periodStart)}`,
+    periodStart: axisBucket.periodStart,
+    periodEnd: axisBucket.periodEnd,
+    eventCount: bucketEvents.length,
+    distinctEpisodeCount: new Set(
+      bucketEvents.map((event) => event.episodeId),
+    ).size,
+    activeDayCount: getActiveViewingDays(bucketEvents),
+    sourceEventCounts: countEventsBySource(bucketEvents),
+  };
+}
+
+/**
+ * Builds the gap-free, capped watch-activity timeline for one granularity.
+ *
+ * The natural window is derived purely from the events themselves: both
+ * endpoints are periodized with the existing local-calendar, DST-safe
+ * helpers, every period between them is enumerated (zero-filled where no
+ * events were recorded), and the observed counts are overlaid. The window is
+ * then capped at `WATCH_ACTIVITY_TIMELINE_MAX_BUCKETS`, retaining the MOST
+ * RECENT buckets and reporting the omission in the projection's truncation
+ * metadata instead of discarding history silently.
+ *
+ * Deterministic and order-independent; the input array is never mutated, no
+ * clock is read, and empty input yields an empty projection with deterministic
+ * metadata rather than a fabricated date range.
+ */
+export function buildWatchActivityTimeline(
+  events: readonly WatchActivityEvent[],
+  period: AnalyticsPeriod,
+): WatchActivityTimelineProjection {
+  const firstWatchedAt = getFirstWatchedAt(events);
+  const lastWatchedAt = getLastWatchedAt(events);
+
+  if (firstWatchedAt === undefined || lastWatchedAt === undefined) {
+    return {
+      period,
+      buckets: [],
+      naturalBucketCount: 0,
+      omittedBucketCount: 0,
+      truncated: false,
+    };
+  }
+
+  const windowStart = getPeriodStart(firstWatchedAt, period);
+  const windowEnd = getPeriodEnd(lastWatchedAt, period);
+  const eventsByPeriodStart = groupEventsByPeriodStart(events, period);
+  const naturalBuckets = enumeratePeriods(windowStart, windowEnd, period);
+  const omittedBucketCount = Math.max(
+    0,
+    naturalBuckets.length - WATCH_ACTIVITY_TIMELINE_MAX_BUCKETS,
+  );
+  const retainedBuckets =
+    omittedBucketCount > 0
+      ? naturalBuckets.slice(omittedBucketCount)
+      : naturalBuckets;
+
+  return {
+    period,
+    buckets: retainedBuckets.map((bucket) =>
+      toTimelineBucket(
+        bucket,
+        eventsByPeriodStart.get(bucket.periodStart.getTime()) ?? [],
+      ),
+    ),
+    naturalBucketCount: naturalBuckets.length,
+    omittedBucketCount,
+    truncated: omittedBucketCount > 0,
+    windowStart,
+    windowEnd,
+  };
 }
 
 /**
@@ -282,6 +491,25 @@ export function summarizeWatchActivity(
     ...(firstWatchedAt === undefined ? {} : { firstWatchedAt }),
     ...(lastWatchedAt === undefined ? {} : { lastWatchedAt }),
     ...(mostActivePeriod === undefined ? {} : { mostActivePeriod }),
+  };
+}
+
+/**
+ * Derives the full watch-activity section (summary + timeline) from ONE event
+ * snapshot.
+ *
+ * Both halves are computed from the same supplied array, which is what keeps
+ * them mutually consistent: callers map a single repository read into events
+ * once and pass the result here, so the summary and the timeline can never
+ * describe different reads.
+ */
+export function buildWatchActivitySection(
+  events: readonly WatchActivityEvent[],
+  period: AnalyticsPeriod,
+): WatchActivitySection {
+  return {
+    summary: summarizeWatchActivity(events, period),
+    timeline: buildWatchActivityTimeline(events, period),
   };
 }
 

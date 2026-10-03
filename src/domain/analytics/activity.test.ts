@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { WatchActivityEvent } from "./types";
 
 import {
+  buildWatchActivitySection,
+  buildWatchActivityTimeline,
   countEventsBySource,
   getActiveViewingDays,
   getEventsPerActiveDay,
@@ -11,6 +13,7 @@ import {
   getMostActivePeriod,
   getWatchActivityTimeline,
   summarizeWatchActivity,
+  WATCH_ACTIVITY_TIMELINE_MAX_BUCKETS,
 } from "./activity";
 
 /*
@@ -532,5 +535,473 @@ describe("countEventsBySource", () => {
         localDate(2026, 2, 8),
       );
     });
+  });
+});
+
+describe("buildWatchActivityTimeline", () => {
+  it("returns an empty projection with deterministic metadata for empty history", () => {
+    for (const period of ["day", "week", "month", "year"] as const) {
+      const timeline = buildWatchActivityTimeline([], period);
+
+      expect(timeline).toEqual({
+        period,
+        buckets: [],
+        naturalBucketCount: 0,
+        omittedBucketCount: 0,
+        truncated: false,
+      });
+      expect("windowStart" in timeline).toBe(false);
+      expect("windowEnd" in timeline).toBe(false);
+    }
+  });
+
+  it("produces a gap-free day timeline with zero-filled buckets", () => {
+    const timeline = buildWatchActivityTimeline(
+      [
+        makeEvent(localDate(2026, 6, 15, 9)),
+        makeEvent(localDate(2026, 6, 18, 21)),
+      ],
+      "day",
+    );
+
+    expect(timeline.period).toBe("day");
+    expect(timeline.buckets.map((bucket) => bucket.periodStart)).toEqual([
+      localDate(2026, 6, 15),
+      localDate(2026, 6, 16),
+      localDate(2026, 6, 17),
+      localDate(2026, 6, 18),
+    ]);
+    expect(timeline.buckets.map((bucket) => bucket.periodEnd)).toEqual([
+      localDate(2026, 6, 16),
+      localDate(2026, 6, 17),
+      localDate(2026, 6, 18),
+      localDate(2026, 6, 19),
+    ]);
+    expect(timeline.buckets.map((bucket) => bucket.eventCount)).toEqual([
+      1, 0, 0, 1,
+    ]);
+    expect(timeline.buckets.map((bucket) => bucket.activeDayCount)).toEqual([
+      1, 0, 0, 1,
+    ]);
+    expect(timeline.naturalBucketCount).toBe(4);
+    expect(timeline.omittedBucketCount).toBe(0);
+    expect(timeline.truncated).toBe(false);
+    expect(timeline.windowStart).toEqual(localDate(2026, 6, 15));
+    expect(timeline.windowEnd).toEqual(localDate(2026, 6, 19));
+  });
+
+  it("buckets ISO Monday weeks for the week granularity", () => {
+    const timeline = buildWatchActivityTimeline(
+      [
+        makeEvent(localDate(2026, 6, 15, 22)), // Wednesday
+        makeEvent(localDate(2026, 6, 27, 8)), // Monday of the week after next
+      ],
+      "week",
+    );
+
+    expect(timeline.buckets.map((bucket) => bucket.periodStart)).toEqual([
+      localDate(2026, 6, 13), // Monday
+      localDate(2026, 6, 20),
+      localDate(2026, 6, 27),
+    ]);
+    expect(timeline.buckets.map((bucket) => bucket.periodEnd)).toEqual([
+      localDate(2026, 6, 20),
+      localDate(2026, 6, 27),
+      localDate(2026, 7, 3),
+    ]);
+    expect(timeline.buckets.map((bucket) => bucket.eventCount)).toEqual([
+      1, 0, 1,
+    ]);
+    expect(timeline.windowStart).toEqual(localDate(2026, 6, 13));
+    expect(timeline.windowEnd).toEqual(localDate(2026, 7, 3));
+  });
+
+  it("buckets calendar months for the month granularity", () => {
+    const timeline = buildWatchActivityTimeline(
+      [
+        makeEvent(localDate(2026, 10, 20)),
+        makeEvent(localDate(2027, 0, 2)),
+      ],
+      "month",
+    );
+
+    expect(timeline.buckets.map((bucket) => bucket.periodStart)).toEqual([
+      localDate(2026, 10, 1),
+      localDate(2026, 11, 1),
+      localDate(2027, 0, 1),
+    ]);
+    expect(timeline.buckets.map((bucket) => bucket.eventCount)).toEqual([
+      1, 0, 1,
+    ]);
+    expect(timeline.windowStart).toEqual(localDate(2026, 10, 1));
+    expect(timeline.windowEnd).toEqual(localDate(2027, 1, 1));
+  });
+
+  it("buckets calendar years for the year granularity", () => {
+    const timeline = buildWatchActivityTimeline(
+      [makeEvent(localDate(2024, 5, 1)), makeEvent(localDate(2026, 2, 1))],
+      "year",
+    );
+
+    expect(timeline.buckets.map((bucket) => bucket.periodStart)).toEqual([
+      localDate(2024, 0, 1),
+      localDate(2025, 0, 1),
+      localDate(2026, 0, 1),
+    ]);
+    expect(timeline.buckets.map((bucket) => bucket.periodEnd)).toEqual([
+      localDate(2025, 0, 1),
+      localDate(2026, 0, 1),
+      localDate(2027, 0, 1),
+    ]);
+    expect(timeline.buckets.map((bucket) => bucket.eventCount)).toEqual([
+      1, 0, 1,
+    ]);
+    expect(timeline.windowStart).toEqual(localDate(2024, 0, 1));
+    expect(timeline.windowEnd).toEqual(localDate(2027, 0, 1));
+  });
+
+  it("keeps buckets ascending and is deterministic for unordered input", () => {
+    const events = [
+      makeEvent(localDate(2026, 6, 27)),
+      makeEvent(localDate(2026, 6, 15)),
+      makeEvent(localDate(2026, 6, 21)),
+      makeEvent(localDate(2026, 6, 16)),
+    ];
+
+    for (const period of ["day", "week", "month", "year"] as const) {
+      const forward = buildWatchActivityTimeline(events, period);
+      const reversed = buildWatchActivityTimeline(
+        [...events].reverse(),
+        period,
+      );
+
+      expect(reversed).toEqual(forward);
+
+      const starts = forward.buckets.map((bucket) =>
+        bucket.periodStart.getTime(),
+      );
+      expect(starts).toEqual(
+        [...starts].sort((first, second) => first - second),
+      );
+      expect(new Set(starts).size).toBe(starts.length);
+      expect(new Set(forward.buckets.map((bucket) => bucket.key)).size).toBe(
+        starts.length,
+      );
+    }
+  });
+
+  it("periodizes both natural endpoints onto period boundaries", () => {
+    const timeline = buildWatchActivityTimeline(
+      [
+        makeEvent(localDate(2026, 6, 15, 23, 30)), // Wednesday, late evening
+        makeEvent(localDate(2026, 6, 19, 0, 1)), // Sunday, just after midnight
+      ],
+      "week",
+    );
+
+    expect(timeline.windowStart).toEqual(localDate(2026, 6, 13));
+    expect(timeline.windowEnd).toEqual(localDate(2026, 6, 20));
+    expect(timeline.buckets).toHaveLength(1);
+    expect(timeline.buckets[0]?.periodStart).toEqual(localDate(2026, 6, 13));
+    expect(timeline.buckets[0]?.periodEnd).toEqual(localDate(2026, 6, 20));
+  });
+
+  it("describes a single-event range as exactly one bucket", () => {
+    const timeline = buildWatchActivityTimeline(
+      [makeEvent(localDate(2026, 6, 15, 14))],
+      "day",
+    );
+
+    expect(timeline.buckets).toHaveLength(1);
+    expect(timeline.naturalBucketCount).toBe(1);
+    expect(timeline.truncated).toBe(false);
+    expect(timeline.omittedBucketCount).toBe(0);
+    expect(timeline.windowStart).toEqual(timeline.buckets[0]?.periodStart);
+    expect(timeline.windowEnd).toEqual(timeline.buckets[0]?.periodEnd);
+    expect(timeline.buckets[0]?.eventCount).toBe(1);
+  });
+
+  it("aggregates multiple events in one bucket with distinct episodes", () => {
+    const timeline = buildWatchActivityTimeline(
+      [
+        makeEvent(localDate(2026, 6, 15, 9), { episodeId: 1 }),
+        makeEvent(localDate(2026, 6, 15, 12), { episodeId: 1 }),
+        makeEvent(localDate(2026, 6, 15, 20), { episodeId: 2 }),
+      ],
+      "day",
+    );
+
+    expect(timeline.buckets).toHaveLength(1);
+    expect(timeline.buckets[0]?.eventCount).toBe(3);
+    expect(timeline.buckets[0]?.distinctEpisodeCount).toBe(2);
+  });
+
+  it("counts active local days within each bucket", () => {
+    const timeline = buildWatchActivityTimeline(
+      [
+        makeEvent(localDate(2026, 6, 13, 10)), // Monday
+        makeEvent(localDate(2026, 6, 13, 22)),
+        makeEvent(localDate(2026, 6, 17, 9)), // Friday
+        makeEvent(localDate(2026, 6, 17, 23)),
+      ],
+      "week",
+    );
+
+    expect(timeline.buckets).toHaveLength(1);
+    expect(timeline.buckets[0]?.activeDayCount).toBe(2);
+    expect(timeline.buckets[0]?.eventCount).toBe(4);
+  });
+
+  it("records manual and import counts per bucket", () => {
+    const timeline = buildWatchActivityTimeline(
+      [
+        makeEvent(localDate(2026, 6, 15, 9), { source: "manual" }),
+        makeEvent(localDate(2026, 6, 15, 10), { source: "manual" }),
+        makeEvent(localDate(2026, 6, 15, 11), { source: "import" }),
+        makeEvent(localDate(2026, 6, 16, 9), { source: "import" }),
+      ],
+      "day",
+    );
+
+    expect(timeline.buckets.map((bucket) => bucket.sourceEventCounts)).toEqual([
+      { manual: 2, import: 1 },
+      { manual: 0, import: 1 },
+    ]);
+  });
+
+  it("derives stable, deterministic bucket keys", () => {
+    const events = [
+      makeEvent(localDate(2026, 6, 15)),
+      makeEvent(localDate(2026, 6, 18)),
+    ];
+
+    const timeline = buildWatchActivityTimeline(events, "day");
+
+    expect(timeline.buckets.map((bucket) => bucket.key)).toEqual([
+      "day:20649",
+      "day:20650",
+      "day:20651",
+      "day:20652",
+    ]);
+    expect(
+      buildWatchActivityTimeline([...events].reverse(), "day").buckets.map(
+        (bucket) => bucket.key,
+      ),
+    ).toEqual(timeline.buckets.map((bucket) => bucket.key));
+  });
+});
+
+describe("buildWatchActivityTimeline at calendar and cap boundaries", () => {
+  it("keeps local-day buckets contiguous across a DST transition", () => {
+    const timeline = buildWatchActivityTimeline(
+      [
+        makeEvent(localDate(2026, 2, 7, 23, 30)),
+        makeEvent(localDate(2026, 2, 8, 0, 30)),
+        makeEvent(localDate(2026, 2, 8, 23, 30)),
+        makeEvent(localDate(2026, 2, 9, 1, 30)),
+      ],
+      "day",
+    );
+
+    expect(timeline.buckets.map((bucket) => bucket.periodStart)).toEqual([
+      localDate(2026, 2, 7),
+      localDate(2026, 2, 8),
+      localDate(2026, 2, 9),
+    ]);
+    expect(timeline.buckets.map((bucket) => bucket.eventCount)).toEqual([
+      1, 2, 1,
+    ]);
+
+    // Boundaries come from civil-date arithmetic, so every bucket ends
+    // exactly where the next one starts even across the spring-forward day.
+    timeline.buckets.forEach((bucket, index) => {
+      const nextBucket = timeline.buckets[index + 1];
+
+      if (nextBucket !== undefined) {
+        expect(bucket.periodEnd).toEqual(nextBucket.periodStart);
+      }
+    });
+  });
+
+  it("keeps ISO week buckets stable across a DST transition", () => {
+    const timeline = buildWatchActivityTimeline(
+      [
+        makeEvent(localDate(2026, 2, 5, 12)), // Thursday before spring-forward
+        makeEvent(localDate(2026, 2, 11, 12)), // Wednesday after it
+      ],
+      "week",
+    );
+
+    expect(timeline.buckets.map((bucket) => bucket.periodStart)).toEqual([
+      localDate(2026, 2, 2), // Monday
+      localDate(2026, 2, 9), // Monday
+    ]);
+    expect(timeline.buckets.map((bucket) => bucket.eventCount)).toEqual([
+      1, 1,
+    ]);
+  });
+
+  it("reports no truncation when the natural window fits the cap exactly", () => {
+    const timeline = buildWatchActivityTimeline(
+      [
+        makeEvent(localDate(2026, 0, 1, 12)),
+        makeEvent(localDate(2026, 3, 30, 12)),
+      ],
+      "day",
+    );
+
+    // 2026-01-01 through 2026-04-30 is exactly 120 local days.
+    expect(WATCH_ACTIVITY_TIMELINE_MAX_BUCKETS).toBe(120);
+    expect(timeline.naturalBucketCount).toBe(120);
+    expect(timeline.buckets).toHaveLength(120);
+    expect(timeline.truncated).toBe(false);
+    expect(timeline.omittedBucketCount).toBe(0);
+    expect(timeline.windowStart).toEqual(localDate(2026, 0, 1));
+    expect(timeline.windowEnd).toEqual(localDate(2026, 4, 1));
+  });
+
+  it("omits exactly the earliest bucket when the window exceeds the cap by one", () => {
+    const timeline = buildWatchActivityTimeline(
+      [
+        makeEvent(localDate(2026, 0, 1, 12)),
+        makeEvent(localDate(2026, 4, 1, 12)),
+      ],
+      "day",
+    );
+
+    // 2026-01-01 through 2026-05-01 is 121 local days.
+    expect(timeline.naturalBucketCount).toBe(121);
+    expect(timeline.buckets).toHaveLength(120);
+    expect(timeline.omittedBucketCount).toBe(1);
+    expect(timeline.truncated).toBe(true);
+    expect(timeline.buckets[0]?.periodStart).toEqual(localDate(2026, 0, 2));
+    expect(timeline.buckets.at(-1)?.periodStart).toEqual(
+      localDate(2026, 4, 1),
+    );
+  });
+
+  it("truncates to the newest 120 buckets and keeps history explicit", () => {
+    const timeline = buildWatchActivityTimeline(
+      [
+        makeEvent(localDate(2026, 0, 1, 12)),
+        makeEvent(localDate(2026, 4, 31, 12)),
+      ],
+      "day",
+    );
+
+    // 2026-01-01 through 2026-05-31 is 151 local days.
+    expect(timeline.naturalBucketCount).toBe(151);
+    expect(timeline.buckets).toHaveLength(120);
+    expect(timeline.omittedBucketCount).toBe(31);
+    expect(timeline.truncated).toBe(true);
+
+    // The MOST RECENT 120 buckets are retained: 2026-02-01 .. 2026-05-31.
+    expect(timeline.buckets[0]?.periodStart).toEqual(localDate(2026, 1, 1));
+    expect(timeline.buckets.at(-1)?.periodStart).toEqual(
+      localDate(2026, 4, 31),
+    );
+
+    // The natural window stays in the metadata so a UI can say the displayed
+    // range starts later than the recorded history.
+    expect(timeline.windowStart).toEqual(localDate(2026, 0, 1));
+    expect(timeline.windowEnd).toEqual(localDate(2026, 5, 1));
+    expect(timeline.windowStart).not.toEqual(timeline.buckets[0]?.periodStart);
+
+    // The omitted earlier buckets took their events with them: only the most
+    // recent event remains inside the retained slice.
+    expect(
+      timeline.buckets.reduce((sum, bucket) => sum + bucket.eventCount, 0),
+    ).toBe(1);
+  });
+
+  it("does not mutate the input array or its events", () => {
+    const events = [
+      makeEvent(localDate(2026, 6, 16)),
+      makeEvent(localDate(2026, 6, 15)),
+    ];
+    const originalOrder = [...events];
+
+    buildWatchActivityTimeline(events, "day");
+
+    expect(events).toEqual(originalOrder);
+    expect(events[0]?.watchedAt).toEqual(localDate(2026, 6, 16));
+  });
+});
+
+describe("buildWatchActivitySection", () => {
+  it("returns the summary and the timeline derived from the same snapshot", () => {
+    const events = [
+      makeEvent(localDate(2026, 6, 15, 9), {
+        episodeId: 1,
+        source: "manual",
+      }),
+      makeEvent(localDate(2026, 6, 15, 20), {
+        episodeId: 2,
+        source: "import",
+      }),
+      makeEvent(localDate(2026, 6, 17, 10), {
+        episodeId: 3,
+        source: "import",
+      }),
+    ];
+    const section = buildWatchActivitySection(events, "day");
+
+    expect(section.summary).toEqual(summarizeWatchActivity(events, "day"));
+    expect(section.timeline).toEqual(buildWatchActivityTimeline(events, "day"));
+
+    const { summary, timeline } = section;
+
+    expect(summary.period).toBe("day");
+    expect(timeline.period).toBe("day");
+    expect(timeline.buckets.map((bucket) => bucket.eventCount)).toEqual([
+      2, 0, 1,
+    ]);
+
+    const bucketedEventCount = timeline.buckets.reduce(
+      (sum, bucket) => sum + bucket.eventCount,
+      0,
+    );
+    const bucketedSourceCounts = timeline.buckets.reduce(
+      (counts, bucket) => ({
+        manual: counts.manual + bucket.sourceEventCounts.manual,
+        import: counts.import + bucket.sourceEventCounts.import,
+      }),
+      { manual: 0, import: 0 },
+    );
+
+    expect(bucketedEventCount).toBe(summary.totalEventCount);
+    expect(bucketedSourceCounts).toEqual(summary.sourceEventCounts);
+
+    // The timeline window is exactly the summary's own extremes, periodized.
+    expect(timeline.windowStart).toEqual(localDate(2026, 6, 15));
+    expect(timeline.windowEnd).toEqual(localDate(2026, 6, 18));
+    expect(summary.firstWatchedAt).toEqual(localDate(2026, 6, 15, 9));
+    expect(summary.lastWatchedAt).toEqual(localDate(2026, 6, 17, 10));
+  });
+
+  it("pairs an empty summary with an empty timeline for empty history", () => {
+    const section = buildWatchActivitySection([], "month");
+
+    expect(section.summary).toEqual(summarizeWatchActivity([], "month"));
+    expect(section.timeline).toEqual(buildWatchActivityTimeline([], "month"));
+    expect(section.summary.totalEventCount).toBe(0);
+    expect(section.timeline.buckets).toEqual([]);
+    expect(section.timeline.naturalBucketCount).toBe(0);
+    expect(section.timeline.truncated).toBe(false);
+    expect("windowStart" in section.timeline).toBe(false);
+    expect("windowEnd" in section.timeline).toBe(false);
+  });
+
+  it("stays deterministic for permuted input order", () => {
+    const events = [
+      makeEvent(localDate(2026, 6, 27), { episodeId: 5 }),
+      makeEvent(localDate(2026, 6, 15), { episodeId: 3 }),
+      makeEvent(localDate(2026, 6, 15), { episodeId: 4 }),
+      makeEvent(localDate(2026, 6, 16), { episodeId: 3 }),
+    ];
+
+    expect(buildWatchActivitySection([...events].reverse(), "day")).toEqual(
+      buildWatchActivitySection(events, "day"),
+    );
   });
 });
