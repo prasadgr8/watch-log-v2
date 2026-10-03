@@ -25,8 +25,10 @@ import {
   XCircle,
 } from "lucide-react";
 import StatisticCard from "./components/StatisticCard";
+import HistoricalViewingActivity from "./components/HistoricalViewingActivity";
 import RecentlyWatchedList from "./components/RecentlyWatchedList";
 import ShowProgressTable from "./components/ShowProgressTable";
+import StatisticsPeriodSelector from "./components/StatisticsPeriodSelector";
 import {
   calculateEpisodeStatistics,
   calculateLibraryStatistics,
@@ -36,6 +38,9 @@ import {
   loadStatistics,
   type StatisticsDashboard,
 } from "./services/statisticsService";
+import type { AnalyticsPeriod } from "../../domain/analytics/types";
+import type { ViewingActivitySummary } from "../../domain/analytics/activity";
+import { loadWatchActivity } from "./services/watchActivityService";
 
 const initialStatistics: StatisticsDashboard = {
   library: calculateLibraryStatistics([]),
@@ -58,6 +63,12 @@ export default function StatisticsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [activityPeriod, setActivityPeriod] =
+    useState<AnalyticsPeriod>("month");
+  const [activity, setActivity] = useState<ViewingActivitySummary | null>(null);
+  const [isActivityLoading, setIsActivityLoading] = useState(true);
+  const [activityError, setActivityError] = useState<string | null>(null);
+
   useEffect(() => {
     async function loadPage(): Promise<void> {
       try {
@@ -77,6 +88,44 @@ export default function StatisticsPage() {
 
     void loadPage();
   }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadActivity(): Promise<void> {
+      setIsActivityLoading(true);
+
+      try {
+        setActivityError(null);
+
+        const summary = await loadWatchActivity(activityPeriod);
+
+        if (!isActive) {
+          return;
+        }
+
+        setActivity(summary);
+      } catch (loadError) {
+        if (!isActive) {
+          return;
+        }
+
+        console.error("Failed to load viewing activity:", loadError);
+
+        setActivityError("Unable to load viewing activity.");
+      } finally {
+        if (isActive) {
+          setIsActivityLoading(false);
+        }
+      }
+    }
+
+    void loadActivity();
+
+    return () => {
+      isActive = false;
+    };
+  }, [activityPeriod]);
 
   function placeholder(value: number | string): number | string {
     return isLoading ? "—" : value;
@@ -418,6 +467,52 @@ export default function StatisticsPage() {
       </p>
 
       {!isLoading && <RecentlyWatchedList activity={stats.recentActivity} />}
+
+      <div className="border-b border-border pb-2">
+        <h2 className="text-xl font-semibold text-primary">
+          Historical Viewing Activity
+        </h2>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <p className="text-sm text-muted">
+          Recorded watch events grouped by calendar period.
+        </p>
+
+        <StatisticsPeriodSelector
+          period={activityPeriod}
+          onChange={setActivityPeriod}
+        />
+      </div>
+
+      {activityError && (
+        <p
+          role="alert"
+          className="rounded-lg border border-danger/60 bg-danger/10 px-4 py-3 text-sm text-danger"
+        >
+          {activityError}
+        </p>
+      )}
+
+      {!isActivityLoading && activity === null && (
+        <div className="rounded-xl border border-dashed border-border bg-surface/50 p-8 text-center">
+          <History
+            aria-hidden="true"
+            className="mx-auto h-8 w-8 text-muted"
+          />
+
+          <p className="mt-3 text-muted">
+            No recorded watch history yet.
+          </p>
+        </div>
+      )}
+
+      {activity !== null && (
+        <HistoricalViewingActivity
+          activity={activity}
+          isLoading={isActivityLoading}
+        />
+      )}
     </div>
   );
 }
