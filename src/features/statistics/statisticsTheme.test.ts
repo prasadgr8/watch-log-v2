@@ -8,6 +8,8 @@ const featureDirectory = dirname(fileURLToPath(import.meta.url));
 
 const STATISTICS_SOURCES = [
   "StatisticsPage.tsx",
+  "components/HistoricalViewingActivity.tsx",
+  "components/StatisticsPeriodSelector.tsx",
   "components/StatisticCard.tsx",
   "components/ProgressBar.tsx",
   "components/ShowProgressTable.tsx",
