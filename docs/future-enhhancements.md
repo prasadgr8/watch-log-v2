@@ -86,7 +86,33 @@ status, and progress cards, and v2.0.0-alpha.11 added episode, watch-time,
 per-show progress, and recently watched sections derived from episodes and
 watch history.
 
-Advanced analytics remain deferred post-MVP work:
+A27 Step 1 and Step 2 have since shipped the history-derived analytics foundation
+on `main`:
+
+- A27 Step 1 (PR #138) added read-only historical `WatchHistory` access
+  (`getAll()` and half-open `getRange(from, to)`) and the pure analytics domain
+  types (`AnalyticsPeriod`, `WatchActivityEvent`, `WatchActivityBucket`,
+  `WatchActivityTimeline`), together with pure watch-period primitives using
+  local-calendar semantics, ISO-8601 Monday weeks, and deterministic DST-safe
+  civil-date arithmetic. No analytics persistence, schema change, or analytics
+  store was introduced.
+- A27 Step 2 (PR #139) added pure `WatchHistory`-derived activity aggregation
+  (`activeDayCount`, `eventsPerActiveDay`, `sourceEventCounts`, `firstWatchedAt`,
+  `lastWatchedAt`, `mostActivePeriod`, and timeline aggregation) behind the
+  `ViewingActivitySummary` shape, made event ordering a deterministic total order
+  (`watchedAt` → `episodeId` → persisted `id`), and added the read-only
+  `watchActivityService` (one `getAll()` read per request; no writes, no network,
+  no clock dependency, no UI).
+
+This is a foundation only. No Statistics UI consumes `WatchActivity` yet. The
+history-derived `firstWatchedAt` / `lastWatchedAt` values are also distinct from
+the current-state `statisticsService.recentActivity` values (`firstWatchDate` /
+`lastWatchDate`), which derive from the `Episode` watch-state cache rather than
+from recorded `WatchHistory` events.
+
+The following advanced analytics capabilities remain deferred post-MVP work; the
+A27 foundation provides the aggregation layer they would build on, but none of
+the user-facing capabilities below exist yet:
 
 - Watch-history trends
 - Time-series analytics
@@ -98,6 +124,17 @@ Advanced analytics remain deferred post-MVP work:
 - Runtime statistics
 - Completion analytics
 - Network/platform breakdown
+- Rewatch counts
+- Completion history
+- Movie watch history
+
+`WatchHistory` is not an immutable or complete viewing ledger: marking an episode
+unwatched deletes its history rows (see the Watch History section of
+`docs/DATABASE.md`), manual re-watching does not create another event, TV Time
+import can collapse duplicate/re-watch activity, and `watchHistory` is
+episode-based so movies are not represented. Rewatch counts, completion history,
+and movie watch history are therefore future work rather than already-derivable
+values.
 
 ## Custom Collections
 
@@ -249,7 +286,7 @@ The repository audit classifies Workstreams 1–5 as **shipped foundations with 
 
 | Workstream | Status |
 | --- | --- |
-| 1. Advanced Viewing Intelligence | Shipped foundation; future advanced intelligence |
+| 1. Advanced Viewing Intelligence | Shipped foundation, including the A27 Step 1 / Step 2 history-derived analytics foundation; future advanced intelligence |
 | 2. Release Radar & Calendar | Shipped foundation; future calendar/radar extensions |
 | 3. Streaming Availability Ecosystem | Shipped foundation; future provider expansion and **My Providers** |
 | 4. Library Organization & Personalization | Shipped foundation; future personalization including **Personal Journal** |
@@ -267,7 +304,12 @@ These classifications are documentation status only; each future capability stil
 
 ## Workstream 1 — Advanced Viewing Intelligence
 
-Future scope includes deeper viewing analytics, trends, historical insights, and other derived intelligence beyond the current Statistics Dashboard.
+Shipped foundation: Continue Watching, watch progress, the Statistics Dashboard,
+and the A27 Step 1 / Step 2 history-derived analytics layer (historical
+`WatchHistory` repository reads, the pure `src/domain/analytics/` domain, and
+`watchActivityService`).
+
+Future scope includes deeper viewing analytics, trends, historical insights, and other derived intelligence beyond the current Statistics Dashboard; no Statistics UI consumes the A27 `WatchActivity` layer yet.
 
 ## Workstream 2 — Release Radar & Calendar
 

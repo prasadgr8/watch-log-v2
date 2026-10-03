@@ -8,6 +8,15 @@
 - Reconciled application version documentation with the existing `APP_VERSION` implementation and authoritative `package.json` version source.
 - Kept this change documentation-only; no application, schema, backup-format, or external-provider behavior is changed.
 
+### A27 — Advanced Viewing Intelligence Foundation (Documentation Reconciliation)
+
+- Documented that A27 Step 1 — Historical Analytics Foundation — shipped on `main` via PR #138: read-only historical `WatchHistory` access (`getAll()` and half-open `getRange(from, to)`) and the pure analytics domain (`AnalyticsPeriod`, `WatchActivityEvent`, `WatchActivityBucket`, `WatchActivityTimeline`, and pure watch-period primitives with local-calendar semantics, ISO-8601 Monday weeks, and deterministic DST-safe civil-date arithmetic). No analytics persistence or schema/store change was introduced.
+- Documented that A27 Step 2 — Viewing Intelligence Aggregation — shipped on `main` via PR #139: pure `WatchHistory`-derived activity aggregation behind `ViewingActivitySummary`, deterministic event ordering (`watchedAt` → `episodeId` → persisted `id`), and the read-only `watchActivityService` (one `getAll()` read per request; no writes, no network, no clock dependency, no UI).
+- Reconciled the architecture and data-flow documentation with the history-derived analytics boundary (`WatchHistory` → `watchHistoryRepository` → pure analytics domain → `watchActivityService` → future Statistics presentation), and clarified the existing watch-history repository description to include the new unfiltered and ranged read access.
+- Documented the distinction between current-state Statistics values (`statisticsService.recentActivity`, with `firstWatchDate` / `lastWatchDate`) and history-derived `WatchActivity` values (`firstWatchedAt` / `lastWatchedAt`).
+- Recorded the historical limitation of the `WatchHistory` source, clarified that no Statistics UI consumes `WatchActivity` yet, and recorded the remaining deferred advanced-statistics capabilities.
+- Documentation-only: no application behavior, source code, test code, schema, store, backup format, or provider behavior is changed.
+
 # Changelog
 ## v2.0.0-alpha.26.1 — Region Preference & Availability Foundation
 

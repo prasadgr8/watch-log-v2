@@ -240,6 +240,8 @@ Status: Complete (shipped on `main` via squash merge commit `1879894`, PR #77)
 
 Advanced analytics remain deferred in `future-enhhancements.md`.
 
+*Reconciliation note (October 3, 2026): the statement above is preserved as the alpha.11-era position. A27 Step 1 (PR #138) and A27 Step 2 (PR #139) have since shipped the history-derived analytics foundation and the `WatchActivity` aggregation layer on `main`; advanced user-facing analytics, trends, and visualizations remain deferred. See the A27 milestone section below.*
+
 ## v2.0.0-alpha.13 — PWA & Offline Hardening
 
 Status: Complete (shipped)
@@ -487,13 +489,24 @@ Status: Complete (shipped on `main`)
 - Perform final documentation consistency and project validation.
 - No application behavior, persistence schema, availability caching, notifications, or additional provider work is part of this milestone.
 
+## A27 — Advanced Viewing Intelligence Foundation
+
+Status: Complete (shipped on `main`; A27 Step 1 via PR #138, A27 Step 2 via PR #139)
+
+- **A27 Step 1 — Historical Analytics Foundation** (PR #138): added read-only historical watch-history access — `watchHistoryRepository.getAll()` (every persisted event, ordered deterministically by `watchedAt` then ascending `id`) and `getRange(from, to)` (half-open `[from, to)` reads through the existing `watchedAt` index) — together with the pure analytics domain types `AnalyticsPeriod`, `WatchActivityEvent`, `WatchActivityBucket`, and `WatchActivityTimeline`, and pure watch-period primitives with local-calendar semantics, ISO-8601 Monday weeks, and deterministic DST-safe civil-date arithmetic. No analytics persistence, schema change, or analytics store was introduced.
+- **A27 Step 2 — Viewing Intelligence Aggregation** (PR #139): added pure WatchHistory-derived activity aggregation — active viewing days, events per active day, source event counts, `firstWatchedAt`, `lastWatchedAt`, `mostActivePeriod`, and watch-activity timeline aggregation — behind the `ViewingActivitySummary` shape; made event ordering a deterministic total order (`watchedAt` → `episodeId` → persisted `id`); and added `watchActivityService`, which reads `watchHistoryRepository.getAll()` once per request and maps persisted records into storage-independent `WatchActivityEvent` values. Read-only: no writes, no network, no clock dependency, no UI, and no change to `statisticsService`.
+- `WatchActivity` is **history-derived** and is distinct from the current-state Statistics values: `statisticsService.recentActivity` (including `firstWatchDate` / `lastWatchDate`) derives from the `Episode` watch-state cache, while `firstWatchedAt` / `lastWatchedAt` come from recorded `WatchHistory` events that are still present. The two are not interchangeable, and `firstWatchDate`, `lastWatchDate`, and `watchEventCount` remain current-state Statistics concepts.
+- `WatchHistory` is not an immutable or complete viewing ledger: marking an episode unwatched deletes its history rows, manual re-watching does not create another event, TV Time import can collapse duplicate/re-watch activity, and `watchHistory` is episode-based so movies are not represented.
+- The Statistics presentation/UI consumption of `WatchActivity` is **not implemented yet**; `watchActivityService` currently has no UI consumer.
+- Remaining deferred advanced-statistics capabilities are tracked in `future-enhhancements.md`.
+
 ## Future Milestones
 
 Planned or exploratory features include:
 
 - Offline installation (install prompts remain out of scope; the offline application shell itself shipped in v2.0.0-alpha.13)
 - Optional Google Drive synchronization
-- Advanced statistics and analytics, such as watch-history trends, time-series visualizations, and charts (the shipped Statistics Dashboard provides the library, episode, watch-time, progress, and recently-watched views as of v2.0.0-alpha.11)
+- Advanced statistics and analytics, such as watch-history trends, time-series visualizations, and charts (the shipped Statistics Dashboard provides the library, episode, watch-time, progress, and recently-watched views as of v2.0.0-alpha.11; A27 Step 1 and Step 2 additionally shipped the history-derived analytics foundation and the `WatchActivity` aggregation layer, but no advanced-statistics visualization or Statistics UI consumption of `WatchActivity` is implemented yet — see the A27 milestone section above)
 - Additional personal media tracking categories
 
 Progressive Web App support (the service worker, offline application shell,
@@ -620,13 +633,16 @@ The Upcoming Episodes feature supports:
 
 No Library capability gaps remain. Alpha 25 is complete. Notifications, advanced statistics, social/community, and cloud sync remain deferred; basic streaming availability shipped in Alpha 26. Further availability expansion is tracked in `future-enhancements.md`.
 
+*Reconciliation note (October 3, 2026): the statement above is preserved as the Alpha 25-era audit position. Alpha 26 streaming availability and the A27 Step 1 / Step 2 history-derived analytics foundation have since shipped on `main`; advanced user-facing statistics and analytics remain deferred.*
+
 ---
 
 ## Planned Milestones
 
 Alpha 26.1 through Alpha 26.6 are complete. Alpha 26.7 — Documentation
 Reconciliation & Final Validation — is complete (shipped on `main`; see the
-v2.0.0-alpha.26.7 section above). Exploratory work is tracked under Future Milestones
+v2.0.0-alpha.26.7 section above). A27 Step 1 and Step 2 are complete (shipped on
+`main`; see the A27 milestone section above). Exploratory work is tracked under Future Milestones
 above and in `future-enhancements.md`.
 
 
@@ -642,7 +658,7 @@ The current repository audit shows that Workstreams 1–5 already contain substa
 
 | Workstream | Current shipped foundation | Future extension |
 | --- | --- | --- |
-| 1. Advanced Viewing Intelligence | Continue Watching, progress, watch history, and Statistics Dashboard | Advanced derived viewing intelligence and analytics |
+| 1. Advanced Viewing Intelligence | Continue Watching, progress, watch history, Statistics Dashboard, and the A27 history-derived analytics foundation (`watchHistoryRepository` historical reads, the pure `src/domain/analytics/` domain, and `watchActivityService`) | Advanced derived viewing intelligence, user-facing advanced statistics, trends, and visualizations |
 | 2. Release Radar & Calendar | Upcoming episode and release-date foundations | Calendar, radar, reminders, and richer release planning |
 | 3. Streaming Availability Ecosystem | Region preference and TMDB-backed provider-neutral availability | Additional providers and **My Providers** |
 | 4. Library Organization & Personalization | Library filtering, bulk actions, Custom Collections, Smart Collections | **Personal Journal** and advanced personalization |
@@ -658,7 +674,7 @@ The current repository audit shows that Workstreams 1–5 already contain substa
 
 Future development is organized into bounded workstreams rather than a single feature queue:
 
-1. **Advanced Viewing Intelligence** — deeper derived viewing insights beyond the current Statistics Dashboard.
+1. **Advanced Viewing Intelligence** — deeper derived viewing insights beyond the current Statistics Dashboard. The A27 Step 1 / Step 2 history-derived analytics foundation has shipped; the future extension is the advanced, user-facing intelligence and visualization built on it.
 2. **Release Radar & Calendar** — release calendars and personalized upcoming release experiences.
 3. **Streaming Availability Ecosystem** — provider expansion and **My Providers** preferences, while retaining the provider-neutral availability boundary.
 4. **Library Organization & Personalization** — including the **Personal Journal** and richer collection/personalization capabilities.

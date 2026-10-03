@@ -248,7 +248,7 @@ Progress percentage is derived from the watched regular episode count divided by
 
 Continue Watching items are ordered by the most recent cached `Episode.watchedAt` timestamp in descending order.
 
-The `Episode.watchedAt` field is used for this current-state projection because it is maintained transactionally with watch history. The watch history repository remains responsible for episode-level historical event access.
+The `Episode.watchedAt` field is used for this current-state projection because it is maintained transactionally with watch history. The watch history repository remains responsible for historical watch-event access: `getByEpisode` / `getLatestByEpisode` for episode-level reads, and the A27 additions `getAll()` (every persisted event, ordered deterministically by `watchedAt` then ascending `id`) and `getRange(from, to)` (half-open `[from, to)` reads through the existing `watchedAt` index) for the history-derived analytics layer described under Statistics below.
 
 Progress, next-episode information, and Continue Watching ordering are not persisted to the `Media` entity.
 
@@ -379,6 +379,52 @@ Statistics are derived at read time from existing persisted data.
 - The Dashboard and the Statistics page are different projections of the same underlying data. The Dashboard exposes watched-episode counts, watch hours, and Continue Watching progress; the Statistics page exposes library composition, rating, watch-status, and progress aggregates together with episode totals and watched percentages, watch-time totals derived from watched episode runtime, per-show and per-season progress, recently watched activity with first and last watch dates, and the raw watch-history event count.
 
 The Statistics page is loaded through a read-only statistics facade that calls `mediaRepository.getAll()`, `episodeRepository.getAll()`, and `watchHistoryRepository.count()` once in parallel per page view. Per-show progress and recently watched activity derive from the `Episode` watch-state cache (the hybrid model), while the `WatchHistory` store contributes the raw event count; re-watching or importing an episode can create multiple events for one episode without altering progress aggregates.
+
+### History-Derived Watch Activity (A27 Step 1 + Step 2)
+
+A27 Step 1 and A27 Step 2 shipped a second, history-derived analytics layer alongside the current-state facade above. It derives viewing activity from recorded `WatchHistory` events rather than from the `Episode` watch-state cache, and it is deliberately kept separate so the two value sets are never confused.
+
+```
+WatchHistory
+       ↓
+watchHistoryRepository
+       ↓
+pure analytics domain (src/domain/analytics/)
+       ↓
+watchActivityService
+       ↓
+Statistics presentation layer   ← future; not yet implemented
+```
+
+- **Step 1 — historical analytics foundation.** `watchHistoryRepository` gained `getAll()` (every persisted event, ordered by `watchedAt` then ascending `id`) and `getRange(from, to)` (half-open `[from, to)` reads through the existing `watchedAt` index). `src/domain/analytics/types.ts` defines `AnalyticsPeriod` (`"day" | "week" | "month" | "year"`), `WatchActivityEvent`, `WatchActivityBucket`, and `WatchActivityTimeline`; `src/domain/analytics/watchPeriods.ts` provides the pure watch-period primitives (`getPeriodStart`, `getPeriodEnd`, `isWithinPeriod`, `groupEventsByPeriod`, `enumeratePeriods`, `getLocalDayNumber`). Period boundaries are local-calendar boundaries, weeks are ISO-8601 Monday weeks, and the civil-date arithmetic is integer-only, so DST transitions and timezone changes cannot shift a boundary by a day. No analytics persistence, schema change, or analytics store was introduced.
+- **Step 2 — viewing intelligence aggregation.** `src/domain/analytics/activity.ts` adds the pure aggregations (`getActiveViewingDays`, `getEventsPerActiveDay`, `countEventsBySource`, `getFirstWatchedAt`, `getLastWatchedAt`, `getMostActivePeriod`, `getWatchActivityTimeline`, `summarizeWatchActivity`) and the `ViewingActivitySummary` shape. Event ordering is a deterministic total order: `watchedAt`, then `episodeId`, then persisted `id`. `src/features/statistics/services/watchActivityService.ts` is the single boundary between storage and the domain: it reads `watchHistoryRepository.getAll()` exactly once per request and maps persisted records into storage-independent `WatchActivityEvent` values.
+- The Statistics presentation/UI consumption of `WatchActivity` is **future and not yet implemented**. `watchActivityService` currently has no UI consumer, and the Statistics page continues to render only the current-state facade above.
+
+Invariants of the analytics layer:
+
+- `WatchActivityEvent` is storage-independent; the pure domain never imports Dexie-backed types.
+- The analytics functions are pure and never mutate their inputs.
+- Event and period ordering is deterministic, so the same history always produces the same result.
+- Pure analytics performs no IndexedDB access; `watchActivityService` is the only reader.
+- Pure analytics has no React/UI dependency.
+- No clock or current-time dependency exists, so a given input always produces the same output.
+- There is no derived analytics store, and nothing is written back.
+- There is no network dependency.
+
+Current-state and history-derived values are distinct and are not interchangeable:
+
+- `statisticsService.recentActivity` is **current-state** information derived from the `Episode` watch-state cache. Its `firstWatchDate` / `lastWatchDate` are the current Statistics-page semantics and become `null` when an episode is unwatched.
+- `WatchActivity` is **history-derived**: it is computed from recorded `WatchHistory` events that are still present. Its `firstWatchedAt` / `lastWatchedAt` belong to the history-derived layer and deliberately use different names so they are never mistaken for the current-state fields above.
+- The existing `watchEventCount` remains the raw `watchHistory` row count on the Statistics facade; it is not an A27 historical concept.
+
+The `WatchHistory` source is not an immutable, append-only, or complete viewing ledger, and the analytics layer must not present it as one:
+
+- Marking an episode unwatched deletes that episode's `watchHistory` rows (see the Watch History section of `docs/DATABASE.md`).
+- Manually re-watching an already watched episode does not create another history event.
+- TV Time import can collapse duplicate/re-watch activity and retains the earliest candidate.
+- `watchHistory` is episode-based, so movies are never represented.
+
+Counts therefore describe recorded watch events that are still present, not a complete or tamper-proof account of everything the user watched.
 
 ## Smart Collections
 
