@@ -36,10 +36,22 @@ describe("historical viewing activity section", () => {
     expect(pageSource).toContain("Historical Viewing Activity");
   });
 
-  it("wires loadWatchActivity(period) while keeping loadStatistics", () => {
-    expect(pageSource).toContain("loadWatchActivity(");
-    expect(pageSource).toContain("loadWatchActivity(activityPeriod)");
+  it("wires loadWatchActivitySection(period) while keeping loadStatistics", () => {
+    expect(pageSource).toContain("loadWatchActivitySection(");
+    expect(pageSource).toContain("loadWatchActivitySection(activityPeriod)");
+    expect(pageSource).not.toContain("loadWatchActivity(activityPeriod)");
     expect(pageSource).toContain("loadStatistics()");
+  });
+
+  it("renders summary and timeline from one combined section snapshot", () => {
+    expect(pageSource).toContain("WatchActivitySection");
+    expect(pageSource).toContain(
+      'import WatchActivityTimeline from "./components/WatchActivityTimeline"',
+    );
+    expect(pageSource).toContain("<WatchActivityTimeline");
+    expect(pageSource).toContain("activity={activitySection.summary}");
+    expect(pageSource).toContain("timeline={activitySection.timeline}");
+    expect(pageSource).toContain("isLoading={isActivityLoading}");
   });
 
   it("keeps current-state and history-derived loaders independent", () => {
@@ -64,9 +76,10 @@ describe("historical viewing activity section", () => {
     expect(pageSource).toContain('role="alert"');
   });
 
-  it("renders an accessible empty state when no recorded history exists", () => {
-    expect(pageSource).toContain("No recorded watch history yet.");
-    expect(pageSource).toContain("activity === null");
+  it("leaves zero-history presentation to the section components", () => {
+    expect(pageSource).not.toContain("No recorded watch history yet.");
+    expect(pageSource).not.toContain("activity === null");
+    expect(pageSource).toContain("activitySection !== null");
   });
 });
 

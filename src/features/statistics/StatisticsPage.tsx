@@ -29,6 +29,7 @@ import HistoricalViewingActivity from "./components/HistoricalViewingActivity";
 import RecentlyWatchedList from "./components/RecentlyWatchedList";
 import ShowProgressTable from "./components/ShowProgressTable";
 import StatisticsPeriodSelector from "./components/StatisticsPeriodSelector";
+import WatchActivityTimeline from "./components/WatchActivityTimeline";
 import {
   calculateEpisodeStatistics,
   calculateLibraryStatistics,
@@ -39,8 +40,8 @@ import {
   type StatisticsDashboard,
 } from "./services/statisticsService";
 import type { AnalyticsPeriod } from "../../domain/analytics/types";
-import type { ViewingActivitySummary } from "../../domain/analytics/activity";
-import { loadWatchActivity } from "./services/watchActivityService";
+import type { WatchActivitySection } from "../../domain/analytics/activity";
+import { loadWatchActivitySection } from "./services/watchActivityService";
 
 const initialStatistics: StatisticsDashboard = {
   library: calculateLibraryStatistics([]),
@@ -65,7 +66,8 @@ export default function StatisticsPage() {
 
   const [activityPeriod, setActivityPeriod] =
     useState<AnalyticsPeriod>("month");
-  const [activity, setActivity] = useState<ViewingActivitySummary | null>(null);
+  const [activitySection, setActivitySection] =
+    useState<WatchActivitySection | null>(null);
   const [isActivityLoading, setIsActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState<string | null>(null);
 
@@ -98,13 +100,13 @@ export default function StatisticsPage() {
       try {
         setActivityError(null);
 
-        const summary = await loadWatchActivity(activityPeriod);
+        const section = await loadWatchActivitySection(activityPeriod);
 
         if (!isActive) {
           return;
         }
 
-        setActivity(summary);
+        setActivitySection(section);
       } catch (loadError) {
         if (!isActive) {
           return;
@@ -494,24 +496,18 @@ export default function StatisticsPage() {
         </p>
       )}
 
-      {!isActivityLoading && activity === null && (
-        <div className="rounded-xl border border-dashed border-border bg-surface/50 p-8 text-center">
-          <History
-            aria-hidden="true"
-            className="mx-auto h-8 w-8 text-muted"
+      {activitySection !== null && (
+        <>
+          <HistoricalViewingActivity
+            activity={activitySection.summary}
+            isLoading={isActivityLoading}
           />
 
-          <p className="mt-3 text-muted">
-            No recorded watch history yet.
-          </p>
-        </div>
-      )}
-
-      {activity !== null && (
-        <HistoricalViewingActivity
-          activity={activity}
-          isLoading={isActivityLoading}
-        />
+          <WatchActivityTimeline
+            timeline={activitySection.timeline}
+            isLoading={isActivityLoading}
+          />
+        </>
       )}
     </div>
   );
