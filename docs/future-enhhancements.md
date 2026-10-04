@@ -103,8 +103,19 @@ on `main`:
   (`watchedAt` → `episodeId` → persisted `id`), and added the read-only
   `watchActivityService` (one `getAll()` read per request; no writes, no network,
   no clock dependency, no UI).
+- A27 Step 3 (PR #140, PR #141, PR #142, PR #143) connected that layer to the
+  Statistics UI: Step 3.1 (PR #140) added the "Historical Viewing Activity"
+  section with its calendar-period selector and the recorded-activity summary;
+  Step 3.2.1 (PR #141) added the gap-free, capped
+  `WatchActivityTimelineProjection` and the combined `{ summary, timeline }`
+  section loader, derived from a single `getAll()` read; Step 3.2.2a (PR #142)
+  added the accessible, text-first timeline presentation; and Step 3.2.2b
+  (PR #143) integrated the section into `StatisticsPage`. No SVG, chart library,
+  analytics persistence, schema change, network access, or clock dependency was
+  introduced, and the 120-bucket timeline cap is disclosed in the UI.
 
-This is a foundation only. No Statistics UI consumes `WatchActivity` yet. The
+That layer now has a UI consumer: the recorded-activity summary and timeline are
+shipped, while the advanced analytics capabilities below remain deferred. The
 history-derived `firstWatchedAt` / `lastWatchedAt` values are also distinct from
 the current-state `statisticsService.recentActivity` values (`firstWatchDate` /
 `lastWatchDate`), which derive from the `Episode` watch-state cache rather than
@@ -112,7 +123,9 @@ from recorded `WatchHistory` events.
 
 The following advanced analytics capabilities remain deferred post-MVP work; the
 A27 foundation provides the aggregation layer they would build on, but none of
-the user-facing capabilities below exist yet:
+the user-facing capabilities below exist yet. The shipped timeline presents
+recorded activity per calendar period and is not any of these: it adds no
+derived trend metrics, period-over-period comparisons, or charting.
 
 - Watch-history trends
 - Time-series analytics
@@ -286,7 +299,7 @@ The repository audit classifies Workstreams 1–5 as **shipped foundations with 
 
 | Workstream | Status |
 | --- | --- |
-| 1. Advanced Viewing Intelligence | Shipped foundation, including the A27 Step 1 / Step 2 history-derived analytics foundation; future advanced intelligence |
+| 1. Advanced Viewing Intelligence | Shipped foundation, including the A27 Step 1 / Step 2 history-derived analytics layer and the Step 3 Statistics presentation; future advanced intelligence |
 | 2. Release Radar & Calendar | Shipped foundation; future calendar/radar extensions |
 | 3. Streaming Availability Ecosystem | Shipped foundation; future provider expansion and **My Providers** |
 | 4. Library Organization & Personalization | Shipped foundation; future personalization including **Personal Journal** |
@@ -305,11 +318,14 @@ These classifications are documentation status only; each future capability stil
 ## Workstream 1 — Advanced Viewing Intelligence
 
 Shipped foundation: Continue Watching, watch progress, the Statistics Dashboard,
-and the A27 Step 1 / Step 2 history-derived analytics layer (historical
+the A27 Step 1 / Step 2 history-derived analytics layer (historical
 `WatchHistory` repository reads, the pure `src/domain/analytics/` domain, and
-`watchActivityService`).
+`watchActivityService`), and the A27 Step 3 recorded-activity summary and capped
+timeline in the Statistics UI.
 
-Future scope includes deeper viewing analytics, trends, historical insights, and other derived intelligence beyond the current Statistics Dashboard; no Statistics UI consumes the A27 `WatchActivity` layer yet.
+Future scope includes deeper viewing analytics, derived trends, historical
+insights, charting, and other derived intelligence beyond what the current
+Statistics presentation shows.
 
 ## Workstream 2 — Release Radar & Calendar
 

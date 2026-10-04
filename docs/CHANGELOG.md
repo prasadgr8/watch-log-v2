@@ -12,10 +12,21 @@
 
 - Documented that A27 Step 1 — Historical Analytics Foundation — shipped on `main` via PR #138: read-only historical `WatchHistory` access (`getAll()` and half-open `getRange(from, to)`) and the pure analytics domain (`AnalyticsPeriod`, `WatchActivityEvent`, `WatchActivityBucket`, `WatchActivityTimeline`, and pure watch-period primitives with local-calendar semantics, ISO-8601 Monday weeks, and deterministic DST-safe civil-date arithmetic). No analytics persistence or schema/store change was introduced.
 - Documented that A27 Step 2 — Viewing Intelligence Aggregation — shipped on `main` via PR #139: pure `WatchHistory`-derived activity aggregation behind `ViewingActivitySummary`, deterministic event ordering (`watchedAt` → `episodeId` → persisted `id`), and the read-only `watchActivityService` (one `getAll()` read per request; no writes, no network, no clock dependency, no UI).
-- Reconciled the architecture and data-flow documentation with the history-derived analytics boundary (`WatchHistory` → `watchHistoryRepository` → pure analytics domain → `watchActivityService` → future Statistics presentation), and clarified the existing watch-history repository description to include the new unfiltered and ranged read access.
+- Reconciled the architecture and data-flow documentation with the history-derived analytics boundary (`WatchHistory` → `watchHistoryRepository` → pure analytics domain → `watchActivityService` → Statistics presentation), and clarified the existing watch-history repository description to include the new unfiltered and ranged read access.
 - Documented the distinction between current-state Statistics values (`statisticsService.recentActivity`, with `firstWatchDate` / `lastWatchDate`) and history-derived `WatchActivity` values (`firstWatchedAt` / `lastWatchedAt`).
-- Recorded the historical limitation of the `WatchHistory` source, clarified that no Statistics UI consumes `WatchActivity` yet, and recorded the remaining deferred advanced-statistics capabilities.
+- Recorded the historical limitation of the `WatchHistory` source and recorded the remaining deferred advanced-statistics capabilities. (The Statistics-UI-consumption claim made in this entry was accurate only when it was written; it has since been superseded by A27 Step 3 — see the reconciliation entry below.)
 - Documentation-only: no application behavior, source code, test code, schema, store, backup format, or provider behavior is changed.
+
+### A27 — Advanced Viewing Intelligence Foundation (Step 3 — Documentation Reconciliation)
+
+- Reconciled the roadmap, architecture, and future-enhancement documentation with A27 Step 3, which shipped on `main` after the reconciliation entries above were written.
+- Documented A27 Step 3.1 (PR #140 — Statistics experience foundation: the "Historical Viewing Activity" section, its calendar-period selector, and the recorded-activity summary presentation).
+- Documented A27 Step 3.2.1 (PR #141 — timeline data contract: the gap-free, capped `WatchActivityTimelineProjection` and the combined `{ summary, timeline }` section loader, derived from a single `WatchHistory` read).
+- Documented A27 Step 3.2.2a (PR #142 — the accessible, text-first timeline presentation, with a decorative CSS bar and no SVG or chart library) and A27 Step 3.2.2b (PR #143 — Statistics page integration via `loadWatchActivitySection(activityPeriod)`).
+- Corrected the stale statements that the Statistics presentation/UI consumption of `WatchActivity` was "not implemented", that it had "no UI consumer", and that the architecture ended at a "future" Statistics presentation layer.
+- Preserved the `WatchHistory` ledger limitation: recorded events are not an immutable or complete viewing lifetime history, unwatching deletes history rows, manual re-watching is not a new event, imports can collapse duplicates, and movies are not represented.
+- Preserved the deferred advanced-analytics inventory (watch-history trends, time-series analytics, richer visualizations and charts, rating distributions, most-watched analytics, yearly watch reports, genre trends, runtime statistics, completion analytics, network/platform breakdown, rewatch counts, completion history, movie watch history) as deferred; the shipped timeline presents recorded activity per period and adds no derived trend metrics or charting.
+- Documentation-only: no application behavior, source code, test code, schema, store, dependency, build configuration, or provider behavior is changed, and no new product version is introduced.
 
 # Changelog
 ## v2.0.0-alpha.26.1 — Region Preference & Availability Foundation
