@@ -13,6 +13,7 @@ const STATISTICS_SOURCES = [
   "components/StatisticCard.tsx",
   "components/ProgressBar.tsx",
   "components/WatchActivityTimeline.tsx",
+  "components/WatchActivityTrends.tsx",
   "components/ShowProgressTable.tsx",
   "components/RecentlyWatchedList.tsx",
 ] as const;

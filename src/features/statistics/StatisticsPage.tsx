@@ -30,6 +30,7 @@ import RecentlyWatchedList from "./components/RecentlyWatchedList";
 import ShowProgressTable from "./components/ShowProgressTable";
 import StatisticsPeriodSelector from "./components/StatisticsPeriodSelector";
 import WatchActivityTimeline from "./components/WatchActivityTimeline";
+import WatchActivityTrends from "./components/WatchActivityTrends";
 import {
   calculateEpisodeStatistics,
   calculateLibraryStatistics,
@@ -40,8 +41,10 @@ import {
   type StatisticsDashboard,
 } from "./services/statisticsService";
 import type { AnalyticsPeriod } from "../../domain/analytics/types";
-import type { WatchActivitySection } from "../../domain/analytics/activity";
-import { loadWatchActivitySection } from "./services/watchActivityService";
+import {
+  loadWatchActivitySection,
+  type WatchActivitySectionWithTrends,
+} from "./services/watchActivityService";
 
 const initialStatistics: StatisticsDashboard = {
   library: calculateLibraryStatistics([]),
@@ -67,7 +70,7 @@ export default function StatisticsPage() {
   const [activityPeriod, setActivityPeriod] =
     useState<AnalyticsPeriod>("month");
   const [activitySection, setActivitySection] =
-    useState<WatchActivitySection | null>(null);
+    useState<WatchActivitySectionWithTrends | null>(null);
   const [isActivityLoading, setIsActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState<string | null>(null);
 
@@ -500,6 +503,11 @@ export default function StatisticsPage() {
         <>
           <HistoricalViewingActivity
             activity={activitySection.summary}
+            isLoading={isActivityLoading}
+          />
+
+          <WatchActivityTrends
+            trends={activitySection.trends}
             isLoading={isActivityLoading}
           />
 
