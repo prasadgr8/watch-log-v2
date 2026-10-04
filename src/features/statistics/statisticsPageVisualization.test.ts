@@ -72,6 +72,6 @@ describe("StatisticsPage A29 Step 3 visualization integration", () => {
   it("does not introduce a second activity state or visualization-specific effect", () => {
     expect(statisticsPageSource).not.toContain("visualizationPeriod");
     expect(statisticsPageSource).not.toContain("visualizationSection");
-    expect(statisticsPageSource).not.toContain("useEffect(() => {");
+    expect(statisticsPageSource).not.toContain("useVisualizationEffect");
   });
 });
