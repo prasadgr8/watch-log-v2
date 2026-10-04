@@ -344,4 +344,197 @@ describe("watchActivityService source contract", () => {
     expect(serviceSource).not.toContain("Date.now(");
     expect(serviceSource).not.toContain("new Date(");
   });
+
+  it("composes the trends rather than reimplementing their arithmetic", () => {
+    // The service only wires the pure domain builders; trend maths stay in the
+    // domain module, so no counting, summing, or percentage logic lives here.
+    expect(serviceSource).toContain("buildWatchActivityTrends");
+    expect(serviceSource).toContain("buildWatchActivitySection");
+
+    expect(serviceSource).not.toMatch(/activePeriodCount\s*[+-]=/);
+    expect(serviceSource).not.toMatch(/inactivePeriodCount\s*[+-]=/);
+    expect(serviceSource).not.toMatch(
+      /consecutiveActivePeriods\s*[+-]=/,
+    );
+    expect(serviceSource).not.toMatch(/Math\.round\(/);
+    expect(serviceSource).not.toMatch(/percentageChange\s*[+-]?=/);
+    expect(serviceSource).not.toContain("enumeratePeriods(");
+    expect(serviceSource).not.toContain("getPeriodStart(");
+  });
+
+  it("keeps the timeline presentation cap out of the trends path", () => {
+    // The 120-bucket cap belongs to the timeline projection alone and must not
+    // be re-applied to the A28 trends.
+    expect(serviceSource).not.toContain("WATCH_ACTIVITY_TIMELINE_MAX_BUCKETS");
+  });
+
+  it("records the presentation naming convention without renaming the domain", () => {
+    for (const uiTerm of [
+      "Active",
+      "Inactive",
+      "Current Run",
+      "Longest Run",
+      "Change",
+      "Previous",
+      "Current",
+      "Viewing Activity",
+    ]) {
+      expect(serviceSource).toContain(uiTerm);
+    }
+
+    // "Activity" must never be shortened to "Watched", which would imply a
+    // complete lifetime viewing history the ledger cannot support.
+    expect(serviceSource).not.toContain('-> Watched');
+    expect(serviceSource).toContain("Consecutive periods with recorded activity");
+  });
+
+  it("does not introduce a circular activity/trends dependency", () => {
+    const analyticsDirectory = join(
+      serviceDirectory,
+      "..",
+      "..",
+      "..",
+      "domain",
+      "analytics",
+    );
+    const activitySource = readFileSync(
+      join(analyticsDirectory, "activity.ts"),
+      "utf-8",
+    );
+
+    // trends.ts imports activity.ts, so activity.ts must not import trends.ts.
+    expect(activitySource).not.toContain('from "./trends"');
+  });
+});
+describe("loadWatchActivitySection trends exposure", () => {
+  it("exposes recorded-activity trends alongside the summary and timeline", async () => {
+    await watchHistoryRepository.add(createWatchHistory());
+    await watchHistoryRepository.add(
+      createWatchHistory({
+        episodeId: 2,
+        watchedAt: new Date(2026, 6, 15, 20),
+      }),
+    );
+
+    const section = await loadWatchActivitySection("day");
+
+    expect(section.trends.period).toBe("day");
+    expect(section.trends.totalPeriodCount).toBe(1);
+    expect(section.trends.activePeriodCount).toBe(1);
+    expect(section.trends.inactivePeriodCount).toBe(0);
+    expect(section.trends.longestConsecutiveActivePeriods).toBe(1);
+    expect(section.trends.latestConsecutiveActivePeriods).toBe(1);
+    expect(section.trends.periodOverPeriod.hasPredecessor).toBe(false);
+    expect(section.summary.totalEventCount).toBe(2);
+    expect(section.timeline.buckets).toHaveLength(1);
+  });
+
+  it("reads the watch history exactly once while exposing trends", async () => {
+    await watchHistoryRepository.add(createWatchHistory());
+
+    const getAllSpy = vi.spyOn(watchHistoryRepository, "getAll");
+
+    await loadWatchActivitySection("day");
+
+    expect(getAllSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("derives summary, timeline, and trends from one shared snapshot", async () => {
+    await watchHistoryRepository.add(createWatchHistory());
+    await watchHistoryRepository.add(
+      createWatchHistory({
+        episodeId: 2,
+        watchedAt: new Date(2026, 6, 16, 20),
+      }),
+    );
+    await watchHistoryRepository.add(
+      createWatchHistory({
+        episodeId: 3,
+        watchedAt: new Date(2026, 6, 18, 10),
+        source: "import",
+      }),
+    );
+    const persisted = await watchHistoryRepository.getAll();
+
+    // A second read would observe an emptied store, so any implementation that
+    // reads twice disagrees with the first snapshot.
+    const getAllSpy = vi
+      .spyOn(watchHistoryRepository, "getAll")
+      .mockResolvedValueOnce(persisted)
+      .mockResolvedValueOnce([]);
+
+    const section = await loadWatchActivitySection("day");
+
+    expect(getAllSpy).toHaveBeenCalledTimes(1);
+
+    const { summary, timeline, trends } = section;
+
+    expect(summary.totalEventCount).toBe(3);
+    expect(summary.sourceEventCounts).toEqual({ manual: 2, import: 1 });
+
+    expect(timeline.buckets.map((bucket) => bucket.eventCount)).toEqual([
+      1, 1, 0, 1,
+    ]);
+
+    expect(trends.totalPeriodCount).toBe(4);
+    expect(trends.activePeriodCount).toBe(3);
+    expect(trends.inactivePeriodCount).toBe(1);
+    expect(trends.longestConsecutiveActivePeriods).toBe(2);
+    expect(trends.latestConsecutiveActivePeriods).toBe(1);
+    expect(trends.periodOverPeriod.previousEventCount).toBe(0);
+    expect(trends.periodOverPeriod.currentEventCount).toBe(1);
+    expect(trends.periodOverPeriod.absoluteChange).toBe(1);
+    expect(trends.periodOverPeriod.percentageChange).toBeNull();
+  });
+
+  it("produces a deterministic zeroed trend projection for empty history", async () => {
+    const section = await loadWatchActivitySection("month");
+
+    expect(section.trends.period).toBe("month");
+    expect(section.trends.totalPeriodCount).toBe(0);
+    expect(section.trends.activePeriodCount).toBe(0);
+    expect(section.trends.inactivePeriodCount).toBe(0);
+    expect(section.trends.longestConsecutiveActivePeriods).toBe(0);
+    expect(section.trends.latestConsecutiveActivePeriods).toBe(0);
+    expect(section.trends.periodOverPeriod.hasPredecessor).toBe(false);
+    expect(section.trends.periodOverPeriod.previousEventCount).toBeNull();
+    expect(section.trends.periodOverPeriod.absoluteChange).toBeNull();
+    expect(section.trends.periodOverPeriod.percentageChange).toBeNull();
+  });
+
+  it("keeps loadWatchActivity backward compatible with the trends section", async () => {
+    await watchHistoryRepository.add(createWatchHistory());
+    await watchHistoryRepository.add(
+      createWatchHistory({
+        episodeId: 2,
+        watchedAt: new Date(2026, 6, 16, 20),
+      }),
+    );
+
+    const summary = await loadWatchActivity("day");
+    const section = await loadWatchActivitySection("day");
+
+    expect(summary).toEqual(section.summary);
+    expect(summary.totalEventCount).toBe(2);
+    expect(summary.period).toBe("day");
+    expect(section.trends.totalPeriodCount).toBe(2);
+  });
+
+  it("introduces no writes while loading the section with trends", async () => {
+    await watchHistoryRepository.add(createWatchHistory());
+    const countBefore = await watchHistoryRepository.count();
+
+    const addSpy = vi.spyOn(db.watchHistory, "add");
+    const putSpy = vi.spyOn(db.watchHistory, "put");
+    const deleteSpy = vi.spyOn(db.watchHistory, "delete");
+    const clearSpy = vi.spyOn(db.watchHistory, "clear");
+
+    await loadWatchActivitySection("month");
+
+    expect(addSpy).not.toHaveBeenCalled();
+    expect(putSpy).not.toHaveBeenCalled();
+    expect(deleteSpy).not.toHaveBeenCalled();
+    expect(clearSpy).not.toHaveBeenCalled();
+    expect(await watchHistoryRepository.count()).toBe(countBefore);
+  });
 });
