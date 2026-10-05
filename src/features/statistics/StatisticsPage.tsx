@@ -30,7 +30,9 @@ import RecentlyWatchedList from "./components/RecentlyWatchedList";
 import ShowProgressTable from "./components/ShowProgressTable";
 import StatisticsPeriodSelector from "./components/StatisticsPeriodSelector";
 import WatchActivityTimeline from "./components/WatchActivityTimeline";
+import WatchActivityVisualization from "./components/WatchActivityVisualization";
 import WatchActivityTrends from "./components/WatchActivityTrends";
+import { buildWatchActivityVisualizationProjection } from "./watchActivityVisualization";
 import {
   calculateEpisodeStatistics,
   calculateLibraryStatistics,
@@ -503,6 +505,13 @@ export default function StatisticsPage() {
         <>
           <HistoricalViewingActivity
             activity={activitySection.summary}
+            isLoading={isActivityLoading}
+          />
+
+          <WatchActivityVisualization
+            visualization={buildWatchActivityVisualizationProjection(
+              activitySection.timeline,
+            )}
             isLoading={isActivityLoading}
           />
 
