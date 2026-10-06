@@ -15,14 +15,14 @@ export default function StatisticCard({
   iconClassName = "text-muted",
 }: StatisticCardProps) {
   return (
-    <div className="rounded-xl border border-border bg-surface p-6 shadow-sm transition hover:border-accent-hover hover:shadow-lg">
+    <div className="rounded-xl border border-border bg-surface p-6 shadow-sm">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium uppercase tracking-wide text-muted">
             {title}
           </p>
 
-          <h2 className="mt-3 text-4xl font-bold text-primary">
+          <p className="mt-2 text-3xl font-bold text-primary">
             {value}
 
             {suffix && (
@@ -30,7 +30,7 @@ export default function StatisticCard({
                 {suffix}
               </span>
             )}
-          </h2>
+          </p>
         </div>
 
         {icon && <div className={iconClassName}>{icon}</div>}
