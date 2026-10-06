@@ -10,35 +10,43 @@ const statisticsPageSource = readFileSync(
   "utf-8",
 );
 
+const watchingActivitySectionSource = readFileSync(
+  join(featureDirectory, "components", "WatchingActivitySection.tsx"),
+  "utf-8",
+);
+
 describe("StatisticsPage A29 Step 3 visualization integration", () => {
   it("imports the native visualization component and Step 1 projection builder", () => {
-    expect(statisticsPageSource).toContain(
-      'import WatchActivityVisualization from "./components/WatchActivityVisualization";',
+    expect(watchingActivitySectionSource).toContain(
+      'import WatchActivityVisualization from "./WatchActivityVisualization";',
+    );
+    expect(watchingActivitySectionSource).toContain(
+      'import { buildWatchActivityVisualizationProjection } from "../watchActivityVisualization";',
     );
     expect(statisticsPageSource).toContain(
-      'import { buildWatchActivityVisualizationProjection } from "./watchActivityVisualization";',
+      'import WatchingActivitySection from "./components/WatchingActivitySection";',
     );
   });
 
   it("derives visualization data from the existing activity timeline", () => {
-    expect(statisticsPageSource).toContain(
+    expect(watchingActivitySectionSource).toContain(
       "buildWatchActivityVisualizationProjection(",
     );
-    expect(statisticsPageSource).toContain("activitySection.timeline");
+    expect(watchingActivitySectionSource).toContain("activitySection.timeline");
   });
 
   it("passes the existing activity loading state to the visualization", () => {
-    expect(statisticsPageSource).toContain(
+    expect(watchingActivitySectionSource).toContain(
       "<WatchActivityVisualization",
     );
-    expect(statisticsPageSource).toContain(
+    expect(watchingActivitySectionSource).toContain(
       "isLoading={isActivityLoading}",
     );
   });
 
   it("keeps the existing period selector as the only activity period control", () => {
-    expect(statisticsPageSource).toContain("<StatisticsPeriodSelector");
-    expect(statisticsPageSource).not.toContain(
+    expect(watchingActivitySectionSource).toContain("<StatisticsPeriodSelector");
+    expect(watchingActivitySectionSource).not.toContain(
       "<WatchActivityVisualizationSelector",
     );
   });
@@ -54,13 +62,13 @@ describe("StatisticsPage A29 Step 3 visualization integration", () => {
   });
 
   it("renders the visualization before trends and the existing timeline", () => {
-    const visualizationIndex = statisticsPageSource.indexOf(
+    const visualizationIndex = watchingActivitySectionSource.indexOf(
       "<WatchActivityVisualization",
     );
-    const trendsIndex = statisticsPageSource.indexOf(
+    const trendsIndex = watchingActivitySectionSource.indexOf(
       "<WatchActivityTrends",
     );
-    const timelineIndex = statisticsPageSource.indexOf(
+    const timelineIndex = watchingActivitySectionSource.indexOf(
       "<WatchActivityTimeline",
     );
 

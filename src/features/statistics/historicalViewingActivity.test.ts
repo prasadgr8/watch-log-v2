@@ -11,6 +11,11 @@ const pageSource = readFileSync(
   "utf-8",
 );
 
+const watchingActivitySectionSource = readFileSync(
+  join(featureDirectory, "components", "WatchingActivitySection.tsx"),
+  "utf-8",
+);
+
 const periodSelectorSource = readFileSync(
   join(featureDirectory, "components", "StatisticsPeriodSelector.tsx"),
   "utf-8",
@@ -33,7 +38,10 @@ const activitySource = readFileSync(
 
 describe("historical viewing activity section", () => {
   it("renders a Historical Viewing Activity section heading", () => {
-    expect(pageSource).toContain("Historical Viewing Activity");
+    expect(watchingActivitySectionSource).toContain(
+      "Historical Viewing Activity",
+    );
+    expect(pageSource).toContain("<WatchingActivitySection");
   });
 
   it("wires loadWatchActivitySection(period) while keeping loadStatistics", () => {
@@ -45,13 +53,19 @@ describe("historical viewing activity section", () => {
 
   it("renders summary and timeline from one combined section snapshot", () => {
     expect(pageSource).toContain("WatchActivitySection");
-    expect(pageSource).toContain(
-      'import WatchActivityTimeline from "./components/WatchActivityTimeline"',
+    expect(watchingActivitySectionSource).toContain(
+      'import WatchActivityTimeline from "./WatchActivityTimeline"',
     );
-    expect(pageSource).toContain("<WatchActivityTimeline");
-    expect(pageSource).toContain("activity={activitySection.summary}");
-    expect(pageSource).toContain("timeline={activitySection.timeline}");
-    expect(pageSource).toContain("isLoading={isActivityLoading}");
+    expect(watchingActivitySectionSource).toContain("<WatchActivityTimeline");
+    expect(watchingActivitySectionSource).toContain(
+      "activity={activitySection.summary}",
+    );
+    expect(watchingActivitySectionSource).toContain(
+      "timeline={activitySection.timeline}",
+    );
+    expect(watchingActivitySectionSource).toContain(
+      "isLoading={isActivityLoading}",
+    );
   });
 
   it("keeps current-state and history-derived loaders independent", () => {
@@ -73,13 +87,18 @@ describe("historical viewing activity section", () => {
 
   it("renders the activity error through role=alert", () => {
     expect(pageSource).toContain("Unable to load viewing activity.");
-    expect(pageSource).toContain('role="alert"');
+    expect(watchingActivitySectionSource).toContain('role="alert"');
+    expect(watchingActivitySectionSource).toContain("{activityError &&");
   });
 
   it("leaves zero-history presentation to the section components", () => {
-    expect(pageSource).not.toContain("No recorded watch history yet.");
-    expect(pageSource).not.toContain("activity === null");
-    expect(pageSource).toContain("activitySection !== null");
+    expect(watchingActivitySectionSource).not.toContain(
+      "No recorded watch history yet.",
+    );
+    expect(watchingActivitySectionSource).not.toContain("activity === null");
+    expect(watchingActivitySectionSource).toContain(
+      "activitySection !== null",
+    );
   });
 });
 

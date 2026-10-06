@@ -16,6 +16,11 @@ const pageSource = readFileSync(
   "utf-8",
 );
 
+const watchingActivitySectionSource = readFileSync(
+  join(featureDirectory, "components", "WatchingActivitySection.tsx"),
+  "utf-8",
+);
+
 /*
  * Source-contract coverage for the A28 Step 3 ViewActivityTrends presentation.
  *
@@ -204,12 +209,17 @@ describe("WatchActivityTrends accessibility and layout", () => {
 });
 describe("StatisticsPage trends integration", () => {
   it("passes the already-loaded trends to the new presentation", () => {
-    expect(pageSource).toContain(
-      'import WatchActivityTrends from "./components/WatchActivityTrends"',
+    expect(watchingActivitySectionSource).toContain(
+      'import WatchActivityTrends from "./WatchActivityTrends"',
     );
-    expect(pageSource).toContain("<WatchActivityTrends");
-    expect(pageSource).toContain("trends={activitySection.trends}");
-    expect(pageSource).toContain("isLoading={isActivityLoading}");
+    expect(watchingActivitySectionSource).toContain("<WatchActivityTrends");
+    expect(watchingActivitySectionSource).toContain(
+      "trends={activitySection.trends}",
+    );
+    expect(watchingActivitySectionSource).toContain(
+      "isLoading={isActivityLoading}",
+    );
+    expect(pageSource).toContain("<WatchingActivitySection");
   });
 
   it("introduces no additional service call or activity state", () => {
@@ -222,7 +232,7 @@ describe("StatisticsPage trends integration", () => {
   });
 
   it("keeps the summary, trends, and timeline in the established order", () => {
-    expect(pageSource).toMatch(
+    expect(watchingActivitySectionSource).toMatch(
       /<HistoricalViewingActivity[\s\S]*<WatchActivityTrends[\s\S]*<WatchActivityTimeline/,
     );
   });
