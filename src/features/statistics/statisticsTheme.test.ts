@@ -73,7 +73,6 @@ const REQUIRED_SEMANTIC_UTILITIES = [
   "text-muted",
   "border-border",
   "bg-surface",
-  "hover:border-accent-hover",
   "text-accent-text",
   "text-warning",
   "text-success",
