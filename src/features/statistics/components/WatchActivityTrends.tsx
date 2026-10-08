@@ -90,7 +90,7 @@ export default function WatchActivityTrends({
         </div>
       ) : (
         <>
-          <div className="grid gap-6 md:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-4">
             <StatisticCard
               title="Active"
               value={placeholder(trends.activePeriodCount)}
@@ -124,7 +124,7 @@ export default function WatchActivityTrends({
             />
           </div>
 
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-3">
             <StatisticCard
               title="Change"
               value={
@@ -141,7 +141,7 @@ export default function WatchActivityTrends({
                 Previous
               </p>
 
-              <p className="mt-3 text-2xl font-semibold text-primary">
+              <p className="mt-2 text-lg font-semibold text-primary">
                 {periodOverPeriod.hasPredecessor &&
                 periodOverPeriod.previousEventCount !== null
                   ? placeholder(periodOverPeriod.previousEventCount)
@@ -154,7 +154,7 @@ export default function WatchActivityTrends({
                 Current
               </p>
 
-              <p className="mt-3 text-2xl font-semibold text-primary">
+              <p className="mt-2 text-lg font-semibold text-primary">
                 {placeholder(periodOverPeriod.currentEventCount)}
               </p>
             </div>

@@ -200,7 +200,7 @@ describe("WatchActivityTrends accessibility and layout", () => {
   });
 
   it("uses the responsive grid convention with no fixed or scrollable widths", () => {
-    expect(trendsSource).toContain("grid gap-6 md:grid-cols-");
+    expect(trendsSource).toContain("grid gap-4 md:grid-cols-");
     expect(trendsSource).not.toContain("min-w-[");
     expect(trendsSource).not.toContain("max-w-[");
     expect(trendsSource).not.toContain("overflow-x");
