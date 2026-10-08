@@ -49,8 +49,8 @@ export default function HistoricalViewingActivity({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-3">
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <StatisticCard
           title="Recorded watch events"
           value={placeholder(activity.totalEventCount)}
@@ -73,7 +73,7 @@ export default function HistoricalViewingActivity({
         />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         <StatisticCard
           title="Events per active day"
           value={
@@ -102,7 +102,7 @@ export default function HistoricalViewingActivity({
 
       {(activity.firstWatchedAt !== undefined ||
         activity.lastWatchedAt !== undefined) && (
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           {activity.firstWatchedAt !== undefined && (
             <div className="rounded-xl border border-border bg-surface p-6 shadow-sm">
               <div className="flex items-start justify-between">
@@ -111,9 +111,9 @@ export default function HistoricalViewingActivity({
                     Recorded history begins
                   </p>
 
-                  <h3 className="mt-3 text-lg font-semibold text-primary">
+                  <p className="mt-2 text-lg font-semibold text-primary">
                     {formatWatchedDate(activity.firstWatchedAt)}
-                  </h3>
+                  </p>
                 </div>
 
                 <div className="text-accent-text">
@@ -131,9 +131,9 @@ export default function HistoricalViewingActivity({
                     Recorded history ends
                   </p>
 
-                  <h3 className="mt-3 text-lg font-semibold text-primary">
+                  <p className="mt-2 text-lg font-semibold text-primary">
                     {formatWatchedDate(activity.lastWatchedAt)}
-                  </h3>
+                  </p>
                 </div>
 
                 <div className="text-accent-text">
@@ -151,7 +151,7 @@ export default function HistoricalViewingActivity({
             Most active recorded period
           </p>
 
-          <p className="mt-3 text-lg font-semibold text-primary">
+          <p className="mt-2 text-lg font-semibold text-primary">
             {activity.mostActivePeriod.eventCount} recorded{" "}
             {activity.mostActivePeriod.eventCount === 1 ? "event" : "events"},{" "}
             {formatPeriodRange(
