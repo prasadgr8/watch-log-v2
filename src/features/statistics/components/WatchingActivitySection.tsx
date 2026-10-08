@@ -26,6 +26,10 @@ interface WatchingActivitySectionProps {
  * verbatim (with display-only formatting in the child views). The historical
  * activity behavior, selector, A29 visualization, trends, timeline, and the
  * loading/error behavior are unchanged from the pre-tab Statistics page.
+ *
+ * Each content block is grouped in a named landmark bound to its own
+ * sub-heading (A30 Step 3.1), mirroring the Statistics Overview section
+ * pattern, so assistive technology can navigate them.
  */
 export default function WatchingActivitySection({
   activityPeriod,
@@ -64,27 +68,83 @@ export default function WatchingActivitySection({
 
       {activitySection !== null && (
         <>
-          <HistoricalViewingActivity
-            activity={activitySection.summary}
-            isLoading={isActivityLoading}
-          />
+          <section
+            aria-labelledby="watching-activity-summary"
+            className="space-y-8"
+          >
+            <div className="border-b border-border pb-2">
+              <h3
+                id="watching-activity-summary"
+                className="text-lg font-semibold text-primary"
+              >
+                Historical Summary
+              </h3>
+            </div>
 
-          <WatchActivityVisualization
-            visualization={buildWatchActivityVisualizationProjection(
-              activitySection.timeline,
-            )}
-            isLoading={isActivityLoading}
-          />
+            <HistoricalViewingActivity
+              activity={activitySection.summary}
+              isLoading={isActivityLoading}
+            />
+          </section>
 
-          <WatchActivityTrends
-            trends={activitySection.trends}
-            isLoading={isActivityLoading}
-          />
+          <section
+            aria-labelledby="watching-activity-visualization"
+            className="space-y-8"
+          >
+            <div className="border-b border-border pb-2">
+              <h3
+                id="watching-activity-visualization"
+                className="text-lg font-semibold text-primary"
+              >
+                Activity Visualization
+              </h3>
+            </div>
 
-          <WatchActivityTimeline
-            timeline={activitySection.timeline}
-            isLoading={isActivityLoading}
-          />
+            <WatchActivityVisualization
+              visualization={buildWatchActivityVisualizationProjection(
+                activitySection.timeline,
+              )}
+              isLoading={isActivityLoading}
+            />
+          </section>
+
+          <section
+            aria-labelledby="watching-activity-trends"
+            className="space-y-8"
+          >
+            <div className="border-b border-border pb-2">
+              <h3
+                id="watching-activity-trends"
+                className="text-lg font-semibold text-primary"
+              >
+                Viewing Activity Trends
+              </h3>
+            </div>
+
+            <WatchActivityTrends
+              trends={activitySection.trends}
+              isLoading={isActivityLoading}
+            />
+          </section>
+
+          <section
+            aria-labelledby="watching-activity-timeline"
+            className="space-y-8"
+          >
+            <div className="border-b border-border pb-2">
+              <h3
+                id="watching-activity-timeline"
+                className="text-lg font-semibold text-primary"
+              >
+                Activity Timeline
+              </h3>
+            </div>
+
+            <WatchActivityTimeline
+              timeline={activitySection.timeline}
+              isLoading={isActivityLoading}
+            />
+          </section>
         </>
       )}
     </div>
