@@ -57,10 +57,14 @@ function serializeEpisode(episode: Episode): BackupEpisode {
 }
 
 function serializeWatchHistory(watchHistory: WatchHistory): BackupWatchHistory {
+  // Explicit field construction keeps the v2 backup envelope byte-compatible:
+  // the unified-model fields (`mediaId`, `mediaType`) are deliberately NOT
+  // exported, so a backup carries exactly the original five fields.
   return {
-    ...watchHistory,
     id: requireId(watchHistory.id, "watch history"),
+    episodeId: watchHistory.episodeId,
     watchedAt: watchHistory.watchedAt.toISOString(),
+    source: watchHistory.source,
     createdAt: watchHistory.createdAt.toISOString(),
   };
 }

@@ -167,16 +167,57 @@ function compareOptionalIds(
 }
 
 /**
+ * The media id of a unified event, or `undefined` for a legacy episode event
+ * that predates the unified model and therefore carries no `mediaId`.
+ */
+function getMediaId(event: WatchActivityEvent): number | undefined {
+  return "mediaId" in event ? event.mediaId : undefined;
+}
+
+/**
+ * Compares two episode ids where a movie event carries `null`.
+ *
+ * A `null` episode id (a movie) sorts before any concrete episode id, so movie
+ * and episode events that share a watched instant have a stable, deterministic
+ * order. Two movies (both `null`) tie here and fall through to the media-id
+ * tier. This is only ever reached when the watched instants are equal, so it
+ * never reorders events that differ in time.
+ */
+function compareNullableEpisodeIds(
+  firstEpisodeId: number | null,
+  secondEpisodeId: number | null,
+): number {
+  if (firstEpisodeId === null || secondEpisodeId === null) {
+    if (firstEpisodeId === secondEpisodeId) {
+      return 0;
+    }
+
+    return firstEpisodeId === null ? -1 : 1;
+  }
+
+  return firstEpisodeId - secondEpisodeId;
+}
+
+/**
  * Deterministic total order for watch events: watched time, then episode id,
- * then persisted id.
+ * then media id, then persisted id.
  *
  * Watched times are not unique (a bulk mark-watched or an import can stamp
- * several events with one instant), so the episode-id and persisted-id
- * tie-breakers make the order total and therefore reproducible regardless of
- * input order. The persisted-id tier mirrors the repository's own historical
- * read order, so domain and storage agree on which event is "first".
+ * several events with one instant), so the tie-breakers make the order total
+ * and therefore reproducible regardless of input order. The persisted-id tier
+ * mirrors the repository's own historical read order, so domain and storage
+ * agree on which event is "first".
+ *
+ * Ordering is backwards-compatible for TV events: a legacy episode event and a
+ * unified TV event both carry a numeric `episodeId`, and a legacy event has no
+ * `mediaId`, so the media-id tier is inert for two TV/legacy events (both tie)
+ * and the order collapses to the original watched-time → episode-id → id
+ * sequence. The media-id tier exists only to keep movie events — which carry
+ * `episodeId: null` and therefore sort first among equal-instant events —
+ * deterministically ordered by title, with the persisted id as the final stable
+ * tie-breaker.
  */
-function compareWatchEvents(
+export function compareWatchEvents(
   firstEvent: WatchActivityEvent,
   secondEvent: WatchActivityEvent,
 ): number {
@@ -187,10 +228,22 @@ function compareWatchEvents(
     return watchedAtDifference;
   }
 
-  const episodeIdDifference = firstEvent.episodeId - secondEvent.episodeId;
+  const episodeIdDifference = compareNullableEpisodeIds(
+    firstEvent.episodeId,
+    secondEvent.episodeId,
+  );
 
   if (episodeIdDifference !== 0) {
     return episodeIdDifference;
+  }
+
+  const mediaIdDifference = compareOptionalIds(
+    getMediaId(firstEvent),
+    getMediaId(secondEvent),
+  );
+
+  if (mediaIdDifference !== 0) {
+    return mediaIdDifference;
   }
 
   return compareOptionalIds(firstEvent.id, secondEvent.id);

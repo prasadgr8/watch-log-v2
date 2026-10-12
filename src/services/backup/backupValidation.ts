@@ -343,10 +343,10 @@ function hydrateWatchHistory(value: unknown, index: number): WatchHistory {
 
   return {
     id: requirePositiveInteger(record.id, `${fieldName}.id`),
-    episodeId: requirePositiveInteger(
-      record.episodeId,
-      `${fieldName}.episodeId`,
-    ),
+    episodeId:
+      record.episodeId === null
+        ? null
+        : requirePositiveInteger(record.episodeId, `${fieldName}.episodeId`),
     watchedAt: requireIsoDate(record.watchedAt, `${fieldName}.watchedAt`),
     source: requireOneOf(
       record.source,
@@ -529,6 +529,12 @@ function validateRelationships(
   }
 
   for (const watchEvent of watchHistory) {
+    // A movie event carries `episodeId: null` and therefore references no
+    // episode; only a TV event must point at an existing episode record.
+    if (watchEvent.episodeId === null) {
+      continue;
+    }
+
     if (!episodeIds.has(watchEvent.episodeId)) {
       fail(
         `Watch history ${watchEvent.id} references missing episode ${watchEvent.episodeId}.`,
@@ -560,13 +566,16 @@ export function validateAndHydrateBackup(value: unknown): ValidatedRestoreData {
   );
 
   // Accept the current schema version and previous ones: backups exported
-  // before importHistory existed (v3), before collections existed (v4), and
-  // before Smart Collections existed (v5) must remain restorable.
+  // before importHistory existed (v3), before collections existed (v4), before
+  // Smart Collections existed (v5), and before the unified watch-event model
+  // existed (v6) must remain restorable. A v7 envelope is byte-compatible with
+  // v2: mediaId/mediaType are deliberately not serialized.
   if (
     databaseVersion !== 3 &&
     databaseVersion !== 4 &&
     databaseVersion !== 5 &&
-    databaseVersion !== 6
+    databaseVersion !== 6 &&
+    databaseVersion !== 7
   ) {
     fail("Unsupported backup database version.");
   }

@@ -49,7 +49,11 @@ export interface BackupEpisode {
 
 export interface BackupWatchHistory {
   id: number;
-  episodeId: number;
+  /**
+   * A TV event carries its positive episode id; a movie event carries `null`
+   * because it has no episode.
+   */
+  episodeId: number | null;
   watchedAt: string;
   source: "manual" | "import";
   createdAt: string;

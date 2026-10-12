@@ -1175,6 +1175,20 @@ describe("Phase 3E watched-episode outcomes", () => {
     expect(episode?.id).toBeGreaterThan(0);
     expect(episode?.watched).toBe(true);
     expect(episode?.watchedAt).toEqual(new Date("2021-01-14T15:00:00.000Z"));
+
+    // The imported watch event flows through the unified repository write
+    // path: fully attributed to the owning show, typed as a TV event.
+    const watchHistoryEvents = await db.watchHistory.toArray();
+
+    expect(watchHistoryEvents).toHaveLength(1);
+
+    expect(watchHistoryEvents[0]).toMatchObject({
+      mediaId: media?.id,
+      mediaType: "tv",
+      episodeId: episode?.id,
+      watchedAt: new Date("2021-01-14T15:00:00.000Z"),
+      source: "import",
+    });
   });
 
   it("classifies re-imported episodes as already watched without duplicating data", async () => {

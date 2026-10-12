@@ -17,6 +17,7 @@ export type { ViewMode } from "./viewMode";
 export type {
   PersistedWatchHistory,
   WatchHistory,
+  WatchHistoryMediaType,
   WatchHistorySource,
 } from "./watchHistory";
 

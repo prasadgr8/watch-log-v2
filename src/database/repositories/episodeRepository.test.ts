@@ -298,6 +298,96 @@ describe("episodeRepository", () => {
     expect(watchHistoryEvents).toHaveLength(0);
   });
 
+  it("records a fully attributed unified watch event when marking an episode watched", async () => {
+    const episodeId = await episodeRepository.add(createEpisode({ showId: 77 }));
+
+    await episodeRepository.markWatched(episodeId);
+
+    const storedEpisode = await episodeRepository.getById(episodeId);
+
+    const watchHistoryEvents = await db.watchHistory.toArray();
+
+    expect(watchHistoryEvents).toHaveLength(1);
+
+    expect(watchHistoryEvents[0]).toMatchObject({
+      mediaId: 77,
+      mediaType: "tv",
+      episodeId,
+      watchedAt: storedEpisode?.watchedAt,
+      source: "manual",
+    });
+
+    expect(watchHistoryEvents[0]?.createdAt).toBeInstanceOf(Date);
+  });
+
+  it("does not create a second unified event when an already-watched episode is re-marked in bulk", async () => {
+    const episodeId = await episodeRepository.add(createEpisode({ showId: 77 }));
+
+    await episodeRepository.markWatched(episodeId);
+
+    const result = await episodeRepository.markEpisodesWatched([episodeId]);
+
+    const watchHistoryEvents = await db.watchHistory.toArray();
+
+    expect(result).toMatchObject({
+      newlyWatchedCount: 0,
+      alreadyWatchedCount: 1,
+      missingCount: 0,
+    });
+
+    expect(watchHistoryEvents).toHaveLength(1);
+
+    expect(watchHistoryEvents[0]).toMatchObject({
+      mediaId: 77,
+      mediaType: "tv",
+      episodeId,
+      source: "manual",
+    });
+  });
+
+  it("records an attributed import watch event and skips re-imports without duplicating", async () => {
+    const importedWatchedAt = new Date("2026-03-04T21:30:00.000Z");
+
+    const episodeId = await episodeRepository.add(createEpisode({ showId: 77 }));
+
+    const imported = await episodeRepository.markWatchedFromImport(
+      episodeId,
+      importedWatchedAt,
+    );
+
+    expect(imported).toBe(true);
+
+    const storedEpisode = await episodeRepository.getById(episodeId);
+
+    const watchHistoryEvents = await db.watchHistory.toArray();
+
+    expect(storedEpisode?.watchedAt).toEqual(importedWatchedAt);
+    expect(watchHistoryEvents).toHaveLength(1);
+
+    expect(watchHistoryEvents[0]).toMatchObject({
+      mediaId: 77,
+      mediaType: "tv",
+      episodeId,
+      watchedAt: importedWatchedAt,
+      source: "import",
+    });
+
+    expect(watchHistoryEvents[0]?.createdAt).toBeInstanceOf(Date);
+
+    // Re-processing an already-watched episode must not change the state,
+    // the imported timestamp, or the recorded history.
+    const reimported = await episodeRepository.markWatchedFromImport(
+      episodeId,
+      new Date("2026-06-07T12:00:00.000Z"),
+    );
+
+    const episodeAfterReimport = await episodeRepository.getById(episodeId);
+
+    expect(reimported).toBe(false);
+    expect(episodeAfterReimport?.watchedAt).toEqual(importedWatchedAt);
+    expect(await db.watchHistory.count()).toBe(1);
+  });
+
   it("marks multiple unwatched episodes as watched with a single operation timestamp", async () => {
     const firstEpisodeId = await episodeRepository.add(
       createEpisode({ episodeNumber: 1 }),
@@ -358,7 +448,9 @@ describe("episodeRepository", () => {
     expect(watchHistoryEvents).toHaveLength(2);
 
     expect(
-      watchHistoryEvents.map((event) => event.episodeId).sort((a, b) => a - b),
+      watchHistoryEvents
+        .map((event) => event.episodeId)
+        .sort((a, b) => (a ?? 0) - (b ?? 0)),
     ).toEqual([firstEpisodeId, secondEpisodeId]);
 
     for (const watchHistoryEvent of watchHistoryEvents) {

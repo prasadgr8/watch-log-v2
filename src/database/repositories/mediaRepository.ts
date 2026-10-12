@@ -1,6 +1,8 @@
 import { db } from "../db";
 
-import type { Media, MediaType, WatchStatus } from "../../types";
+import type { Media, MediaType, Movie, WatchStatus } from "../../types";
+
+import { watchHistoryRepository } from "./watchHistoryRepository";
 
 /**
  * Outcome of a bulk status/favorite update. Records already in the target
@@ -32,6 +34,11 @@ export interface BulkMediaRemoveResult {
  * collect episode keys, delete their watch history, delete the episodes,
  * delete collection memberships, then delete the media record. Runs inside
  * one transaction so a failure aborts with zero partial deletions.
+ *
+ * Movie watch events carry `mediaId` (no episode), so they are deleted by
+ * `mediaId` with a `mediaType === "movie"` guard — TV events sharing the
+ * same `mediaId` are already removed through their episode ids above and
+ * are never double-counted here.
  */
 async function removeMediaCascade(ids: number[]): Promise<BulkMediaRemoveResult> {
   const result: BulkMediaRemoveResult = {
@@ -74,6 +81,23 @@ async function removeMediaCascade(ids: number[]): Promise<BulkMediaRemoveResult>
           result.removedWatchEventCount += removedEvents;
         }
 
+        /*
+         * Movie watch events carry `mediaId` (no episode), so they are not
+         * reachable through the episode-id deletion above. Delete them by
+         * `mediaId` with a `mediaType === "movie"` guard: TV episode events
+         * already removed above share the same `mediaId`, and the guard keeps
+         * them from ever being double-counted here.
+         */
+        const removedMovieEvents = await db.watchHistory
+          .where("mediaId")
+          .equals(id)
+          .filter(
+            (event): boolean =>
+              event.mediaType === "movie" && event.episodeId === null,
+          )
+          .delete();
+        result.removedWatchEventCount += removedMovieEvents;
+
         const removedEpisodes = await db.episodes
           .where("showId")
           .equals(id)
@@ -93,6 +117,11 @@ async function removeMediaCascade(ids: number[]): Promise<BulkMediaRemoveResult>
   );
 
   return result;
+}
+
+/* True for a real `Date` carrying a finite timestamp (rejects `Invalid Date`). */
+function isValidWatchedAt(value: Date | undefined): value is Date {
+  return value instanceof Date && Number.isFinite(value.getTime());
 }
 
 export const mediaRepository = {
@@ -149,10 +178,58 @@ export const mediaRepository = {
     return db.media.where("userStatus").equals(userStatus).toArray();
   },
 
+  /**
+   * Applies a partial update to one media record and refreshes `updatedAt`.
+   *
+   * `update` is the single funnel for movie edits: both MovieDetailsPage and
+   * LibraryPage persist a movie through here after `applyMovieStatusChange`
+   * has computed the watched-state transition. A movie moving from a
+   * non-completed status to "completed" is the canonical movie watch action,
+   * so it additionally records a unified watch event attributed to the
+   * owning movie (`mediaType: "movie"`, `episodeId: null`). The state change
+   * and the event write share one atomic transaction: a failed event write
+   * rolls the movie update back, and a failed update leaves no event behind.
+   *
+   * Nothing else records an event, and existing movie history is never
+   * backfilled:
+   * - TV shows are unaffected — their watch events are episode-based and are
+   *   recorded through `episodeRepository`, never from a show status change.
+   * - A movie that is already completed (a rating/notes edit, or an explicit
+   *   watched-date edit) is not a new watch, so it records no event.
+   * - A completion carrying no authoritative `watchedAt` records no event
+   *   rather than fabricating a timestamp.
+   */
   async update(id: number, changes: Partial<Media>): Promise<number> {
-    return db.media.update(id, {
-      ...changes,
-      updatedAt: new Date(),
+    const recordedAt = new Date();
+
+    return db.transaction("rw", db.media, db.watchHistory, async () => {
+      const current = await db.media.get(id);
+
+      const isMovieCompletion =
+        current !== undefined &&
+        current.mediaType === "movie" &&
+        current.userStatus !== "completed" &&
+        changes.userStatus === "completed";
+
+      if (isMovieCompletion) {
+        const targetWatchedAt = (changes as Partial<Movie>).watchedAt;
+
+        if (isValidWatchedAt(targetWatchedAt)) {
+          await watchHistoryRepository.recordWatchEvent({
+            mediaId: id,
+            mediaType: "movie",
+            episodeId: null,
+            watchedAt: targetWatchedAt,
+            source: "manual",
+            createdAt: recordedAt,
+          });
+        }
+      }
+
+      return db.media.update(id, {
+        ...changes,
+        updatedAt: recordedAt,
+      });
     });
   },
 

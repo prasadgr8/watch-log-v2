@@ -2,6 +2,8 @@ import { db } from "../db";
 
 import type { Episode, PersistedEpisode } from "../../types";
 
+import { watchHistoryRepository } from "./watchHistoryRepository";
+
 export interface BulkMarkWatchedResult {
   newlyWatchedCount: number;
   alreadyWatchedCount: number;
@@ -25,6 +27,12 @@ interface ManualWatchOutcome {
  * cached watchedAt and history remain untouched; unknown IDs are skipped.
  * Must run inside an active read-write transaction spanning db.episodes and
  * db.watchHistory so episode updates and history events stay atomic.
+ *
+ * Each newly watched episode records one unified watch event through
+ * watchHistoryRepository.recordWatchEvent, attributed with the episode's
+ * authoritative showId as the media id. The already-watched skip above stays
+ * the authoritative rewatch gate: repository-level duplicate detection is a
+ * safety net, not the behavior itself.
  */
 async function applyManualWatch(
   episodeIds: number[],
@@ -50,7 +58,9 @@ async function applyManualWatch(
       continue;
     }
 
-    await db.watchHistory.add({
+    await watchHistoryRepository.recordWatchEvent({
+      mediaId: episode.showId,
+      mediaType: "tv",
       episodeId,
       watchedAt,
       source: "manual",
@@ -161,7 +171,7 @@ export const episodeRepository = {
   },
 
   async markWatched(id: number): Promise<void> {
-    const now = new Date();
+    let now = new Date();
 
     await db.transaction("rw", db.episodes, db.watchHistory, async () => {
       const episode = await db.episodes.get(id);
@@ -170,12 +180,38 @@ export const episodeRepository = {
         throw new Error(`Episode ${id} was not found.`);
       }
 
-      await db.watchHistory.add({
+      /*
+       * markWatched has always appended exactly one manual watch event per
+       * call, even when the episode was already watched. The unified
+       * repository treats an identical (mediaId, episodeId, watchedAt)
+       * tuple as the SAME event, so a second call landing on the same
+       * millisecond would otherwise be silently deduplicated. Relying on
+       * that idempotency alone would change the established writer
+       * behavior, so a deduplicated attempt is retried once with the
+       * instant advanced by 1 ms. The episode's cached watchedAt always
+       * matches the event that was actually recorded.
+       */
+      const result = await watchHistoryRepository.recordWatchEvent({
+        mediaId: episode.showId,
+        mediaType: "tv",
         episodeId: id,
         watchedAt: now,
         source: "manual",
         createdAt: now,
       });
+
+      if (!result.created) {
+        now = new Date(result.event.watchedAt.getTime() + 1);
+
+        await watchHistoryRepository.recordWatchEvent({
+          mediaId: episode.showId,
+          mediaType: "tv",
+          episodeId: id,
+          watchedAt: now,
+          source: "manual",
+          createdAt: now,
+        });
+      }
 
       await db.episodes.update(id, {
         watched: true,
@@ -198,7 +234,15 @@ export const episodeRepository = {
         return false;
       }
 
-      await db.watchHistory.add({
+      /*
+       * The watched-state check above is the authoritative local-vs-import
+       * precedence gate (the local watchedAt always wins); the unified
+       * repository write below additionally guarantees every NEW import
+       * event is fully attributed to the owning show.
+       */
+      await watchHistoryRepository.recordWatchEvent({
+        mediaId: episode.showId,
+        mediaType: "tv",
         episodeId: id,
         watchedAt,
         source: "import",
