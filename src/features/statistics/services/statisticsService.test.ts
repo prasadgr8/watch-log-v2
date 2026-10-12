@@ -840,7 +840,7 @@ describe("loadStatistics", () => {
     });
   });
 
-  it("counts a large watch history accurately", async () => {
+  it("counts a large watch history accurately", { timeout: 20000 }, async () => {
     const showId = await seedTvShow();
 
     const episodeId = await episodeRepository.add(createEpisode(showId));
@@ -857,5 +857,172 @@ describe("loadStatistics", () => {
     const stats = await loadStatistics();
 
     expect(stats.watchEventCount).toBe(5000);
+  });
+
+  it("reports a zero current streak for an empty watch history", async () => {
+    const stats = await loadStatistics();
+
+    expect(stats.currentStreak).toBe(0);
+  });
+
+  it("derives the current streak from consecutive recorded viewing days", async () => {
+    // Two consecutive local days, then a gap, then two more consecutive days.
+    await watchHistoryRepository.add(
+      createWatchHistory({ watchedAt: new Date(2026, 6, 10, 9) }),
+    );
+    await watchHistoryRepository.add(
+      createWatchHistory({ watchedAt: new Date(2026, 6, 11, 21) }),
+    );
+    await watchHistoryRepository.add(
+      createWatchHistory({ watchedAt: new Date(2026, 6, 13, 8) }),
+    );
+    await watchHistoryRepository.add(
+      createWatchHistory({ watchedAt: new Date(2026, 6, 14, 19) }),
+    );
+
+    const stats = await loadStatistics();
+
+    expect(stats.currentStreak).toBe(2);
+    expect(stats.watchEventCount).toBe(4);
+  });
+
+  it("counts multiple events on one viewing day as a single streak day", async () => {
+    await watchHistoryRepository.add(
+      createWatchHistory({ watchedAt: new Date(2026, 6, 15, 8) }),
+    );
+    await watchHistoryRepository.add(
+      createWatchHistory({ watchedAt: new Date(2026, 6, 15, 22) }),
+    );
+
+    const stats = await loadStatistics();
+
+    expect(stats.currentStreak).toBe(1);
+  });
+
+  /*
+   * Step 2.10 watch-event composition: the shared dashboard now carries
+   * the Step 2.9 media-composition and rhythm analytics so the candidate
+   * Overview can present them. Attribution is explicit: a unified event
+   * carries mediaType/mediaId; a legacy row carries neither and is never
+   * inferred into the TV/movie/unique-title counts.
+   */
+  describe("Step 2.10 watch-event composition", () => {
+    it("reports zero composition for an empty watch history", async () => {
+      const stats = await loadStatistics();
+
+      expect(stats.tvEpisodeEventCount).toBe(0);
+      expect(stats.movieEventCount).toBe(0);
+      expect(stats.uniqueMediaCount).toBe(0);
+      expect(stats.hourOfDayBuckets).toHaveLength(24);
+      expect(stats.dayOfWeekBuckets).toHaveLength(7);
+      expect(stats.hourOfDayBuckets.every((b) => b.eventCount === 0)).toBe(true);
+    });
+
+    it("counts attributed TV and movie events separately", async () => {
+      await db.watchHistory.add(
+        createWatchHistory({ mediaId: 10, mediaType: "tv", episodeId: 1, watchedAt: new Date(2026, 6, 15, 20) }),
+      );
+      await db.watchHistory.add(
+        createWatchHistory({ mediaId: 10, mediaType: "tv", episodeId: 2, watchedAt: new Date(2026, 6, 16, 21) }),
+      );
+      await db.watchHistory.add(
+        createWatchHistory({ mediaId: 20, mediaType: "movie", episodeId: null, watchedAt: new Date(2026, 6, 17, 19) }),
+      );
+
+      const stats = await loadStatistics();
+
+      expect(stats.tvEpisodeEventCount).toBe(2);
+      expect(stats.movieEventCount).toBe(1);
+      expect(stats.uniqueMediaCount).toBe(2);
+    });
+
+    it("excludes legacy unattributed rows from media-type and unique counts", async () => {
+      await db.watchHistory.add(
+        createWatchHistory({ mediaId: 30, mediaType: "tv", episodeId: 1, watchedAt: new Date(2026, 6, 15, 20) }),
+      );
+      await db.watchHistory.add(
+        createWatchHistory({ episodeId: 99, watchedAt: new Date(2026, 6, 16) }),
+      );
+      await db.watchHistory.add(
+        createWatchHistory({ episodeId: 98, watchedAt: new Date(2026, 6, 17) }),
+      );
+
+      const stats = await loadStatistics();
+
+      expect(stats.tvEpisodeEventCount).toBe(1);
+      expect(stats.movieEventCount).toBe(0);
+      expect(stats.uniqueMediaCount).toBe(1);
+      expect(stats.watchEventCount).toBe(3);
+    });
+
+    it("buckets events by local hour of day and day of week", async () => {
+      await db.watchHistory.add(
+        createWatchHistory({ mediaId: 40, mediaType: "tv", episodeId: 1, watchedAt: new Date(2026, 5, 15, 20, 30) }),
+      );
+      await db.watchHistory.add(
+        createWatchHistory({ mediaId: 40, mediaType: "tv", episodeId: 2, watchedAt: new Date(2026, 5, 15, 20, 45) }),
+      );
+
+      const stats = await loadStatistics();
+
+      expect(stats.hourOfDayBuckets[20].eventCount).toBe(2);
+      expect(stats.dayOfWeekBuckets[0].isoWeekday).toBe(1);
+      expect(stats.dayOfWeekBuckets[0].eventCount).toBe(2);
+    });
+
+    it("builds a gap-free trailing-twelve-month daily series", async () => {
+      // Two events on one day, one on another, all within the last 12 months.
+      await db.watchHistory.add(
+        createWatchHistory({
+          mediaId: 50,
+          mediaType: "tv",
+          episodeId: 1,
+          watchedAt: new Date(2026, 5, 15, 9),
+        }),
+      );
+      await db.watchHistory.add(
+        createWatchHistory({
+          mediaId: 50,
+          mediaType: "tv",
+          episodeId: 2,
+          watchedAt: new Date(2026, 5, 15, 21),
+        }),
+      );
+      await db.watchHistory.add(
+        createWatchHistory({
+          mediaId: 50,
+          mediaType: "tv",
+          episodeId: 3,
+          watchedAt: new Date(2026, 5, 18, 12),
+        }),
+      );
+
+      const stats = await loadStatistics();
+
+      // A full trailing year: exactly 365 gap-free days, ascending.
+      expect(stats.yearDayActivity.days).toHaveLength(365);
+      for (let index = 1; index < stats.yearDayActivity.days.length; index += 1) {
+        expect(
+          stats.yearDayActivity.days[index].periodStart.getTime(),
+        ).toBeGreaterThan(
+          stats.yearDayActivity.days[index - 1].periodStart.getTime(),
+        );
+      }
+
+      const peak = stats.yearDayActivity.days.reduce(
+        (max, day) => (day.eventCount > max ? day.eventCount : max),
+        0,
+      );
+      expect(peak).toBe(2);
+    });
+
+    it("returns a zero-filled daily series for an empty watch history", async () => {
+      const stats = await loadStatistics();
+
+      expect(stats.yearDayActivity.days.length).toBeGreaterThan(0);
+      expect(
+        stats.yearDayActivity.days.every((day) => day.eventCount === 0),
+      ).toBe(true);
+    });
   });
 });

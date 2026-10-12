@@ -6,6 +6,23 @@ import {
   watchHistoryRepository,
 } from "../../../database/repositories";
 
+import { getCurrentStreak } from "../../../domain/analytics/viewingStreak";
+import {
+  countMovieEvents,
+  countTvEpisodeEvents,
+  countUniqueMedia,
+} from "../../../domain/analytics/mediaComposition";
+import {
+  bucketEventsByDayOfWeek,
+  bucketEventsByHourOfDay,
+  type DayOfWeekBucket,
+  type HourOfDayBucket,
+} from "../../../domain/analytics/viewingRhythm";
+import {
+  buildTrailingYearDayActivity,
+  type TrailingYearActivity,
+} from "../../../domain/analytics/calendarYear";
+
 export interface LibraryStatistics {
   total: number;
   movies: number;
@@ -528,6 +545,52 @@ export interface StatisticsDashboard {
   recentActivity: RecentActivityStatistics;
   /** Raw watch-event count from the watchHistory store. */
   watchEventCount: number;
+  /**
+   * Current viewing streak in consecutive local calendar days, derived from
+   * recorded watch-history events. History-derived and clock-free: it is
+   * anchored to the most recent viewing day, never to "now", so an unchanged
+   * history always yields the same value.
+   */
+  currentStreak: number;
+
+  /**
+   * Attributed unified TV episode-event count (`mediaType === "tv"`),
+   * derived from recorded watch-history events. Legacy unattributed rows
+   * are never inferred into this count.
+   */
+  tvEpisodeEventCount: number;
+
+  /**
+   * Attributed unified movie-event count (`mediaType === "movie"`),
+   * derived from recorded watch-history events.
+   */
+  movieEventCount: number;
+
+  /**
+   * Distinct library titles (media ids) the recorded events were watched
+   * against. Uses the authoritative `mediaId` identity and excludes legacy
+   * unattributed events, so it is independent of current library state.
+   */
+  uniqueMediaCount: number;
+
+  /**
+   * Recorded watch events bucketed by LOCAL hour of day (0..23), gap-free.
+   */
+  hourOfDayBuckets: HourOfDayBucket[];
+
+  /**
+   * Recorded watch events bucketed by LOCAL ISO weekday (1=Mon..7=Sun),
+   * gap-free.
+   */
+  dayOfWeekBuckets: DayOfWeekBucket[];
+
+  /**
+   * Gap-free trailing-twelve-month daily activity (calendar-aligned, local),
+   * derived from the same recorded watch-history events. Feeds the candidate's
+   * "Year in Stories" calendar heatmap. The full calendar window is retained
+   * and zero-filled when there is no history.
+   */
+  yearDayActivity: TrailingYearActivity;
 }
 
 /*
@@ -537,10 +600,10 @@ export interface StatisticsDashboard {
  * never writes to IndexedDB.
  */
 export async function loadStatistics(): Promise<StatisticsDashboard> {
-  const [media, episodes, watchEventCount] = await Promise.all([
+  const [media, episodes, watchHistoryEvents] = await Promise.all([
     mediaRepository.getAll(),
     episodeRepository.getAll(),
-    watchHistoryRepository.count(),
+    watchHistoryRepository.getAll(),
   ]);
 
   return {
@@ -549,6 +612,13 @@ export async function loadStatistics(): Promise<StatisticsDashboard> {
     watchTime: calculateWatchTimeStatistics(episodes),
     showProgress: calculateShowProgress(media, episodes),
     recentActivity: calculateRecentActivity(episodes, media),
-    watchEventCount,
+    watchEventCount: watchHistoryEvents.length,
+    currentStreak: getCurrentStreak(watchHistoryEvents),
+    tvEpisodeEventCount: countTvEpisodeEvents(watchHistoryEvents),
+    movieEventCount: countMovieEvents(watchHistoryEvents),
+    uniqueMediaCount: countUniqueMedia(watchHistoryEvents),
+    hourOfDayBuckets: bucketEventsByHourOfDay(watchHistoryEvents),
+    dayOfWeekBuckets: bucketEventsByDayOfWeek(watchHistoryEvents),
+    yearDayActivity: buildTrailingYearDayActivity(watchHistoryEvents, new Date()),
   };
 }

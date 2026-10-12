@@ -1,7 +1,10 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { BarChart3 } from "lucide-react";
 import StatisticsOverview from "./components/StatisticsOverview";
+import StatisticsOverviewCandidate from "./components/StatisticsOverviewCandidate";
 import StatisticsSectionTabs from "./components/StatisticsSectionTabs";
+import StatisticsSectionTabsCandidate from "./components/StatisticsSectionTabsCandidate";
+import { STATISTICS_OVERVIEW_VARIANT } from "./statisticsOverviewVariant";
 import {
   STATISTICS_PANEL_IDS,
   STATISTICS_TAB_IDS,
@@ -18,6 +21,7 @@ import {
   type StatisticsDashboard,
 } from "./services/statisticsService";
 import type { AnalyticsPeriod } from "../../domain/analytics/types";
+import { buildTrailingYearDayActivity } from "../../domain/analytics/calendarYear";
 import {
   loadWatchActivitySection,
   type WatchActivitySectionWithTrends,
@@ -30,6 +34,13 @@ const initialStatistics: StatisticsDashboard = {
   showProgress: calculateShowProgress([], []),
   recentActivity: calculateRecentActivity([], []),
   watchEventCount: 0,
+  currentStreak: 0,
+  tvEpisodeEventCount: 0,
+  movieEventCount: 0,
+  uniqueMediaCount: 0,
+  hourOfDayBuckets: [],
+  dayOfWeekBuckets: [],
+  yearDayActivity: buildTrailingYearDayActivity([], new Date()),
 };
 
 export default function StatisticsPage() {
@@ -114,14 +125,23 @@ export default function StatisticsPage() {
         </div>
 
         <p className="mt-2 text-muted">
-          View insights and statistics about your media library.
+          {STATISTICS_OVERVIEW_VARIANT === "candidate"
+            ? "Your watching story, patterns and milestones."
+            : "View insights and statistics about your media library."}
         </p>
       </div>
 
-      <StatisticsSectionTabs
-        activeSection={activeSection}
-        onChange={setActiveSection}
-      />
+      {STATISTICS_OVERVIEW_VARIANT === "candidate" ? (
+        <StatisticsSectionTabsCandidate
+          activeSection={activeSection}
+          onChange={setActiveSection}
+        />
+      ) : (
+        <StatisticsSectionTabs
+          activeSection={activeSection}
+          onChange={setActiveSection}
+        />
+      )}
 
       {activeSection === "overview" ? (
         <div
@@ -129,11 +149,19 @@ export default function StatisticsPage() {
           id={STATISTICS_PANEL_IDS.overview}
           aria-labelledby={STATISTICS_TAB_IDS.overview}
         >
-          <StatisticsOverview
-            stats={stats}
-            isLoading={isLoading}
-            error={error}
-          />
+          {STATISTICS_OVERVIEW_VARIANT === "candidate" ? (
+            <StatisticsOverviewCandidate
+              stats={stats}
+              isLoading={isLoading}
+              error={error}
+            />
+          ) : (
+            <StatisticsOverview
+              stats={stats}
+              isLoading={isLoading}
+              error={error}
+            />
+          )}
         </div>
       ) : (
         <div
