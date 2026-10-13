@@ -64,7 +64,7 @@ describe("backupService", () => {
     expect(backup).toMatchObject({
       format: WATCH_LOG_BACKUP_FORMAT,
       version: WATCH_LOG_BACKUP_VERSION,
-      databaseVersion: 6,
+      databaseVersion: 7,
     });
 
     expect(new Date(backup.exportedAt).toISOString()).toBe(backup.exportedAt);
@@ -121,7 +121,7 @@ describe("backupService", () => {
     expect(backup).toMatchObject({
       format: WATCH_LOG_BACKUP_FORMAT,
       version: WATCH_LOG_BACKUP_VERSION,
-      databaseVersion: 6,
+      databaseVersion: 7,
       data: {
         media: [],
         episodes: [],
@@ -131,6 +131,43 @@ describe("backupService", () => {
     });
 
     expect(new Date(backup.exportedAt).toISOString()).toBe(backup.exportedAt);
+  });
+
+  it("omits unified watch-event fields from exported watch history rows", async () => {
+    const showId = await mediaRepository.add(createTvShow());
+    const episodeId = await episodeRepository.add(createEpisode(showId));
+    const now = new Date("2026-07-15T16:00:00.000Z");
+
+    // A post-migration row carries attribution fields that must never leak
+    // into the v2 backup envelope.
+    await db.watchHistory.add({
+      id: 91,
+      episodeId,
+      watchedAt: now,
+      source: "manual",
+      createdAt: now,
+      mediaId: showId,
+      mediaType: "tv",
+    });
+
+    const backup = await backupService.createBackup();
+
+    const exportedRow = backup.data.watchHistory.find((row) => row.id === 91);
+
+    expect(exportedRow).toMatchObject({
+      id: 91,
+      episodeId,
+      watchedAt: now.toISOString(),
+      source: "manual",
+      createdAt: now.toISOString(),
+    });
+    expect(Object.keys(exportedRow ?? {}).sort()).toEqual([
+      "createdAt",
+      "episodeId",
+      "id",
+      "source",
+      "watchedAt",
+    ]);
   });
 
   it("preserves explicit persisted IDs and relationships", async () => {
@@ -476,7 +513,7 @@ describe("backupService", () => {
     const backup = await backupService.createBackup();
 
     expect(backup.version).toBe(2);
-    expect(backup.databaseVersion).toBe(6);
+    expect(backup.databaseVersion).toBe(7);
     expect(backup.data.collections).toHaveLength(1);
     expect(backup.data.collectionMedia).toHaveLength(1);
 
@@ -838,7 +875,7 @@ describe("backupService", () => {
     const backup = await backupService.createBackup();
 
     expect(backup.version).toBe(2);
-    expect(backup.databaseVersion).toBe(6);
+    expect(backup.databaseVersion).toBe(7);
     expect(backup.data.smartCollectionDefinitions).toBeDefined();
     expect(backup.data.smartCollectionDefinitions).toHaveLength(1);
 

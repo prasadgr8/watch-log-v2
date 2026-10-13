@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { db } from "../db";
 
-import type { Episode, Media } from "../../types";
+import type { Episode, Media, Movie } from "../../types";
 
 import { episodeRepository } from "./episodeRepository";
 
@@ -618,5 +618,247 @@ describe("mediaRepository bulk removal", () => {
     // Both records must still exist — the transaction rolled back.
     expect(await mediaRepository.getById(firstId)).toBeDefined();
     expect(await mediaRepository.getById(secondId)).toBeDefined();
+  });
+});
+
+describe("mediaRepository movie watch events", () => {
+  function createMovie(overrides: Partial<Movie> = {}): Movie {
+    const now = new Date("2026-07-15T00:00:00.000Z");
+
+    return {
+      tmdbId: 27205,
+      mediaType: "movie",
+      title: "Inception",
+      userStatus: "planned",
+      createdAt: now,
+      updatedAt: now,
+      ...overrides,
+    };
+  }
+
+  it("records one attributed unified watch event when a movie becomes completed", async () => {
+    const movieId = await mediaRepository.add(
+      createMovie({ userStatus: "watching" }),
+    );
+    const watchedAt = new Date("2026-07-01T12:00:00.000Z");
+
+    await mediaRepository.update(movieId, {
+      userStatus: "completed",
+      watchedAt,
+    });
+
+    const stored = (await mediaRepository.getById(movieId)) as Movie;
+    const events = await db.watchHistory.toArray();
+
+    expect(stored.userStatus).toBe("completed");
+    expect(stored.watchedAt).toEqual(watchedAt);
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      mediaId: movieId,
+      mediaType: "movie",
+      episodeId: null,
+      watchedAt,
+      source: "manual",
+    });
+    expect(events[0]?.createdAt).toBeInstanceOf(Date);
+  });
+
+  it("does not record a new event when an already-completed movie is edited again", async () => {
+    const movieId = await mediaRepository.add(
+      createMovie({ userStatus: "watching" }),
+    );
+    const watchedAt = new Date("2026-07-01T12:00:00.000Z");
+
+    await mediaRepository.update(movieId, {
+      userStatus: "completed",
+      watchedAt,
+    });
+
+    await mediaRepository.update(movieId, {
+      userStatus: "completed",
+      rating: 5,
+    });
+
+    await mediaRepository.update(movieId, {
+      userStatus: "completed",
+      watchedAt,
+    });
+
+    expect(await db.watchHistory.count()).toBe(1);
+  });
+
+  it("coexists with TV watch events and never assigns an episode id to a movie event", async () => {
+    const showId = await mediaRepository.add(createTvShow());
+    const episodeId = await episodeRepository.add(createEpisode(showId));
+    await episodeRepository.markWatched(episodeId);
+
+    const movieId = await mediaRepository.add(createMovie());
+    const watchedAt = new Date("2026-07-02T12:00:00.000Z");
+    await mediaRepository.update(movieId, {
+      userStatus: "completed",
+      watchedAt,
+    });
+
+    const events = await db.watchHistory.toArray();
+    const movieEvent = events.find((event) => event.mediaType === "movie");
+    const tvEvent = events.find((event) => event.mediaType === "tv");
+
+    expect(events).toHaveLength(2);
+
+    expect(movieEvent).toMatchObject({
+      mediaId: movieId,
+      mediaType: "movie",
+      episodeId: null,
+      watchedAt,
+    });
+    expect(tvEvent).toMatchObject({
+      mediaId: showId,
+      mediaType: "tv",
+      episodeId,
+    });
+  });
+
+  it("does not create a synthetic event for a movie added directly as completed", async () => {
+    await mediaRepository.add(
+      createMovie({
+        userStatus: "completed",
+        watchedAt: new Date("2026-06-01T00:00:00.000Z"),
+      }),
+    );
+
+    expect(await db.watchHistory.count()).toBe(0);
+  });
+
+
+  it("creates no event when a movie is added as non-completed", async () => {
+    await mediaRepository.add(createMovie({ userStatus: "watching" }));
+
+    expect(await db.watchHistory.count()).toBe(0);
+  });
+
+  it("clears movie state on unwatch without deleting the recorded event", async () => {
+    const movieId = await mediaRepository.add(
+      createMovie({ userStatus: "watching" }),
+    );
+    const watchedAt = new Date("2026-07-01T12:00:00.000Z");
+
+    await mediaRepository.update(movieId, {
+      userStatus: "completed",
+      watchedAt,
+    });
+    expect(await db.watchHistory.count()).toBe(1);
+
+    // The existing movie unwatch behavior (via applyMovieStatusChange) only
+    // changes movie state back to a non-completed status and clears watchedAt;
+    // the unified event is historical and is retained.
+    await mediaRepository.update(movieId, {
+      userStatus: "watching",
+      watchedAt: undefined,
+    });
+
+    const stored = (await mediaRepository.getById(movieId)) as Movie;
+    expect(stored.userStatus).toBe("watching");
+    expect(stored.watchedAt).toBeUndefined();
+
+    const events = await db.watchHistory.toArray();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      mediaId: movieId,
+      mediaType: "movie",
+      episodeId: null,
+      watchedAt,
+      source: "manual",
+    });
+  });
+
+  it("records a rewatch event when a movie is unwatched and completed again", async () => {
+    const movieId = await mediaRepository.add(
+      createMovie({ userStatus: "watching" }),
+    );
+    const firstWatchedAt = new Date("2026-07-01T12:00:00.000Z");
+    const secondWatchedAt = new Date("2026-07-02T12:00:00.000Z");
+
+    await mediaRepository.update(movieId, {
+      userStatus: "completed",
+      watchedAt: firstWatchedAt,
+    });
+    await mediaRepository.update(movieId, {
+      userStatus: "watching",
+      watchedAt: undefined,
+    });
+    await mediaRepository.update(movieId, {
+      userStatus: "completed",
+      watchedAt: secondWatchedAt,
+    });
+
+    const events = await db.watchHistory.toArray();
+    expect(events).toHaveLength(2);
+    expect(events.map((event) => event.watchedAt)).toEqual([
+      firstWatchedAt,
+      secondWatchedAt,
+    ]);
+    for (const event of events) {
+      expect(event).toMatchObject({
+        mediaId: movieId,
+        mediaType: "movie",
+        episodeId: null,
+        source: "manual",
+      });
+    }
+  });
+
+  it("records no event when a completion carries no authoritative watchedAt", async () => {
+    const movieId = await mediaRepository.add(
+      createMovie({ userStatus: "watching" }),
+    );
+
+    await mediaRepository.update(movieId, { userStatus: "completed" });
+
+    const stored = (await mediaRepository.getById(movieId)) as Movie;
+    expect(stored.userStatus).toBe("completed");
+    expect(await db.watchHistory.count()).toBe(0);
+  });
+
+  it("rolls the movie state update back when the event write fails", async () => {
+    const movieId = await mediaRepository.add(
+      createMovie({ userStatus: "watching" }),
+    );
+    const watchedAt = new Date("2026-07-01T12:00:00.000Z");
+
+    const addSpy = vi
+      .spyOn(db.watchHistory, "add")
+      .mockRejectedValueOnce(new Error("watch-event write failed"));
+
+    await expect(
+      mediaRepository.update(movieId, {
+        userStatus: "completed",
+        watchedAt,
+      }),
+    ).rejects.toThrow("watch-event write failed");
+    addSpy.mockRestore();
+
+    const stored = (await mediaRepository.getById(movieId)) as Movie;
+    expect(stored.userStatus).toBe("watching");
+    expect(stored.watchedAt).toBeUndefined();
+    expect(await db.watchHistory.count()).toBe(0);
+  });
+
+  it("removes a movie's unified watch event when the movie itself is deleted", async () => {
+    const movieId = await mediaRepository.add(
+      createMovie({ userStatus: "watching" }),
+    );
+    const watchedAt = new Date("2026-07-01T12:00:00.000Z");
+
+    await mediaRepository.update(movieId, {
+      userStatus: "completed",
+      watchedAt,
+    });
+    expect(await db.watchHistory.count()).toBe(1);
+
+    await mediaRepository.remove(movieId);
+
+    expect(await mediaRepository.getById(movieId)).toBeUndefined();
+    expect(await db.watchHistory.count()).toBe(0);
   });
 });
