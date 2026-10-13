@@ -8,10 +8,9 @@
  * two presentations of identical WatchLog data. It is not a route and carries
  * no URL or persistence state.
  *
- * The default is "existing" so the stable Overview stays the default. Flip to
- * "candidate" to render the new candidate shell for side-by-side comparison;
- * revert to "existing" (or remove this module and the page branch) to restore
- * the baseline behaviour exactly.
+ * The current selection is "candidate" for side-by-side comparison with the
+ * stable Overview. Set this value to "existing" to restore the baseline
+ * presentation.
  */
 
 export type StatisticsOverviewVariant = "existing" | "candidate";

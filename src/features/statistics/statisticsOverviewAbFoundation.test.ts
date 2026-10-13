@@ -96,11 +96,10 @@ describe("statistics overview A/B candidate component", () => {
 });
 
 describe("statistics overview A/B switch", () => {
-  it("defaults to the existing Overview so the baseline stays the default", () => {
-    expect(variantSource).toContain(
-      "export const STATISTICS_OVERVIEW_VARIANT: StatisticsOverviewVariant =",
+  it("selects the candidate Overview as the current variant", () => {
+    expect(variantSource).toMatch(
+      /export const STATISTICS_OVERVIEW_VARIANT:\s*StatisticsOverviewVariant\s*=\s*"candidate";/,
     );
-    expect(variantSource).toContain('"existing"');
   });
 
   it("is a single controlled constant, not a route or persistence switch", () => {
