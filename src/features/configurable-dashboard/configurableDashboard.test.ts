@@ -104,9 +104,7 @@ describe("configurable dashboard default layout", () => {
 });
 
 describe("configurable dashboard widget card scope", () => {
-  it("renders placeholder shells without Step 2+ widget functionality", () => {
-    expect(cardSource).not.toContain("progressPercentage");
-    expect(cardSource).not.toContain("ProgressBar");
+  it("keeps Step 3+ behavior out of the widget shells", () => {
     expect(cardSource).not.toContain("IndexedDB");
     expect(cardSource).not.toContain("localStorage");
     expect(cardSource).not.toContain("onDrag");
