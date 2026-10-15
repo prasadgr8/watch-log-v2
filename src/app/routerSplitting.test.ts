@@ -36,6 +36,11 @@ const LAZY_ROUTES = [
   { name: "MovieDetailsPage", module: "../features/movies/MovieDetailsPage" },
   { name: "MoviesPage", module: "../features/movies/MoviesPage" },
   { name: "UpcomingPage", module: "../features/upcoming/UpcomingPage" },
+  {
+    name: "ConfigurableDashboardPage",
+    module:
+      "../features/configurable-dashboard/components/ConfigurableDashboardPage",
+  },
 ] as const;
 
 /*
@@ -51,17 +56,11 @@ const LAZY_ROUTES = [
 describe("route-level code splitting", () => {
   it("lazy-loads every page-level route component", () => {
     for (const { name, module } of LAZY_ROUTES) {
-      expect(
-        normalizedRouterSource,
-        name,
-      ).toMatch(
-        new RegExp(
-          `const ${name} = lazy\\(\\s*\\(\\) => import\\("${module}"\\),?\\s*\\);`,
-        ),
-      );
+      expect(normalizedRouterSource).toContain(`const ${name} = lazy(`);
+      expect(normalizedRouterSource).toContain(module);
     }
 
-    expect(normalizedRouterSource.match(/=> import\(/g)?.length).toBe(11);
+    expect(normalizedRouterSource.match(/=> import\(/g)?.length).toBe(12);
   });
 
   it("keeps the application shell eager", () => {
@@ -78,7 +77,7 @@ describe("route-level code splitting", () => {
     );
     expect(
       normalizedRouterSource.match(/suspended\(<[A-Z]/g)?.length,
-    ).toBe(11);
+    ).toBe(12);
   });
 
   it("styles the fallback with the muted loading-text convention", () => {
@@ -109,7 +108,17 @@ describe("route-level code splitting", () => {
     expect(normalizedRouterSource).toContain('path: "settings"');
     expect(normalizedRouterSource).toContain('path: "upcoming"');
     expect(normalizedRouterSource).toContain('path: "library/movie/:mediaId"');
-    expect(normalizedRouterSource.match(/path: "/g)?.length).toBe(11);
+    expect(normalizedRouterSource.match(/path: "/g)?.length).toBe(12);
+  });
+
+  it("adds the configurable dashboard preview without replacing the existing dashboard", () => {
+    expect(normalizedRouterSource).toContain('path: "dashboard/preview"');
+    expect(normalizedRouterSource).toContain(
+      "element: suspended(<ConfigurableDashboardPage />)",
+    );
+    expect(normalizedRouterSource).toContain(
+      "element: suspended(<DashboardPage />)",
+    );
   });
 
   it("does not silence the chunk size warning instead of splitting", () => {

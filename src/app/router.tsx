@@ -36,6 +36,15 @@ const MoviesPage = lazy(() => import("../features/movies/MoviesPage"));
 const UpcomingPage = lazy(() => import("../features/upcoming/UpcomingPage"));
 
 /*
+ * NEW configurable Dashboard foundation preview (Step 1). Independent from
+ * the existing Dashboard at `/`, which remains untouched as the
+ * fallback/control. No sidebar change; verified via direct URL in Step 1.
+ */
+const ConfigurableDashboardPage = lazy(
+  () => import("../features/configurable-dashboard/components/ConfigurableDashboardPage"),
+);
+
+/*
  * Route-level loading fallback shown while a lazily loaded page chunk is
  * fetched. Uses the same muted loading-text convention as the feature-level
  * loading states.
@@ -100,6 +109,10 @@ export const router = createBrowserRouter([
       {
         path: "upcoming",
         element: suspended(<UpcomingPage />),
+      },
+      {
+        path: "dashboard/preview",
+        element: suspended(<ConfigurableDashboardPage />),
       },
     ],
   },
