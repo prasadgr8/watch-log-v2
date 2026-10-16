@@ -3,6 +3,10 @@ import { Outlet, useLocation } from "react-router-dom";
 
 import { useSidebarCollapsed } from "../../features/ui/sidebarCollapse";
 
+import {
+  DashboardCustomizationProvider,
+} from "../../features/configurable-dashboard/services/dashboardCustomization";
+
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 
@@ -26,8 +30,11 @@ export default function AppLayout() {
     }
   }, [location.pathname]);
 
+  const isPreviewDashboard = location.pathname === "/dashboard/preview";
+
   return (
-    <div className="flex h-screen bg-app-bg text-primary">
+    <DashboardCustomizationProvider>
+      <div className="flex h-screen bg-app-bg text-primary">
       {/*
         Keyboard-only skip link: transparent and excluded from pointer events
         so it never affects the normal layout, then shown as a fixed chip when
@@ -48,7 +55,10 @@ export default function AppLayout() {
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <Header onMenuClick={() => setIsMobileNavOpen(true)} />
+        <Header
+          onMenuClick={() => setIsMobileNavOpen(true)}
+          showCustomizeDashboard={isPreviewDashboard}
+        />
 
         <main
           id="main-content"
@@ -58,6 +68,7 @@ export default function AppLayout() {
           <Outlet />
         </main>
       </div>
-    </div>
+      </div>
+    </DashboardCustomizationProvider>
   );
 }

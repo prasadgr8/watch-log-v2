@@ -29,7 +29,11 @@ export interface DashboardWidgetLayout {
   w: number;
   /** Row-span hint reserved for future drag/resize steps. */
   h: number;
-  /** Visibility flag reserved for future show/hide steps. Always true. */
+  /**
+   * Show/hide flag. The default layout always ships every widget visible;
+   * Step 4 overlays transient customization visibility at the page level
+   * without persisting it.
+   */
   visible: boolean;
 }
 
