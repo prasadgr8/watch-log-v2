@@ -22,6 +22,16 @@ const cardSource = readFileSync(
   "utf-8",
 );
 
+const pageSource = readFileSync(
+  join(featureDirectory, "components", "ConfigurableDashboardPage.tsx"),
+  "utf-8",
+);
+
+const registrySource = readFileSync(
+  join(featureDirectory, "widgetRegistry.ts"),
+  "utf-8",
+);
+
 const EXPECTED_WIDGETS = [
   { id: "continue-watching", title: "Continue Watching" },
   { id: "upcoming-releases", title: "Upcoming Releases" },
@@ -125,5 +135,16 @@ describe("configurable dashboard widget card scope", () => {
   it("exposes an accessible widget landmark", () => {
     expect(cardSource).toContain("aria-labelledby");
     expect(cardSource).toContain("data-widget-id");
+  });
+
+  it("does not describe populated widgets as future content", () => {
+    for (const source of [cardSource, pageSource, registrySource]) {
+      expect(source).not.toContain("Widget content arrives");
+      expect(source).not.toContain("content arrives in later steps");
+      expect(source).not.toContain("placeholder until their own step");
+      expect(source).not.toContain(
+        "Step 1 renders foundation-level placeholder shells only",
+      );
+    }
   });
 });

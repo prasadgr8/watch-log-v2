@@ -8,8 +8,9 @@
  * resize, configuration, and persistence can build on this contract without a
  * redesign.
  *
- * Step 1 renders foundation-level placeholder shells only. No widget data,
- * services, statistics, analytics, progress values, or actions live here.
+ * The registry remains metadata-only; widget data and behavior live in their
+ * respective services and components. Registered core widgets render compact
+ * content without replacing the detailed Library or Statistics experiences.
  */
 
 /** 12-column desktop grid spans used by the responsive foundation. */

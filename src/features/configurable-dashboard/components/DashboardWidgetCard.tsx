@@ -3,6 +3,11 @@ import { LayoutGrid } from "lucide-react";
 import ContinueWatchingWidget from "./ContinueWatchingWidget";
 import RecentlyWatchedWidget from "./RecentlyWatchedWidget";
 import UpcomingReleasesWidget from "./UpcomingReleasesWidget";
+import WatchLogHighlightsWidget from "./WatchLogHighlightsWidget";
+import StoryLandscapeWidget from "./StoryLandscapeWidget";
+import LibraryAtAGlanceWidget from "./LibraryAtAGlanceWidget";
+import TopStoriesWidget from "./TopStoriesWidget";
+import QuickActionsWidget from "./QuickActionsWidget";
 
 import type { ConfigurableDashboardWidgetDefinition } from "../widgetRegistry";
 
@@ -11,11 +16,9 @@ interface DashboardWidgetCardProps {
 }
 
 /*
- * Widget shell for one dashboard widget. The three Step 2 core content
- * widgets render live compact content; the remaining five keep the Step 1
- * foundation placeholder until their own step arrives. No data fetching,
- * statistics, progress values, charts, drag/drop, resize, or persistence
- * live in the shell itself.
+ * Widget shell for one dashboard widget. Each registered core widget renders
+ * its compact content; data fetching and presentation stay in the widget
+ * components. No drag/drop, resize, or persistence lives in the shell.
  */
 export default function DashboardWidgetCard({ widget }: DashboardWidgetCardProps) {
   return (
@@ -51,18 +54,33 @@ export default function DashboardWidgetCard({ widget }: DashboardWidgetCardProps
         <div className="mt-3 min-w-0 flex-1">
           <UpcomingReleasesWidget />
         </div>
+      ) : widget.id === "watchlog-highlights" ? (
+        <div className="mt-3 min-w-0 flex-1">
+          <WatchLogHighlightsWidget />
+        </div>
+      ) : widget.id === "story-landscape" ? (
+        <div className="mt-3 min-w-0 flex-1">
+          <StoryLandscapeWidget />
+        </div>
+      ) : widget.id === "library-at-a-glance" ? (
+        <div className="mt-3 min-w-0 flex-1">
+          <LibraryAtAGlanceWidget />
+        </div>
+      ) : widget.id === "top-stories" ? (
+        <div className="mt-3 min-w-0 flex-1">
+          <TopStoriesWidget />
+        </div>
+      ) : widget.id === "quick-actions" ? (
+        <div className="mt-3 min-w-0 flex-1">
+          <QuickActionsWidget />
+        </div>
       ) : (
         <>
           <p className="mt-3 min-w-0 break-words text-sm text-muted">
             {widget.description}
-          </p>
-
-          <p className="mt-auto pt-4 text-xs text-muted">
-            Widget content arrives in a later step.
           </p>
         </>
       )}
     </article>
   );
 }
-

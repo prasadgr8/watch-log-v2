@@ -27,8 +27,7 @@ export default function ConfigurableDashboardPage() {
           Your Dashboard
         </h1>
         <p className="mt-2 max-w-2xl break-words text-sm text-muted md:text-base">
-          A personalized snapshot of your watch life. Widget content arrives in
-          later steps — this preview shows the layout foundation.
+          A personalized snapshot of your watch activity, library, and stories.
         </p>
       </section>
 
