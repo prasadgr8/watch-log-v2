@@ -1,6 +1,8 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import ConfigurableDashboardGrid from "./ConfigurableDashboardGrid";
+import DashboardCustomizationDialog from "./DashboardCustomizationDialog";
+import { useDashboardCustomization } from "../services/dashboardCustomizationContext";
 import { getDefaultDashboardLayout } from "../defaultLayout";
 
 /*
@@ -10,9 +12,46 @@ import { getDefaultDashboardLayout } from "../defaultLayout";
  *
  * The hero is intentionally minimal: a title plus one supporting line. This
  * page is a personalized actionable snapshot, not a metrics overview.
+ *
+ * Step 4 adds dashboard customization: widget visibility is driven by the
+ * transient customization state (default layout on every reload) and the
+ * Customize Dashboard dialog, without any persistence.
  */
 export default function ConfigurableDashboardPage() {
-  const layout = useMemo(() => getDefaultDashboardLayout(), []);
+  const {
+    widgetVisibility,
+    setWidgetVisibility,
+    resetDashboardVisibility,
+    isCustomizing,
+    setIsCustomizing,
+  } = useDashboardCustomization();
+
+  const defaultLayout = useMemo(() => getDefaultDashboardLayout(), []);
+
+  /*
+   * The dialog-open flag is scoped to this page's lifecycle: clearing it on
+   * unmount guarantees that navigating away from /dashboard/preview (which
+   * unmounts this page) closes the customization dialog, and returning shows
+   * the normal dashboard instead of reopening it. Widget visibility stays in
+   * the customization context for the rest of the session.
+   */
+  useEffect(() => () => setIsCustomizing(false), [setIsCustomizing]);
+
+  /*
+   * Compose the rendered layout from the deterministic default layout
+   * (positions/spans) overlaid with the transient widget visibility from the
+   * customization state. Hidden widgets are filtered out by the grid.
+   */
+  const layout = useMemo(
+    () => ({
+      version: defaultLayout.version,
+      widgets: defaultLayout.widgets.map((item) => ({
+        ...item,
+        visible: widgetVisibility[item.widgetId] ?? item.visible,
+      })),
+    }),
+    [defaultLayout, widgetVisibility],
+  );
 
   return (
     <div className="w-full min-w-0 space-y-6">
@@ -34,6 +73,15 @@ export default function ConfigurableDashboardPage() {
       <section aria-label="Dashboard widgets" className="w-full min-w-0">
         <ConfigurableDashboardGrid layout={layout.widgets} />
       </section>
+
+      {isCustomizing && (
+        <DashboardCustomizationDialog
+          widgetVisibility={widgetVisibility}
+          setWidgetVisibility={setWidgetVisibility}
+          resetDashboardVisibility={resetDashboardVisibility}
+          onClose={() => setIsCustomizing(false)}
+        />
+      )}
     </div>
   );
 }

@@ -5,15 +5,24 @@ import { useOnlineStatus } from "../../app/useOnlineStatus";
 
 import { useTheme } from "../../app/theme";
 
+import { useDashboardCustomization } from "../../features/configurable-dashboard/services/dashboardCustomizationContext";
+
+import DashboardCustomizeButton from "../../features/configurable-dashboard/components/DashboardCustomizeButton";
+
 import { useRegion } from "../../features/settings/region/regionContext";
 
 import RegionSelect from "../../features/settings/region/RegionSelect";
 
 interface HeaderProps {
   onMenuClick?: () => void;
+  showCustomizeDashboard?: boolean;
 }
 
-export default function Header({ onMenuClick }: HeaderProps) {
+export default function Header({
+  onMenuClick,
+  showCustomizeDashboard = false,
+}: HeaderProps) {
+  const { setIsCustomizing } = useDashboardCustomization();
   const { resolvedTheme, setPreference } = useTheme();
 
   const { region, selectRegion } = useRegion();
@@ -89,6 +98,12 @@ export default function Header({ onMenuClick }: HeaderProps) {
         >
           {isDark ? <Moon /> : <Sun />}
         </button>
+
+        {showCustomizeDashboard && (
+          <DashboardCustomizeButton
+            onClick={() => setIsCustomizing(true)}
+          />
+        )}
       </div>
     </header>
   );

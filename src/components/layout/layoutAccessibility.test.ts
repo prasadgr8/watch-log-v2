@@ -125,10 +125,16 @@ describe("header bell resolution", () => {
     expect(bellElement).not.toContain("cursor-pointer");
     expect(bellElement).not.toContain("hover:");
   });
+});
 
-  it("keeps every real interactive header button labelled and keyboard accessible", () => {
+describe("header interactive controls", () => {
+  it("keeps each inline header button labelled and keyboard accessible", () => {
     const buttons = headerSource.match(/<button[\s\S]*?<\/button>/g) ?? [];
 
+    // The two inline <button> elements are the navigation-menu control and
+    // the theme toggle. The Customize Dashboard control is a component
+    // invocation (DashboardCustomizeButton) and is covered by the dedicated
+    // test below plus the Step 4 feature suite.
     expect(buttons).toHaveLength(2);
     expect(buttons[0]).toContain('aria-label="Open navigation menu"');
     expect(buttons[1]).toContain("aria-label={themeToggleLabel}");
@@ -137,5 +143,10 @@ describe("header bell resolution", () => {
       expect(button).toContain('type="button"');
       expect(button).toContain(FOCUS_RING);
     }
+  });
+
+  it("exposes the Customize Dashboard control as an interactive header control", () => {
+    expect(headerSource).toContain("<DashboardCustomizeButton");
+    expect(headerSource).toContain("showCustomizeDashboard");
   });
 });
