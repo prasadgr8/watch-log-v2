@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { Link } from "react-router-dom";
 
-import { ArrowRight, CalendarDays, Clapperboard, Tv } from "lucide-react";
+import { CalendarDays, Clapperboard, Tv } from "lucide-react";
 
 import { tmdbConfig } from "../../../services/tmdb";
 
@@ -95,30 +95,19 @@ export default function UpcomingReleasesWidget() {
         <p role="alert" className="text-sm text-danger">
           {error}
         </p>
-        <Link
-          to="/upcoming"
-          aria-label="View upcoming releases"
-          className="inline-flex items-center gap-2 text-sm font-medium text-accent-text transition hover:text-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-hover/40"
-        >
-          View Upcoming
-          <ArrowRight aria-hidden="true" className="h-4 w-4" />
-        </Link>
       </div>
     );
   }
 
   if (items.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border bg-app-bg/60 p-6 text-center">
+      <div className="rounded-lg border border-dashed border-border bg-app-bg/60 px-3 py-3 text-center">
         <CalendarDays
           aria-hidden="true"
-          className="mx-auto h-8 w-8 text-muted"
+          className="mx-auto h-5 w-5 text-muted"
         />
-        <p className="mt-3 text-sm font-medium text-primary">
+        <p className="mt-1.5 text-sm font-medium text-primary">
           No upcoming releases
-        </p>
-        <p className="mt-1 text-sm text-muted">
-          Episodes airing today, tomorrow, and in the future will appear here.
         </p>
       </div>
     );
@@ -192,15 +181,6 @@ export default function UpcomingReleasesWidget() {
         })}
       </ul>
 
-      <Link
-        to="/upcoming"
-        aria-label="View all upcoming releases"
-        className="inline-flex items-center gap-2 text-sm font-medium text-accent-text transition hover:text-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-hover/40"
-      >
-        View Upcoming
-        <ArrowRight aria-hidden="true" className="h-4 w-4" />
-      </Link>
     </div>
   );
 }
-

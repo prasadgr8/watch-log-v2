@@ -1,19 +1,16 @@
 import { Link } from "react-router-dom";
 
-import { Import, Library, Search, Check } from "lucide-react";
+import { Import, Check } from "lucide-react";
 
 import {
   getQuickActions,
   type QuickAction,
 } from "../services/quickActionsWidgetService";
 
-/* Quick Actions: compact shortcuts to My Library, Discover, Mark Watched,
- * and Import. Reuses existing routes and navigation patterns; accessible
- * keyboard navigation through native links. */
+/* Quick Actions contains task shortcuts; Library and Discover remain in the
+ * primary navigation instead of being duplicated here. */
 
 const ICON_BY_ACTION: Record<QuickAction["id"], React.ElementType> = {
-  "my-library": Library,
-  discover: Search,
   "mark-watched": Check,
   import: Import,
 };
@@ -23,7 +20,7 @@ export default function QuickActionsWidget() {
 
   return (
     <div className="space-y-3">
-      <ul aria-label="Quick actions" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <ul aria-label="Quick actions" className="grid grid-cols-2 gap-3">
         {actions.map((action) => {
           const Icon = ICON_BY_ACTION[action.id];
           return (

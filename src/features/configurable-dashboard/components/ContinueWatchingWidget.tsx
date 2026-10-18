@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 
 import { Link } from "react-router-dom";
 
-import { ArrowRight, Clapperboard } from "lucide-react";
+import { Clapperboard, Play, Tv } from "lucide-react";
+
+import { tmdbConfig } from "../../../services/tmdb";
 
 import {
   CONTINUE_WATCHING_PREVIEW_LIMIT,
@@ -10,24 +12,11 @@ import {
   type ContinueWatchingWidgetItem,
 } from "../services/continueWatchingWidgetService";
 
-function formatEpisodeCode(seasonNumber: number, episodeNumber: number): string {
-  return `S${String(seasonNumber).padStart(2, "0")}E${String(
-    episodeNumber,
-  ).padStart(2, "0")}`;
-}
-
-function formatLastWatched(date: Date): string {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-  }).format(date);
-}
-
 /*
  * Compact Continue Watching widget: unfinished stories with the next
- * unwatched episode, the last-watch date for context, and a Watch Next
- * action into the TV/library destination. Deliberately free of progress
- * percentage, progress bars, and episodes-watched counts — "Up Next" is the
- * only progress-adjacent concept exposed.
+ * unwatched episode, prominent locally stored artwork, and a full-width
+ * Watch Next action. Deliberately free of progress percentages, bars, and
+ * episodes-watched counts.
  */
 export default function ContinueWatchingWidget() {
   const [items, setItems] = useState<ContinueWatchingWidgetItem[]>([]);
@@ -85,73 +74,101 @@ export default function ContinueWatchingWidget() {
 
   if (items.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border bg-app-bg/60 p-6 text-center">
+      <div className="rounded-lg border border-dashed border-border bg-app-bg/60 px-3 py-3 text-center">
         <Clapperboard
           aria-hidden="true"
-          className="mx-auto h-8 w-8 text-muted"
+          className="mx-auto h-5 w-5 text-muted"
         />
-        <p className="mt-3 text-sm font-medium text-primary">
+        <p className="mt-1.5 text-sm font-medium text-primary">
           Nothing to continue yet
-        </p>
-        <p className="mt-1 text-sm text-muted">
-          Shows you started will appear here with the next episode to watch.
         </p>
       </div>
     );
   }
 
   return (
-    <ul aria-label="Shows to continue watching" className="space-y-3">
+    <ul
+      aria-label="Shows to continue watching"
+      className="grid min-w-0 gap-3"
+      style={{
+        gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 13rem), 1fr))",
+      }}
+    >
       {items.map((item) => (
-        <li
-          key={item.media.id}
-          className="rounded-lg border border-border bg-app-bg/60 p-4"
-        >
-          <div className="min-w-0">
-            <p className="min-w-0 truncate text-sm font-semibold text-primary">
-              <Link
-                to={`/library/tv/${item.media.id}`}
-                aria-label={`Open ${item.media.title} in your library`}
-                className="rounded transition hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-hover/40"
-              >
-                {item.media.title}
-              </Link>
-            </p>
-
-            <p className="mt-1 text-xs text-muted">
-              Last watched {formatLastWatched(item.lastWatchedAt)}
-            </p>
-          </div>
-
-          <div className="mt-3 rounded-md bg-surface-elevated/60 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted">
-              Up Next
-            </p>
-
-            <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
-              <span className="shrink-0 rounded-md bg-surface-elevated px-2 py-1 text-xs font-semibold text-accent-text">
-                {formatEpisodeCode(
-                  item.nextEpisode.seasonNumber,
-                  item.nextEpisode.episodeNumber,
-                )}
-              </span>
-
-              <p className="min-w-0 flex-1 truncate text-sm font-medium text-primary">
-                {item.nextEpisode.title}
-              </p>
-            </div>
-          </div>
-
-          <Link
-            to={`/library/tv/${item.media.id}`}
-            aria-label={`Watch next episode of ${item.media.title}: ${item.nextEpisode.title}`}
-            className="mt-3 inline-flex min-w-0 items-center gap-2 rounded-lg bg-accent px-3.5 py-2 text-sm font-medium text-inverted transition hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-hover/40"
-          >
-            Watch Next
-            <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0" />
-          </Link>
-        </li>
+        <ContinueWatchingCard key={item.media.id} item={item} />
       ))}
     </ul>
+  );
+}
+
+function ContinueWatchingCard({
+  item,
+}: {
+  item: ContinueWatchingWidgetItem;
+}) {
+  const [artworkFailed, setArtworkFailed] = useState(false);
+  const artworkUrl = item.artworkPath
+    ? `${tmdbConfig.imageBaseUrl}/w342${item.artworkPath}`
+    : null;
+
+  return (
+    <li className="min-w-0 overflow-hidden rounded-lg border border-border bg-app-bg/60">
+      <div className="aspect-video w-full overflow-hidden bg-surface-elevated/60">
+        {artworkUrl && !artworkFailed ? (
+          <img
+            src={artworkUrl}
+            alt={`${item.media.title} artwork`}
+            loading="lazy"
+            decoding="async"
+            onError={() => setArtworkFailed(true)}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div
+            role="img"
+            aria-label={`Artwork unavailable for ${item.media.title}`}
+            className="flex h-full w-full items-center justify-center text-muted"
+          >
+            {item.media.mediaType === "tv" ? (
+              <Tv aria-hidden="true" className="h-8 w-8" />
+            ) : (
+              <Clapperboard aria-hidden="true" className="h-8 w-8" />
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="p-3">
+        <div className="min-w-0">
+          <p className="min-w-0 truncate text-sm font-semibold text-primary">
+            <Link
+              to={`/library/tv/${item.media.id}`}
+              aria-label={`Open ${item.media.title} in your library`}
+              className="rounded transition hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-hover/40"
+            >
+              {item.media.title}
+            </Link>
+          </p>
+        </div>
+
+        <div className="mt-2 min-w-0">
+          <p className="truncate text-xs font-semibold text-accent-text">
+            {`Next: S${item.nextEpisode.seasonNumber} E${item.nextEpisode.episodeNumber}`}
+          </p>
+          <p className="mt-0.5 min-w-0 truncate text-sm font-medium text-primary">
+            {item.nextEpisode.title}
+          </p>
+        </div>
+
+        <Link
+          to={`/library/tv/${item.media.id}`}
+          aria-label={`Watch next episode of ${item.media.title}: ${item.nextEpisode.title}`}
+          className="mt-3 inline-flex w-full min-w-0 items-center justify-center gap-2 rounded-lg bg-accent px-3.5 py-2 text-sm font-medium text-inverted transition hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-hover/40"
+        >
+          <Play aria-hidden="true" className="h-4 w-4 shrink-0 fill-current" />
+          Watch Next
+        </Link>
+      </div>
+    </li>
   );
 }

@@ -10,7 +10,7 @@
  *    each control in order).
  * 3. Escape closes the dialog and restores focus to the trigger.
  * 4. Checkbox toggles hide/show widgets on the dashboard immediately.
- * 5. Reset to Default restores every widget.
+ * 5. Reset Widget Visibility restores every widget.
  * 6. Navigating away from the dashboard while the dialog is open closes it;
  *    returning does NOT reopen it (page-lifecycle scoped dialog state).
  * 7. Widget visibility survives in-app navigation for the session but resets
@@ -198,12 +198,12 @@ describe("dashboard customization behavior", () => {
     expect(document.activeElement).toBe(getCheckbox("continue-watching"));
     expect(trigger).not.toBe(document.activeElement);
 
-    // Every dialog control can take focus in DOM order (the traversal order a
-    // keyboard user walks): 8 checkboxes, then Reset to Default, then Done.
+    // Visibility checkboxes, one-shot layout radios, then visibility reset
+    // and Done all remain keyboard reachable in document order.
     const focusables = dialog.querySelectorAll<HTMLElement>(
-      'input[type="checkbox"], button',
+      'input[type="checkbox"], input[type="radio"], button',
     );
-    expect(focusables).toHaveLength(10);
+    expect(focusables).toHaveLength(12);
 
     for (const control of focusables) {
       control.focus();
@@ -251,7 +251,7 @@ describe("dashboard customization behavior", () => {
     expect(document.activeElement).toBe(getTrigger());
   });
 
-  it("restores hidden widgets with Reset to Default", async () => {
+  it("restores hidden widgets with Reset Widget Visibility", async () => {
     const title = WIDGET_REGISTRY["recently-watched"].title;
 
     await openDialog();
@@ -260,7 +260,7 @@ describe("dashboard customization behavior", () => {
     expect(dashboardText()).not.toContain(title);
 
     await openDialog();
-    await click(findDialogButton("Reset to Default"));
+    await click(findDialogButton("Reset Widget Visibility"));
 
     expect(getCheckbox("recently-watched").checked).toBe(true);
 
@@ -297,10 +297,12 @@ describe("dashboard customization behavior", () => {
   it("cycles Tab and Shift+Tab focus inside the dialog", async () => {
     const dialog = await openDialog();
     const focusables = Array.from(
-      dialog.querySelectorAll<HTMLElement>('input[type="checkbox"], button'),
+      dialog.querySelectorAll<HTMLElement>(
+        'input[type="checkbox"], input[type="radio"], button',
+      ),
     );
 
-    expect(focusables).toHaveLength(10);
+    expect(focusables).toHaveLength(12);
 
     const first = focusables[0];
     const last = focusables[focusables.length - 1];

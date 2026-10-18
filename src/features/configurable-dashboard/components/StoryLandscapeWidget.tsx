@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 
-import { Link } from "react-router-dom";
-
 import { Film, PieChart } from "lucide-react";
 
 import {
@@ -25,8 +23,7 @@ function bubbleSizeClass(relativeSize: number): string {
 }
 
 /* Your Story Landscape: genre distribution of watched titles as lightweight
- * bubbles sized by relative contribution, with percentages. "View All" leads
- * to Statistics; deliberately not a full analytics dashboard. */
+ * bubbles sized by relative contribution, with percentages. */
 export default function StoryLandscapeWidget() {
   const [data, setData] = useState<StoryLandscapeData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -86,17 +83,10 @@ export default function StoryLandscapeWidget() {
 
   if (data.totalTitles === 0 || data.bubbles.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border bg-app-bg/60 p-6 text-center">
-        <PieChart
-          aria-hidden="true"
-          className="mx-auto h-8 w-8 text-muted"
-        />
-        <p className="mt-3 text-sm font-medium text-primary">
+      <div className="rounded-lg border border-dashed border-border bg-app-bg/60 px-3 py-3 text-center">
+        <PieChart aria-hidden="true" className="mx-auto h-5 w-5 text-muted" />
+        <p className="mt-1.5 text-sm font-medium text-primary">
           No story landscape yet
-        </p>
-        <p className="mt-1 text-sm text-muted">
-          Genres of the titles you watch will appear here as bubbles sized by
-          how much of your viewing they represent.
         </p>
       </div>
     );
@@ -117,14 +107,6 @@ export default function StoryLandscapeWidget() {
         </p>
       </section>
 
-      <Link
-        to="/statistics"
-        aria-label="View all statistics"
-        className="inline-flex items-center gap-2 text-sm font-medium text-accent-text transition hover:text-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-hover/40"
-      >
-        View in Statistics
-        <ArrowRightIcon aria-hidden="true" className="h-4 w-4" />
-      </Link>
     </div>
   );
 }
@@ -154,24 +136,5 @@ function renderBubble(bubble: StoryLandscapeBubble): React.JSX.Element {
         {bubble.titleCount} title{bubble.titleCount !== 1 ? "s" : ""}
       </p>
     </div>
-  );
-}
-
-function ArrowRightIcon({ className }: { className: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M9 5l7 7-7 7"
-      />
-    </svg>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   CORE_WIDGET_IDS,
@@ -17,6 +17,8 @@ interface DashboardCustomizationDialogProps {
     visible: boolean,
   ) => void;
   resetDashboardVisibility: () => void;
+  onAutoArrange: () => void;
+  onResetLayout: () => void;
   onClose: () => void;
 }
 
@@ -34,8 +36,8 @@ interface DashboardCustomizationDialogProps {
  * registers Escape and Tab handling; cleanup restores focus to the trigger.
  *
  * On short viewports the panel caps at the available height (max-h-full) and
- * the widget list scrolls internally, keeping Reset to Default and Done
- * visible without scrolling the page.
+ * the widget list scrolls internally, keeping Reset Widget Visibility and
+ * Done visible without scrolling the page.
  *
  * Widgets are derived from the registry (CORE_WIDGET_IDS / getWidgetDefinition)
  * rather than hard-coded, so the list stays in sync with the Widget Registry.
@@ -44,12 +46,17 @@ export default function DashboardCustomizationDialog({
   widgetVisibility,
   setWidgetVisibility,
   resetDashboardVisibility,
+  onAutoArrange,
+  onResetLayout,
   onClose,
 }: DashboardCustomizationDialogProps) {
   const firstCheckboxRef = useRef<HTMLInputElement | null>(null);
   const dialogPanelRef = useRef<HTMLDivElement | null>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
-  const onCloseRef = useRef(onClose);
+  const onCloseRef = useRef<(() => void) | null>(null);
+  const [selectedLayoutAction, setSelectedLayoutAction] = useState<
+    "auto-arrange" | "reset-layout" | null
+  >(null);
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -79,7 +86,7 @@ export default function DashboardCustomizationDialog({
 
     function handleDocumentKeyDown(event: KeyboardEvent): void {
       if (event.key === "Escape") {
-        onCloseRef.current();
+        onCloseRef.current?.();
         return;
       }
 
@@ -129,14 +136,50 @@ export default function DashboardCustomizationDialog({
     };
   }, []);
 
+  useEffect(
+    () => () => {
+      /* Clear any pending reset timer when the dialog unmounts. */
+    },
+    [],
+  );
+
   const widgetIds = CORE_WIDGET_IDS;
+
+  /**
+   * Applies a layout action and keeps the radio visibly selected for the
+   * lifetime of the open dialog. The action executes immediately; the
+   * selected state is cleared only when the dialog closes or the user picks
+   * the other radio. This preserves native radio semantics:
+   *
+   *  - shared name:       "dashboard-layout-action"
+   *  - checked state:     selectedLayoutAction
+   *  - semantics:         role="radiogroup" + radios
+   *  - keyboard:          arrows swap selection, Enter/Space executes
+   *  - visible focus:     native focus ring on the selected label
+   *  - accessible label:  aria-labelledby on the fieldset
+   *
+   * On reopen the dialog mounts fresh, so the radio returns to neutral.
+   */
+  function runLayoutAction(action: "auto-arrange" | "reset-layout"): void {
+    if (selectedLayoutAction === action) {
+      return;
+    }
+
+    setSelectedLayoutAction(action);
+
+    if (action === "auto-arrange") {
+      onAutoArrange();
+    } else {
+      onResetLayout();
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
         aria-hidden="true"
         onClick={onClose}
-        className="absolute inset-0 bg-app-bg/80"
+        className="absolute inset-0 bg-app-bg/85"
       ></div>
 
       <div
@@ -205,13 +248,69 @@ export default function DashboardCustomizationDialog({
           })}
         </div>
 
+        <fieldset
+          className="mt-5 shrink-0 border-t border-border pt-4"
+          role="radiogroup"
+          aria-labelledby="dashboard-layout-heading"
+          aria-describedby="dashboard-layout-description"
+        >
+          <legend
+            id="dashboard-layout-heading"
+            className="text-sm font-semibold text-primary"
+          >
+            Layout
+          </legend>
+          <p
+            id="dashboard-layout-description"
+            className="mt-1 text-xs leading-5 text-muted"
+          >
+            These actions apply immediately and are not saved as settings.
+          </p>
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <label className="flex min-w-0 cursor-pointer items-center gap-2 rounded-md border border-border p-2 text-sm text-primary transition hover:bg-surface-hover radio-action">
+              <input
+                type="radio"
+                name="dashboard-layout-action"
+                value="auto-arrange"
+                checked={selectedLayoutAction === "auto-arrange"}
+                onChange={() => runLayoutAction("auto-arrange")}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    runLayoutAction("auto-arrange");
+                  }
+                }}
+                className="h-4 w-4 shrink-0 accent-accent"
+              />
+              <span>Auto Arrange</span>
+            </label>
+            <label className="flex min-w-0 cursor-pointer items-center gap-2 rounded-md border border-border p-2 text-sm text-primary transition hover:bg-surface-hover radio-action">
+              <input
+                type="radio"
+                name="dashboard-layout-action"
+                value="reset-layout"
+                checked={selectedLayoutAction === "reset-layout"}
+                onChange={() => runLayoutAction("reset-layout")}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    runLayoutAction("reset-layout");
+                  }
+                }}
+                className="h-4 w-4 shrink-0 accent-accent"
+              />
+              <span>Reset Layout</span>
+            </label>
+          </div>
+        </fieldset>
+
         <div className="mt-6 flex shrink-0 flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={resetDashboardVisibility}
             className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted transition hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-hover/40"
           >
-            Reset to Default
+            Reset Widget Visibility
           </button>
 
           <button

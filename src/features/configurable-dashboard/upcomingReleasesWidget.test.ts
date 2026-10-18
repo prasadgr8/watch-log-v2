@@ -25,6 +25,10 @@ const upcomingWidgetSource = readFileSync(
   join(featureDirectory, "components", "UpcomingReleasesWidget.tsx"),
   "utf-8",
 );
+const widgetCardSource = readFileSync(
+  join(featureDirectory, "components", "DashboardWidgetCard.tsx"),
+  "utf-8",
+);
 
 function createTvShow(overrides: Partial<TVShow> = {}): TVShow {
   const now = new Date("2026-07-15T00:00:00.000Z");
@@ -124,8 +128,9 @@ describe("upcoming releases widget service", () => {
   });
 
   it("stays compact: links to the full page instead of a calendar", () => {
-    expect(upcomingWidgetSource).toContain('to="/upcoming"');
-    expect(upcomingWidgetSource).toContain("View Upcoming");
+    expect(widgetCardSource).toContain('destination: "/upcoming"');
+    expect(widgetCardSource).toContain("View All");
+    expect(upcomingWidgetSource).not.toContain("View Upcoming");
     expect(upcomingWidgetSource).not.toContain("groupUpcomingByMonthAndShow");
     expect(upcomingWidgetSource).not.toContain("UpcomingShowCard");
     expect(upcomingWidgetSource).not.toContain("fetch(");

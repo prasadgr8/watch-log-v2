@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -14,6 +15,7 @@ import {
 import { getDefaultDashboardLayout } from "./defaultLayout";
 import ConfigurableDashboardGrid from "./components/ConfigurableDashboardGrid";
 import DashboardCustomizationDialog from "./components/DashboardCustomizationDialog";
+import { DashboardCustomizationProvider } from "./services/dashboardCustomization";
 
 const featureDirectory = dirname(fileURLToPath(import.meta.url));
 
@@ -164,11 +166,11 @@ describe("Customization UI", () => {
     expect(dialogSource).toContain("onChange={() =>");
   });
 
-  it("provides Reset to Default and Done actions", () => {
+  it("provides Reset Widget Visibility and Done actions", () => {
     const markup = renderDialogMarkup();
     expect(dialogSource).toContain("resetDashboardVisibility");
     expect(markup).toContain("Done");
-    expect(dialogSource).toContain("Reset to Default");
+    expect(markup).toContain("Reset Widget Visibility");
   });
 
   it("moves initial focus to the first widget checkbox on open", () => {
@@ -210,6 +212,8 @@ function renderDialogMarkup(): string {
       setWidgetVisibility: () => {},
       resetDashboardVisibility: () => {},
       onClose: () => {},
+      onAutoArrange: () => {},
+      onResetLayout: () => {},
     }),
   );
 }
@@ -219,49 +223,86 @@ function renderDialogMarkup(): string {
 /* ------------------------------------------------------------------ */
 
 describe("Widget visibility", () => {
+  const wrappingLayout = [
+    layoutItem("continue-watching", true),
+    layoutItem("upcoming-releases", false),
+  ];
+
+  const WrappingTree = createElement(
+    MemoryRouter,
+    null,
+    createElement(
+      DashboardCustomizationProvider,
+      null,
+      createElement(
+        "div",
+        null,
+        createElement(ConfigurableDashboardGrid, { layout: wrappingLayout, onLayoutChange: () => {} }),
+      ),
+    ),
+  );
+
   it("hiding a widget removes it from the dashboard", () => {
-    const markup = renderToStaticMarkup(
-      createElement(ConfigurableDashboardGrid, {
-        layout: [
-          layoutItem("continue-watching", true),
-          layoutItem("upcoming-releases", false),
-        ],
-      }),
-    );
+    const markup = renderToStaticMarkup(WrappingTree);
 
     expect(markup).toContain("Continue Watching");
     expect(markup).not.toContain("Upcoming Releases");
   });
 
+  const showingLayout = [
+    layoutItem("recently-watched", true),
+    layoutItem("watchlog-highlights", true),
+  ];
+
+  const showingTree = createElement(
+    MemoryRouter,
+    null,
+    createElement(
+      DashboardCustomizationProvider,
+      null,
+      createElement(
+        "div",
+        { "data-testid": "widget-visibility-host" },
+        createElement(ConfigurableDashboardGrid, { layout: showingLayout, onLayoutChange: () => {} }),
+      ),
+    ),
+  );
+
   it("showing a widget restores it to the dashboard", () => {
-    const markup = renderToStaticMarkup(
-      createElement(ConfigurableDashboardGrid, {
-        layout: [
-          layoutItem("recently-watched", true),
-          layoutItem("watchlog-highlights", true),
-        ],
-      }),
-    );
+    const markup = renderToStaticMarkup(showingTree);
 
     expect(markup).toContain("Recently Watched");
     expect(markup).toContain("WatchLog Highlights");
   });
 
+  const multiLayout = [
+    layoutItem("continue-watching", true),
+    layoutItem("upcoming-releases", false),
+    layoutItem("recently-watched", false),
+    layoutItem("watchlog-highlights", false),
+    layoutItem("story-landscape", true),
+    layoutItem("library-at-a-glance", true),
+    layoutItem("top-stories", true),
+    layoutItem("quick-actions", false),
+  ];
+
+  const multiTree = createElement(
+    MemoryRouter,
+    null,
+    createElement(
+      DashboardCustomizationProvider,
+      null,
+      createElement(
+        "div",
+        { "data-testid": "widget-visibility-host" },
+        createElement(ConfigurableDashboardGrid, { layout: multiLayout, onLayoutChange: () => {} }),
+      ),
+    ),
+  );
+
+
   it("multiple widgets can be hidden simultaneously", () => {
-    const markup = renderToStaticMarkup(
-      createElement(ConfigurableDashboardGrid, {
-        layout: [
-          layoutItem("continue-watching", true),
-          layoutItem("upcoming-releases", false),
-          layoutItem("recently-watched", false),
-          layoutItem("watchlog-highlights", false),
-          layoutItem("story-landscape", true),
-          layoutItem("library-at-a-glance", true),
-          layoutItem("top-stories", true),
-          layoutItem("quick-actions", false),
-        ],
-      }),
-    );
+    const markup = renderToStaticMarkup(multiTree);
 
     expect(markup).toContain("Continue Watching");
     expect(markup).toContain("Your Story Landscape");
@@ -287,10 +328,92 @@ describe("Widget visibility", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* D. Reset to Default                                                */
+/* D. Radio layout action selection (persists while dialog is open)   */
 /* ------------------------------------------------------------------ */
 
-describe("Reset to Default", () => {
+describe("Radio layout action selection", () => {
+  it("initial dialog renders no selected layout radio", () => {
+    const markup = renderDialogMarkup();
+
+    expect(markup).toContain('name="dashboard-layout-action"');
+    expect(markup).toContain("Auto Arrange");
+    expect(markup).toContain("Reset Layout");
+
+    const checkedRadio = markup.match(
+      /<input[^>]*type="radio"[^>]*checked="checked"/,
+    );
+    expect(checkedRadio).toBeNull();
+  });
+
+  it("selects Auto Arrange and keeps the blue dot visible", () => {
+    expect(dialogSource).toContain('checked={selectedLayoutAction === "auto-arrange"}');
+    expect(dialogSource).toContain('className="h-4 w-4 shrink-0 accent-accent"');
+    expect(dialogSource).toContain('onChange={() => runLayoutAction("auto-arrange")}');
+    expect(dialogSource).toContain('type="radio"');
+    expect(dialogSource).toContain('name="dashboard-layout-action"');
+    expect(dialogSource).toContain('value="auto-arrange"');
+    expect(dialogSource).toContain("Auto Arrange");
+  });
+
+  it("selects Reset Layout, deselects Auto Arrange, and keeps the blue dot visible", () => {
+    expect(dialogSource).toContain('checked={selectedLayoutAction === "reset-layout"}');
+    expect(dialogSource).toContain('className="h-4 w-4 shrink-0 accent-accent"');
+    expect(dialogSource).toContain('onChange={() => runLayoutAction("reset-layout")}');
+    expect(dialogSource).toContain('type="radio"');
+    expect(dialogSource).toContain('name="dashboard-layout-action"');
+    expect(dialogSource).toContain('value="reset-layout"');
+    expect(dialogSource).toContain("Reset Layout");
+    // Mutual exclusivity: re-selecting the same action is a no-op, so only one radio can be checked
+    expect(dialogSource).toContain("if (selectedLayoutAction === action) {");
+    expect(dialogSource).toContain("setSelectedLayoutAction(action);");
+    expect(dialogSource).toContain("onResetLayout();");
+  });
+
+  it("Auto Arrange and Reset Layout remain mutually exclusive", () => {
+    const markup = renderDialogMarkup();
+
+    const autoArrangeChecked = markup.match(
+      /<input[^>]*type="radio"[^>]*value="auto-arrange"[^>]*checked="checked"/,
+    );
+    const resetLayoutChecked = markup.match(
+      /<input[^>]*type="radio"[^>]*value="reset-layout"[^>]*checked="checked"/,
+    );
+
+    expect(autoArrangeChecked).toBeNull();
+    expect(resetLayoutChecked).toBeNull();
+  });
+
+  it("renders the reset action as Reset Widget Visibility (distinct from Reset Layout)", () => {
+    const markup = renderDialogMarkup();
+
+    expect(markup).toContain("Reset Widget Visibility");
+    expect(markup).toContain("Reset Layout");
+    expect(markup).not.toContain("Reset to Default");
+  });
+
+  it("keeps Reset Layout as a distinct layout action", () => {
+    const markup = renderDialogMarkup();
+
+    expect(markup).toContain("Reset Layout");
+    expect(markup).not.toContain("Reset to Default");
+  });
+
+  it("has native radio semantics: name, checked state, and key handlers", () => {
+    const markup = renderDialogMarkup();
+
+    expect(markup).toContain('name="dashboard-layout-action"');
+    expect(markup).toContain('type="radio"');
+    expect(markup).toContain('role="radiogroup"');
+    expect(markup).toContain('aria-labelledby="dashboard-layout-heading"');
+    expect(markup).toContain('aria-describedby="dashboard-layout-description"');
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* D. Reset Widget Visibility (distinct from Reset Layout)            */
+/* ------------------------------------------------------------------ */
+
+describe("Reset Widget Visibility", () => {
   it("restores every widget to its default visible state", () => {
     const defaultLayout = getDefaultDashboardLayout();
 
@@ -378,4 +501,3 @@ describe("Existing behavior remains intact", () => {
     expect(pageSource).not.toContain("Statistics");
   });
 });
-

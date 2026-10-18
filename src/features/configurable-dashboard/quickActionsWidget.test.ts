@@ -8,31 +8,19 @@ import {
 } from "./services/quickActionsWidgetService";
 
 describe("quick actions widget service", () => {
-  it("returns exactly 4 approved actions in display order", () => {
+  it("returns only task actions in display order", () => {
     const actions = getQuickActions();
 
-    expect(actions).toHaveLength(4);
+    expect(actions.map((action) => action.id)).toEqual([
+      "mark-watched",
+      "import",
+    ]);
     expect(actions).toEqual(QUICK_ACTIONS);
+    expect(actions.map((action) => action.route)).not.toContain("/search");
   });
 
   it("exposes QUICK_ACTIONS_LIMIT equal to the action count", () => {
     expect(QUICK_ACTIONS_LIMIT).toBe(QUICK_ACTIONS.length);
-  });
-
-  it("my-library action routes to /library", () => {
-    const action = QUICK_ACTIONS.find((a) => a.id === "my-library");
-
-    expect(action).toBeDefined();
-    expect(action!.route).toBe("/library");
-    expect(action!.ariaLabel).toBe("Open your library");
-  });
-
-  it("discover action routes to /search", () => {
-    const action = QUICK_ACTIONS.find((a) => a.id === "discover");
-
-    expect(action).toBeDefined();
-    expect(action!.route).toBe("/search");
-    expect(action!.ariaLabel).toBe("Discover titles");
   });
 
   it("mark-watched action opens the library show-selection flow", () => {
@@ -70,8 +58,6 @@ describe("quick actions widget service", () => {
 
   it("action ids match the QuickAction union type", () => {
     const validIds: readonly QuickAction["id"][] = [
-      "my-library",
-      "discover",
       "mark-watched",
       "import",
     ];
