@@ -15,6 +15,7 @@ import {
   WIDGET_REGISTRY,
   type ConfigurableDashboardWidgetId,
 } from "./widgetRegistry";
+import { computeLayoutPositions } from "../../domain/dashboardGrid";
 
 export const DASHBOARD_LAYOUT_VERSION = 1 as const;
 
@@ -43,12 +44,12 @@ export interface DashboardLayout {
 }
 
 /*
- * Hand-authored default placement on the 12-column desktop grid:
+ * Hand-authored, Figma-inspired 12-column default composition:
  * Row 0: Continue Watching (8) + Upcoming Releases (4)
  * Row 2: Recently Watched (4) + Highlights (4) + Story Landscape (4)
- * Row 3: Library at a Glance (4) ... Top Stories (6) + Quick Actions (6)
- * Tablet stacks to 2 columns and mobile to 1 via the grid component, using
- * each widget's `w` only as a desktop span.
+ * Row 3: Library at a Glance (4), following the shorter secondary cards
+ * Row 4: Top Stories (6) + Quick Actions (6)
+ * Tablet and mobile reflow to their established responsive columns.
  */
 const DEFAULT_PLACEMENTS: ReadonlyArray<{
   widgetId: ConfigurableDashboardWidgetId;
@@ -60,7 +61,7 @@ const DEFAULT_PLACEMENTS: ReadonlyArray<{
   { widgetId: "recently-watched", x: 0, y: 2 },
   { widgetId: "watchlog-highlights", x: 4, y: 2 },
   { widgetId: "story-landscape", x: 8, y: 2 },
-  { widgetId: "library-at-a-glance", x: 0, y: 3 },
+  { widgetId: "library-at-a-glance", x: 4, y: 3 },
   { widgetId: "top-stories", x: 0, y: 4 },
   { widgetId: "quick-actions", x: 6, y: 4 },
 ];
@@ -70,16 +71,18 @@ const DEFAULT_PLACEMENTS: ReadonlyArray<{
  * follows registration order and every widget is visible.
  */
 export function getDefaultDashboardLayout(): DashboardLayout {
+  const widgets = DEFAULT_PLACEMENTS.map((placement) => ({
+    widgetId: placement.widgetId,
+    x: placement.x,
+    y: placement.y,
+    w: WIDGET_REGISTRY[placement.widgetId].defaultSize.w,
+    h: WIDGET_REGISTRY[placement.widgetId].defaultSize.h,
+    visible: true,
+  }));
+
   return {
     version: DASHBOARD_LAYOUT_VERSION,
-    widgets: DEFAULT_PLACEMENTS.map((placement) => ({
-      widgetId: placement.widgetId,
-      x: placement.x,
-      y: placement.y,
-      w: WIDGET_REGISTRY[placement.widgetId].defaultSize.w,
-      h: WIDGET_REGISTRY[placement.widgetId].defaultSize.h,
-      visible: true,
-    })),
+    widgets: computeLayoutPositions(widgets),
   };
 }
 

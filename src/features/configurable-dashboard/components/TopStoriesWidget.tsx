@@ -12,8 +12,7 @@ import {
 } from "../services/topStoriesWidgetService";
 
 /* Your Top Stories: ranked stories from local watch activity with a TV Shows
- * / Movies toggle. Links to Library for the full collection; not a detailed
- * Statistics report. Ranking is deterministic (watch count, then title). */
+ * / Movies toggle. Ranking is deterministic (watch count, then title). */
 export default function TopStoriesWidget() {
   const [data, setData] = useState<{ items: TopStoryItem[] } | null>(null);
   const [mediaType, setMediaType] = useState<TopStoriesMediaType>("all");
@@ -68,16 +67,10 @@ export default function TopStoriesWidget() {
 
   if (items.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border bg-app-bg/60 p-6 text-center">
-        <List
-          aria-hidden="true"
-          className="mx-auto h-8 w-8 text-muted"
-        />
-        <p className="mt-3 text-sm font-medium text-primary">
+      <div className="rounded-lg border border-dashed border-border bg-app-bg/60 px-3 py-3 text-center">
+        <List aria-hidden="true" className="mx-auto h-5 w-5 text-muted" />
+        <p className="mt-1.5 text-sm font-medium text-primary">
           No top stories yet
-        </p>
-        <p className="mt-1 text-sm text-muted">
-          Stories you watch will appear here, ranked by your watch activity.
         </p>
       </div>
     );
@@ -158,33 +151,6 @@ export default function TopStoriesWidget() {
         ))}
       </ul>
 
-      <Link
-        to="/library"
-        aria-label="View your library"
-        className="inline-flex items-center gap-2 text-sm font-medium text-accent-text transition hover:text-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-hover/40"
-      >
-        View Library
-        <ArrowRightIcon aria-hidden="true" className="h-4 w-4" />
-      </Link>
     </div>
-  );
-}
-
-function ArrowRightIcon({ className }: { className: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M9 5l7 7-7 7"
-      />
-    </svg>
   );
 }

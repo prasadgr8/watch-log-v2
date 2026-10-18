@@ -7,7 +7,7 @@
 
 export interface QuickAction {
   /** Stable action key used for rendering and testing. */
-  id: "my-library" | "discover" | "mark-watched" | "import";
+  id: "mark-watched" | "import";
   /** Button label. */
   label: string;
   /** Navigation target. */
@@ -16,20 +16,8 @@ export interface QuickAction {
   ariaLabel: string;
 }
 
-/** Approved quick actions in display order. */
+/** Action shortcuts in display order; navigation remains in primary navigation. */
 export const QUICK_ACTIONS: readonly QuickAction[] = [
-  {
-    id: "my-library",
-    label: "My Library",
-    route: "/library",
-    ariaLabel: "Open your library",
-  },
-  {
-    id: "discover",
-    label: "Discover",
-    route: "/search",
-    ariaLabel: "Discover titles",
-  },
   {
     id: "mark-watched",
     label: "Mark Watched",

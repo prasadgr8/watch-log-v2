@@ -24,6 +24,8 @@ export const CONTINUE_WATCHING_PREVIEW_LIMIT = 4 as const;
 export interface ContinueWatchingWidgetItem {
   /** The unfinished TV show. Always a persisted record. */
   media: PersistedMedia;
+  /** Locally stored backdrop, falling back to the locally stored poster. */
+  artworkPath: string | undefined;
   /** The next unwatched regular episode (season > 0, lowest first). */
   nextEpisode: PersistedEpisode;
   /** Latest watched instant across the show's regular episodes. */
@@ -49,6 +51,7 @@ export async function getContinueWatchingWidgetItems(
     .slice(0, limit)
     .map(({ media, nextEpisode, lastWatchedAt }) => ({
       media,
+      artworkPath: media.backdropPath ?? media.posterPath,
       nextEpisode,
       lastWatchedAt,
     }));

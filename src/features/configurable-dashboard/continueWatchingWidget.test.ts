@@ -46,7 +46,12 @@ function createEpisode(
 
 describe("continue watching widget service", () => {
   it("exposes the next unwatched episode with last-watch context", async () => {
-    const showId = await mediaRepository.add(createTvShow());
+    const showId = await mediaRepository.add(
+      createTvShow({
+        posterPath: "/breaking-bad-poster.jpg",
+        backdropPath: "/breaking-bad-backdrop.jpg",
+      }),
+    );
 
     await episodeRepository.add(
       createEpisode(showId, {
@@ -72,6 +77,7 @@ describe("continue watching widget service", () => {
       title: "Breaking Bad",
       mediaType: "tv",
     });
+    expect(items[0]?.artworkPath).toBe("/breaking-bad-backdrop.jpg");
     expect(items[0]?.nextEpisode).toMatchObject({
       id: nextEpisodeId,
       seasonNumber: 1,
@@ -82,6 +88,42 @@ describe("continue watching widget service", () => {
     expect(items[0]?.lastWatchedAt).toEqual(
       new Date("2026-07-10T18:30:00.000Z"),
     );
+  });
+
+  it("falls back to the stored poster when no backdrop is available", async () => {
+    const showId = await mediaRepository.add(
+      createTvShow({ posterPath: "/breaking-bad-poster.jpg" }),
+    );
+
+    await episodeRepository.add(
+      createEpisode(showId, {
+        episodeNumber: 1,
+        watched: true,
+        watchedAt: new Date("2026-07-10T18:30:00.000Z"),
+      }),
+    );
+    await episodeRepository.add(createEpisode(showId, { episodeNumber: 2 }));
+
+    const items = await getContinueWatchingWidgetItems();
+
+    expect(items[0]?.artworkPath).toBe("/breaking-bad-poster.jpg");
+  });
+
+  it("returns no artwork path when neither stored artwork field is available", async () => {
+    const showId = await mediaRepository.add(createTvShow());
+
+    await episodeRepository.add(
+      createEpisode(showId, {
+        episodeNumber: 1,
+        watched: true,
+        watchedAt: new Date("2026-07-10T18:30:00.000Z"),
+      }),
+    );
+    await episodeRepository.add(createEpisode(showId, { episodeNumber: 2 }));
+
+    const items = await getContinueWatchingWidgetItems();
+
+    expect(items[0]?.artworkPath).toBeUndefined();
   });
 
   it("excludes completed shows", async () => {

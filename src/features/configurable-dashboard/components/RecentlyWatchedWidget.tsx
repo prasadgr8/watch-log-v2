@@ -79,14 +79,10 @@ export default function RecentlyWatchedWidget() {
 
   if (items.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border bg-app-bg/60 p-6 text-center">
-        <Film aria-hidden="true" className="mx-auto h-8 w-8 text-muted" />
-        <p className="mt-3 text-sm font-medium text-primary">
+      <div className="rounded-lg border border-dashed border-border bg-app-bg/60 px-3 py-3 text-center">
+        <Film aria-hidden="true" className="mx-auto h-5 w-5 text-muted" />
+        <p className="mt-1.5 text-sm font-medium text-primary">
           No recent activity yet
-        </p>
-        <p className="mt-1 text-sm text-muted">
-          Episodes and movies you watch will appear here with when you watched
-          them.
         </p>
       </div>
     );

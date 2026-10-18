@@ -40,7 +40,7 @@ const recentServiceSource = readFileSync(
  * Step 2 integration contract: the three core content widgets render live
  * content through the shared card shell, honor their Step 2 constraints
  * (no progress percentage/bar, no statistics, no persistence, no drag/resize),
- * and stay visually distinct (forward-looking Continue Watching "Up Next"
+ * and stay visually distinct (forward-looking Continue Watching "Next"
  * vs. timestamped Recently Watched history).
  */
 describe("configurable dashboard step 2 widget integration", () => {
@@ -60,7 +60,7 @@ describe("configurable dashboard step 2 widget integration", () => {
     expect(continueWatchingSource).not.toContain("ProgressBar");
     expect(continueWatchingSource).not.toContain('role="progressbar"');
     expect(continueWatchingSource).not.toMatch(/%\s*(<|"|}|\)|$)/m);
-    expect(continueWatchingSource).toContain("Up Next");
+    expect(continueWatchingSource).toContain("Next: S");
     expect(continueWatchingSource).toContain("Watch Next");
     expect(continueServiceSource).not.toContain("progressPercentage");
     expect(continueServiceSource).not.toContain("watchedEpisodeCount");
@@ -78,9 +78,9 @@ describe("configurable dashboard step 2 widget integration", () => {
     expect(recentServiceSource).not.toContain("statisticsService");
   });
 
-  it("keeps Upcoming Releases compact with a View action", () => {
-    expect(upcomingSource).toContain("View Upcoming");
-    expect(upcomingSource).toContain('to="/upcoming"');
+  it("keeps Upcoming Releases compact with its destination in the widget header", () => {
+    expect(cardSource).toContain('destination: "/upcoming"');
+    expect(upcomingSource).not.toContain("View Upcoming");
     expect(upcomingSource).not.toContain("ProgressBar");
     expect(upcomingSource).not.toContain("progressPercentage");
   });
