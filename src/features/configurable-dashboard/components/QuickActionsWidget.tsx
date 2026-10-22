@@ -28,7 +28,7 @@ export default function QuickActionsWidget() {
               <Link
                 to={action.route}
                 aria-label={action.ariaLabel}
-                className="flex min-w-0 flex-col items-center gap-1.5 rounded-lg border border-border bg-surface p-3 text-center transition hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-hover/40"
+                className="flex min-w-0 flex-col items-center gap-1.5 rounded-lg border border-border bg-surface px-4 py-3 text-center transition hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-hover/40"
               >
                 <Icon aria-hidden="true" className="mx-auto h-5 w-5 text-accent-text" />
                 <p className="text-xs font-medium text-primary">{action.label}</p>
