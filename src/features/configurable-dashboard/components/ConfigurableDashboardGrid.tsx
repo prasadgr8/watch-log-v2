@@ -142,7 +142,7 @@ export default function ConfigurableDashboardGrid({
               }
               className={
                 isDesktop
-                  ? `h-full min-h-0 min-w-0 ${active ? "rounded-xl ring-2 ring-accent/60" : ""}`
+                  ? `min-h-0 min-w-0 self-start ${active ? "rounded-xl ring-2 ring-accent/60" : ""}`
                   : `min-w-0 ${spanClassForWidth(item.w)}`
               }
               style={
