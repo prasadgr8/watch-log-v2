@@ -15,6 +15,8 @@ import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 import { filterLibrary, type MediaTypeFilter } from "./services/libraryFilter";
 import { enrichLibraryGenres } from "./services/genreEnrichmentService";
+import { enrichMediaArtwork } from "./services/artworkEnrichmentService";
+import { formatArtworkEnrichmentSummary } from "./services/formatArtworkEnrichmentSummary";
 
 import { TMDB_GENRES_LIST } from "../../services/tmdb/tmdbGenres";
 import GenreMultiSelect from "./GenreMultiSelect";
@@ -95,6 +97,7 @@ export default function LibraryPage({ lockedMediaType }: LibraryPageProps) {
   const [media, setMedia] = useState<PersistedMedia[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isEnriching, setIsEnriching] = useState(false);
   const [isEditSaving, setIsEditSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedMedia, setSelectedMedia] = useState<PersistedMedia | null>(
@@ -135,7 +138,6 @@ export default function LibraryPage({ lockedMediaType }: LibraryPageProps) {
   const { viewMode, setViewMode } = useViewMode(LIBRARY_VIEW_MODE_SETTING_KEY);
   const { density, setDensity } = useDensity(LIBRARY_DENSITY_KEY);
   const isOnline = useOnlineStatus();
-  const [isEnriching, setIsEnriching] = useState(false);
   const [enrichmentStatus, setEnrichmentStatus] = useState<string | null>(null);
 
   async function loadMedia(): Promise<void> {
@@ -553,6 +555,34 @@ export default function LibraryPage({ lockedMediaType }: LibraryPageProps) {
     }
   }
 
+  async function handleSyncTmdbArtwork(): Promise<void> {
+    if (isEnriching) {
+      return;
+    }
+
+    setIsEnriching(true);
+    setEnrichmentStatus(null);
+
+    try {
+      const result = await enrichMediaArtwork({
+        onProgress: ({ completed, total }) => {
+          setEnrichmentStatus(`Syncing artwork ${completed} of ${total}…`);
+        },
+      });
+
+      // Format the result once, in a shared pure function, so the handler
+      // stays responsible only for orchestration and never for message text.
+      setEnrichmentStatus(formatArtworkEnrichmentSummary(result));
+
+      await loadMedia();
+    } catch (syncError) {
+      console.error("Failed to sync TMDB artwork:", syncError);
+      setError("Unable to sync TMDB artwork. Please try again.");
+    } finally {
+      setIsEnriching(false);
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -695,6 +725,15 @@ export default function LibraryPage({ lockedMediaType }: LibraryPageProps) {
                 className={`h-4 w-4 ${isEnriching ? "animate-spin" : ""}`}
               />
               Sync TMDB genres
+            </button>
+            <button
+              type="button"
+              onClick={handleSyncTmdbArtwork}
+              disabled={isEnriching || !isOnline}
+              className="flex items-center gap-1 px-3 py-1 rounded text-sm font-medium transition-colors hover:background-muted/30 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Sync TMDB artwork
+              <span className={`h-4 w-4 ${isEnriching ? "animate-spin" : ""}`} />
             </button>
 
             <span className="text-sm text-muted">
