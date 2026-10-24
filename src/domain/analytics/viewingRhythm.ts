@@ -48,7 +48,7 @@ import { getLocalDayNumber } from "./watchPeriods";
  * `((n + 3) % 7) + 1`, with the modulo normalized to 0-6 first so pre-1970
  * (negative) day numbers resolve correctly.
  */
-function toIsoWeekday(localDayNumber: number): number {
+export function toIsoWeekday(localDayNumber: number): number {
   return ((((localDayNumber + 3) % 7) + 7) % 7) + 1;
 }
 

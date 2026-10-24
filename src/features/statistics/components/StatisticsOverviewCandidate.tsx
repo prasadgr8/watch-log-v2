@@ -238,56 +238,6 @@ export default function StatisticsOverviewCandidate({
               )
               .join("; ")}. Peak hour: ${String(peakHour).padStart(2, "0")}:00.`
           : "No recorded viewing activity by local hour.";
-  const hasRecordedDayActivity = stats.dayOfWeekBuckets.some(
-    (bucket) => bucket.eventCount > 0,
-  );
-  const weekendEventCount = stats.dayOfWeekBuckets.reduce(
-    (total, bucket) =>
-      bucket.isoWeekday >= 6 ? total + bucket.eventCount : total,
-    0,
-  );
-  const monthlyActivity = new Map<
-    number,
-    { periodStart: Date; eventCount: number }
-  >();
-  for (const day of yearDayActivity.days) {
-    const monthKey =
-      day.periodStart.getFullYear() * 12 + day.periodStart.getMonth();
-    const month = monthlyActivity.get(monthKey);
-    if (month) {
-      month.eventCount += day.eventCount;
-    } else {
-      monthlyActivity.set(monthKey, {
-        periodStart: new Date(
-          day.periodStart.getFullYear(),
-          day.periodStart.getMonth(),
-          1,
-        ),
-        eventCount: day.eventCount,
-      });
-    }
-  }
-  const monthlyActivityBuckets = [...monthlyActivity.values()];
-  const mostActiveMonthEventCount = monthlyActivityBuckets.reduce(
-    (peak, month) => Math.max(peak, month.eventCount),
-    0,
-  );
-  const mostActiveMonths =
-    mostActiveMonthEventCount > 0
-      ? monthlyActivityBuckets.filter(
-          (month) => month.eventCount === mostActiveMonthEventCount,
-        )
-      : [];
-  const mostActiveMonthLabel =
-    mostActiveMonths.length === 0
-      ? "No activity"
-      : mostActiveMonths.length > 1
-        ? "Multiple months"
-        : mostActiveMonths[0].periodStart.toLocaleString(undefined, {
-            month: "short",
-            year: "numeric",
-          });
-
   return (
     <div className="mx-auto max-w-6xl space-y-10">
       {error && (
@@ -536,13 +486,15 @@ export default function StatisticsOverviewCandidate({
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <KpiCard
             label="Most active month"
-            value={isDataUnavailable ? "—" : mostActiveMonthLabel}
+            value={isDataUnavailable ? "—" : stats.mostActiveMonth.label}
             hint={
               isDataUnavailable
                 ? undefined
-                : mostActiveMonths.length > 0
-                  ? "Recorded events · last 12 months"
-                  : "No recorded activity in the last 12 months"
+                : stats.mostActiveMonth.isAvailable
+                ? stats.mostActiveMonth.isTie
+                  ? "Multiple months tied"
+                  : "Recorded events · last 12 months"
+                : "No recorded activity in the last 12 months"
             }
             icon={<CalendarDays size={20} />}
           />
@@ -552,44 +504,63 @@ export default function StatisticsOverviewCandidate({
             value={
               isDataUnavailable
                 ? "—"
-                : hasRecordedDayActivity
-                  ? `${weekendEventCount} events`
-                  : "No activity"
+                : stats.weekendViewing.isAvailable
+                ? `${stats.weekendViewing.percentage}%`
+                : "No activity"
             }
             hint={
               isDataUnavailable
                 ? undefined
-                : hasRecordedDayActivity
-                  ? "Saturday and Sunday"
-                  : "No recorded viewing activity"
+                : stats.weekendViewing.isAvailable
+                ? "Saturday and Sunday"
+                : "No recorded viewing activity"
             }
             icon={<Activity size={20} />}
           />
 
           <KpiCard
-            label="Peak viewing hour"
+            label="Time of day"
             value={
               isDataUnavailable
                 ? "—"
-                : hasRecordedHourActivity
-                  ? `${String(peakHour).padStart(2, "0")}:00`
+                : stats.timeOfDay.isAvailable
+                  ? stats.timeOfDay.buckets.reduce(
+                      (top, bucket) =>
+                        bucket.eventCount > top.eventCount ? bucket : top,
+                      stats.timeOfDay.buckets[0],
+                    ).bucket
                   : "No activity"
             }
             hint={
               isDataUnavailable
                 ? undefined
-                : hasRecordedHourActivity
-                  ? "Local time"
-                  : "No recorded viewing activity"
+                : stats.timeOfDay.isAvailable
+                ? stats.timeOfDay.buckets
+                    .map((bucket) => `${bucket.bucket} ${bucket.percentage}%`)
+                    .join(" · ")
+                : "No recorded viewing activity"
             }
             icon={<Clock3 size={20} />}
           />
 
-          <PendingCard
+          <KpiCard
+            label="Genre count"
+            value={
+              isDataUnavailable
+                ? "—"
+                : stats.genreCount.isAvailable
+                ? String(stats.genreCount.count)
+                : "No activity"
+            }
+            hint={
+              isDataUnavailable
+                ? undefined
+                : stats.genreCount.isAvailable
+                ? "Distinct genres across watched titles"
+                : "No recorded viewing activity"
+            }
             icon={<Layers size={20} />}
-            title="Categories / Genres"
-            description="Category insights are pending supporting analytics."
-          />
+/>
         </div>
       </SectionShell>
 

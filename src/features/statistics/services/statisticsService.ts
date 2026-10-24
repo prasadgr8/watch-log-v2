@@ -22,6 +22,22 @@ import {
   buildTrailingYearDayActivity,
   type TrailingYearActivity,
 } from "../../../domain/analytics/calendarYear";
+import {
+  buildMostActiveMonth,
+  type MostActiveMonthResult,
+} from "../../../domain/analytics/mostActiveMonth";
+import {
+  calculateWeekendViewing,
+  type WeekendViewingResult,
+} from "../../../domain/analytics/weekendViewing";
+import {
+  bucketEventsByTimeOfDay,
+  type TimeOfDayResult,
+} from "../../../domain/analytics/timeOfDay";
+import {
+  countDistinctGenres,
+  type GenreCountResult,
+} from "../../../domain/analytics/genreCount";
 
 export interface LibraryStatistics {
   total: number;
@@ -591,6 +607,31 @@ export interface StatisticsDashboard {
    * and zero-filled when there is no history.
    */
   yearDayActivity: TrailingYearActivity;
+
+  /**
+   * Most active calendar month within the trailing 12 months, derived from
+   * recorded watch events. `isAvailable` is false when there are no events.
+   */
+  mostActiveMonth: MostActiveMonthResult;
+
+  /**
+   * Share of recorded watch events that fall on Saturday or Sunday, as a
+   * whole-percent value. `isAvailable` is false when there are no events.
+   */
+  weekendViewing: WeekendViewingResult;
+
+  /**
+   * Recorded watch events bucketed by local time of day into the four fixed
+   * buckets (Morning, Afternoon, Evening, Night), with counts and
+   * percentages. `isAvailable` is false when there are no events.
+   */
+  timeOfDay: TimeOfDayResult;
+
+  /**
+   * Number of distinct genres represented by titles that have recorded watch
+   * events. `isAvailable` is false when there are no events.
+   */
+  genreCount: GenreCountResult;
 }
 
 /*
@@ -620,5 +661,9 @@ export async function loadStatistics(): Promise<StatisticsDashboard> {
     hourOfDayBuckets: bucketEventsByHourOfDay(watchHistoryEvents),
     dayOfWeekBuckets: bucketEventsByDayOfWeek(watchHistoryEvents),
     yearDayActivity: buildTrailingYearDayActivity(watchHistoryEvents, new Date()),
+    mostActiveMonth: buildMostActiveMonth(watchHistoryEvents, new Date()),
+    weekendViewing: calculateWeekendViewing(watchHistoryEvents),
+    timeOfDay: bucketEventsByTimeOfDay(watchHistoryEvents),
+    genreCount: countDistinctGenres(watchHistoryEvents, media),
   };
 }

@@ -45,6 +45,32 @@ function createDashboardWithActivity(): StatisticsDashboard {
         { periodStart: new Date(2025, 11, 1), eventCount: 2 },
       ],
     },
+    mostActiveMonth: {
+      label: "Nov 2025",
+      eventCount: 3,
+      isTie: false,
+      isAvailable: true,
+    },
+    weekendViewing: {
+      weekendEvents: 3,
+      totalEvents: 6,
+      percentage: 50,
+      isAvailable: true,
+    },
+    timeOfDay: {
+      buckets: [
+        { bucket: "Morning", eventCount: 0, percentage: 0 },
+        { bucket: "Afternoon", eventCount: 0, percentage: 0 },
+        { bucket: "Evening", eventCount: 4, percentage: 67 },
+        { bucket: "Night", eventCount: 2, percentage: 33 },
+      ],
+      totalEvents: 6,
+      isAvailable: true,
+    },
+    genreCount: {
+      count: 0,
+      isAvailable: true,
+    },
   };
 }
 
@@ -69,6 +95,32 @@ function createEmptyDashboard(): StatisticsDashboard {
       eventCount: 0,
     })),
     yearDayActivity: buildTrailingYearDayActivity([], new Date(2026, 9, 11)),
+    mostActiveMonth: {
+      label: "No activity",
+      eventCount: 0,
+      isTie: false,
+      isAvailable: false,
+    },
+    weekendViewing: {
+      weekendEvents: 0,
+      totalEvents: 0,
+      percentage: 0,
+      isAvailable: false,
+    },
+    timeOfDay: {
+      buckets: [
+        { bucket: "Morning", eventCount: 0, percentage: 0 },
+        { bucket: "Afternoon", eventCount: 0, percentage: 0 },
+        { bucket: "Evening", eventCount: 0, percentage: 0 },
+        { bucket: "Night", eventCount: 0, percentage: 0 },
+      ],
+      totalEvents: 0,
+      isAvailable: false,
+    },
+    genreCount: {
+      count: 0,
+      isAvailable: false,
+    },
   };
 }
 
@@ -182,11 +234,12 @@ describe("StatisticsOverviewCandidate supported insights", () => {
     });
 
     expect(markup).toContain(novemberLabel);
-    expect(markup).toContain("3 events");
+    expect(markup).toContain("50%");
     expect(markup).toContain("Saturday and Sunday");
-    expect(markup).toContain("20:00");
+    expect(markup).toContain("Evening");
+    expect(markup).toContain("67%");
     expect(markup).not.toContain("No activity");
-    expect(markup).toContain("Categories / Genres");
-    expect(markup).toContain("Category insights are pending supporting analytics.");
+    expect(markup).toContain("Genre count");
+    expect(markup).toContain("Distinct genres across watched titles");
   });
 });
