@@ -160,7 +160,7 @@ describe("widget header and menu behavior", () => {
     );
     expect(gridSource).toContain("minmax(${GRID_ROW_HEIGHT_PX}px, auto)");
     expect(gridSource).toContain("overflow-hidden");
-    expect(gridSource).toContain("h-full min-h-0 min-w-0");
+    expect(gridSource).toContain("min-h-0 min-w-0 self-start");
   });
 
   it("opens the menu, closes on Escape, and returns focus", async () => {
