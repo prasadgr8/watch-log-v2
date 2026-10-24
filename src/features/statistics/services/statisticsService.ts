@@ -35,9 +35,15 @@ import {
   type TimeOfDayResult,
 } from "../../../domain/analytics/timeOfDay";
 import {
+  buildStoryLandscape,
+  type StoryLandscapeResult,
+} from "../../../domain/analytics/storyLandscape";
+
+import {
   countDistinctGenres,
   type GenreCountResult,
 } from "../../../domain/analytics/genreCount";
+
 
 export interface LibraryStatistics {
   total: number;
@@ -632,6 +638,12 @@ export interface StatisticsDashboard {
    * events. `isAvailable` is false when there are no events.
    */
   genreCount: GenreCountResult;
+
+  /**
+   * Genre distribution by recorded TV watch time (Story Landscape).
+   * `isAvailable` is false when there are no recorded watch events.
+   */
+  storyLandscape: StoryLandscapeResult;
 }
 
 /*
@@ -665,5 +677,6 @@ export async function loadStatistics(): Promise<StatisticsDashboard> {
     weekendViewing: calculateWeekendViewing(watchHistoryEvents),
     timeOfDay: bucketEventsByTimeOfDay(watchHistoryEvents),
     genreCount: countDistinctGenres(watchHistoryEvents, media),
+    storyLandscape: buildStoryLandscape(watchHistoryEvents, media, episodes),
   };
 }

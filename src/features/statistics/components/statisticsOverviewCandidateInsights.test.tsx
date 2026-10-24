@@ -71,6 +71,11 @@ function createDashboardWithActivity(): StatisticsDashboard {
       count: 0,
       isAvailable: true,
     },
+    storyLandscape: {
+      genres: [],
+      totalWatchTimeMinutes: 0,
+      isAvailable: true,
+    },
   };
 }
 
@@ -119,6 +124,11 @@ function createEmptyDashboard(): StatisticsDashboard {
     },
     genreCount: {
       count: 0,
+      isAvailable: false,
+    },
+    storyLandscape: {
+      genres: [],
+      totalWatchTimeMinutes: 0,
       isAvailable: false,
     },
   };

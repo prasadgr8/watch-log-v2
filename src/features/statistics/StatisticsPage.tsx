@@ -22,6 +22,7 @@ import {
 } from "./services/statisticsService";
 import type { AnalyticsPeriod } from "../../domain/analytics/types";
 import { buildTrailingYearDayActivity } from "../../domain/analytics/calendarYear";
+import { buildStoryLandscape } from "../../domain/analytics/storyLandscape";
 import {
   loadWatchActivitySection,
   type WatchActivitySectionWithTrends,
@@ -54,6 +55,7 @@ const initialStatistics: StatisticsDashboard = {
     isAvailable: false,
   },
   genreCount: { count: 0, isAvailable: false },
+  storyLandscape: buildStoryLandscape([], [], []),
 };
 
 export default function StatisticsPage() {
