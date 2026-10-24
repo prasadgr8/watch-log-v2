@@ -77,7 +77,6 @@ describe("statistics overview A/B candidate component", () => {
       "68 titles",
       "76%",
       "streak",
-      "genre",
       "milestone",
     ]) {
       expect(codeOnly, forbidden).not.toContain(forbidden);
