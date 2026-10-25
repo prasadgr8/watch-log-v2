@@ -131,10 +131,32 @@ function createEmptyDashboard(): StatisticsDashboard {
       totalWatchTimeMinutes: 0,
       isAvailable: false,
     },
+    biggestStories: {
+      stories: [],
+      totalWatchTimeMinutes: 0,
+      isAvailable: false,
+    },
+  };
+}
+
+function createDashboardWithStoryLandscape(): StatisticsDashboard {
+  const base = createDashboardWithActivity();
+
+  return {
+    ...base,
+    storyLandscape: {
+      genres: [
+        { genre: "Drama", watchTimeMinutes: 30, percentage: 60 },
+        { genre: "Sci-Fi", watchTimeMinutes: 20, percentage: 40 },
+      ],
+      totalWatchTimeMinutes: 50,
+      isAvailable: true,
+    },
   };
 }
 
 describe("StatisticsOverviewCandidate supported insights", () => {
+
   it("renders a full zero-filled calendar with the empty-history message", () => {
     const stats = createEmptyDashboard();
     const markup = renderToStaticMarkup(
@@ -229,6 +251,95 @@ describe("StatisticsOverviewCandidate supported insights", () => {
     expect(markup).not.toMatch(/<p[^>]*>\s*0\s*<\/p>/);
   });
 
+  it("renders Story Landscape genres with watch time and percentages", () => {
+    const markup = renderToStaticMarkup(
+      createElement(StatisticsOverviewCandidate, {
+        stats: createDashboardWithStoryLandscape(),
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    expect(markup).toContain("Drama");
+    expect(markup).toContain("30 min");
+    expect(markup).toContain("60%");
+    expect(markup).toContain("Sci-Fi");
+    expect(markup).toContain("20 min");
+    expect(markup).toContain("40%");
+    expect(markup).not.toContain(
+      "Library distribution will appear when supporting analytics are available.",
+    );
+  });
+
+  it("preserves Story Landscape ordering and does not renormalize percentages", () => {
+    const markup = renderToStaticMarkup(
+      createElement(StatisticsOverviewCandidate, {
+        stats: createDashboardWithStoryLandscape(),
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    expect(markup.indexOf("Drama")).toBeLessThan(markup.indexOf("Sci-Fi"));
+    expect(markup).toContain("60%");
+    expect(markup).toContain("40%");
+  });
+
+  it("renders a meaningful empty state when Story Landscape is available but has no genres", () => {
+    const markup = renderToStaticMarkup(
+      createElement(StatisticsOverviewCandidate, {
+        stats: createDashboardWithActivity(),
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    expect(markup).toContain("No story landscape yet.");
+    expect(markup).toContain("No attributed TV watch time.");
+    expect(markup).not.toContain(
+      "Library distribution will appear when supporting analytics are available.",
+    );
+  });
+
+  it("renders a no-recorded-history state when Story Landscape is unavailable", () => {
+    const markup = renderToStaticMarkup(
+      createElement(StatisticsOverviewCandidate, {
+        stats: createEmptyDashboard(),
+        isLoading: false,
+        error: null,
+      }),
+    );
+
+    expect(markup).toContain("No recorded watch history.");
+    expect(markup).not.toContain(
+      "Library distribution will appear when supporting analytics are available.",
+    );
+  });
+
+  it("does not render Story Landscape empty states while loading or after an error", () => {
+    const loadingMarkup = renderToStaticMarkup(
+      createElement(StatisticsOverviewCandidate, {
+        stats: createEmptyDashboard(),
+        isLoading: true,
+        error: null,
+      }),
+    );
+    const errorMarkup = renderToStaticMarkup(
+      createElement(StatisticsOverviewCandidate, {
+        stats: createEmptyDashboard(),
+        isLoading: false,
+        error: "Unable to load statistics.",
+      }),
+    );
+
+    expect(loadingMarkup).not.toContain("No recorded watch history.");
+    expect(loadingMarkup).not.toContain("No story landscape yet.");
+    expect(errorMarkup).toContain(
+      "Story landscape is unavailable because statistics could not be loaded.",
+    );
+    expect(errorMarkup).not.toContain("No recorded watch history.");
+    expect(errorMarkup).not.toContain("No story landscape yet.");
+  });
   it("renders populated month, weekend, and peak-hour dashboard data", () => {
     const markup = renderToStaticMarkup(
       createElement(StatisticsOverviewCandidate, {
@@ -252,4 +363,6 @@ describe("StatisticsOverviewCandidate supported insights", () => {
     expect(markup).toContain("Genre count");
     expect(markup).toContain("Distinct genres across watched titles");
   });
+
+
 });
