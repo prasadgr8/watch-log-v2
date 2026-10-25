@@ -35,6 +35,10 @@ import {
   type TimeOfDayResult,
 } from "../../../domain/analytics/timeOfDay";
 import {
+  buildBiggestStories,
+  type BiggestStoriesResult,
+} from "../../../domain/analytics/biggestStories";
+import {
   buildStoryLandscape,
   type StoryLandscapeResult,
 } from "../../../domain/analytics/storyLandscape";
@@ -644,6 +648,12 @@ export interface StatisticsDashboard {
    * `isAvailable` is false when there are no recorded watch events.
    */
   storyLandscape: StoryLandscapeResult;
+
+  /**
+   * TV show rankings by recorded attributed watch time (Biggest Stories).
+   * `isAvailable` is false when there are no recorded watch events.
+   */
+  biggestStories: BiggestStoriesResult;
 }
 
 /*
@@ -678,5 +688,6 @@ export async function loadStatistics(): Promise<StatisticsDashboard> {
     timeOfDay: bucketEventsByTimeOfDay(watchHistoryEvents),
     genreCount: countDistinctGenres(watchHistoryEvents, media),
     storyLandscape: buildStoryLandscape(watchHistoryEvents, media, episodes),
+    biggestStories: buildBiggestStories(watchHistoryEvents, media, episodes),
   };
 }

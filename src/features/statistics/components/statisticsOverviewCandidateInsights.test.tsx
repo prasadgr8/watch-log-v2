@@ -76,6 +76,11 @@ function createDashboardWithActivity(): StatisticsDashboard {
       totalWatchTimeMinutes: 0,
       isAvailable: true,
     },
+    biggestStories: {
+      stories: [],
+      totalWatchTimeMinutes: 0,
+      isAvailable: true,
+    },
   };
 }
 

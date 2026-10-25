@@ -22,6 +22,7 @@ import {
 } from "./services/statisticsService";
 import type { AnalyticsPeriod } from "../../domain/analytics/types";
 import { buildTrailingYearDayActivity } from "../../domain/analytics/calendarYear";
+import { buildBiggestStories } from "../../domain/analytics/biggestStories";
 import { buildStoryLandscape } from "../../domain/analytics/storyLandscape";
 import {
   loadWatchActivitySection,
@@ -56,6 +57,7 @@ const initialStatistics: StatisticsDashboard = {
   },
   genreCount: { count: 0, isAvailable: false },
   storyLandscape: buildStoryLandscape([], [], []),
+  biggestStories: buildBiggestStories([], [], []),
 };
 
 export default function StatisticsPage() {
