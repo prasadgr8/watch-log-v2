@@ -673,34 +673,176 @@ export default function StatisticsOverviewCandidate({
           </div>
         </div>
       </SectionShell>
-{/* Story landscape analytics are not yet supported. */}
+{/* Story landscape analytics. */}
 <SectionShell
   id="candidate-landscape"
   icon={<Layers size={20} />}
   title="Your Story Landscape"
+  note="Attributed TV watch time by genre."
 >
-  <div className="max-w-md">
-    <PendingCard
-      icon={<Layers size={20} />}
-      title="Story landscape"
-      description="Library distribution will appear when supporting analytics are available."
-    />
-  </div>
+  {isDataUnavailable ? (
+    <p className="text-xs text-muted">
+      {error !== null
+        ? "Story landscape is unavailable because statistics could not be loaded."
+        : "—"}
+    </p>
+  ) : !stats.storyLandscape.isAvailable ? (
+    <div className="rounded-xl border border-dashed border-border bg-surface p-4 text-center">
+      <Layers aria-hidden="true" className="mx-auto h-5 w-5 text-muted" />
+      <p className="mt-2 text-sm font-medium text-primary">
+        No recorded watch history.
+      </p>
+      <p className="mt-1 text-xs text-muted">
+        Attributed TV watch time will appear when recorded watch events exist.
+      </p>
+    </div>
+  ) : stats.storyLandscape.genres.length === 0 ? (
+    <div className="rounded-xl border border-dashed border-border bg-surface p-4 text-center">
+      <Layers aria-hidden="true" className="mx-auto h-5 w-5 text-muted" />
+      <p className="mt-2 text-sm font-medium text-primary">
+        No story landscape yet.
+      </p>
+      <p className="mt-1 text-xs text-muted">
+        No attributed TV watch time.
+      </p>
+    </div>
+  ) : (
+    <div className="space-y-3 rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
+      <div
+        role="list"
+        aria-label="Story landscape by attributed TV watch time"
+        className="space-y-2"
+      >
+        {stats.storyLandscape.genres.map((genre) => (
+          <div
+            key={genre.genre}
+            role="listitem"
+            className="flex items-center gap-2"
+          >
+            <span className="w-24 shrink-0 truncate text-xs font-medium text-primary">
+              {genre.genre}
+            </span>
+
+            <span className="h-2 flex-1 overflow-hidden rounded-full border border-border bg-surface-elevated">
+              <span
+                className="block h-full bg-accent/60"
+                style={{ width: `${genre.percentage}%` }}
+              />
+            </span>
+
+            <span className="w-16 shrink-0 text-right text-xs text-muted">
+              {genre.watchTimeMinutes} min
+            </span>
+
+            <span className="w-10 shrink-0 text-right text-xs text-muted">
+              {genre.percentage}%
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-xs text-muted">
+        {stats.storyLandscape.genres.length} genre
+        {stats.storyLandscape.genres.length === 1 ? "" : "s"} ·{" "}
+        {stats.storyLandscape.totalWatchTimeMinutes} min total
+      </p>
+    </div>
+  )}
 </SectionShell>
 
-{/* Biggest-story rankings are not yet supported. */}
+{/* Biggest-story rankings. */}
 <SectionShell
   id="candidate-biggest"
   icon={<Star size={20} />}
   title="Your Biggest Stories"
 >
-  <div className="max-w-md">
-    <PendingCard
-      icon={<Star size={20} />}
-      title="Story rankings"
-      description="Your biggest stories will appear when ranking analytics are supported."
-    />
-  </div>
+  {isDataUnavailable ? (
+    <p className="text-xs text-muted">
+      {error !== null
+        ? "Your biggest stories are unavailable because statistics could not be loaded."
+        : "—"}
+    </p>
+  ) : !stats.biggestStories.isAvailable ? (
+    <div className="rounded-xl border border-dashed border-border bg-surface p-4 text-center">
+      <Star aria-hidden="true" className="mx-auto h-5 w-5 text-muted" />
+      <p className="mt-2 text-sm font-medium text-primary">
+        No recorded watch history.
+      </p>
+      <p className="mt-1 text-xs text-muted">
+        Attributed TV watch time will appear when recorded watch events exist.
+      </p>
+    </div>
+  ) : stats.biggestStories.stories.length === 0 ? (
+    <div className="rounded-xl border border-dashed border-border bg-surface p-4 text-center">
+      <Star aria-hidden="true" className="mx-auto h-5 w-5 text-muted" />
+      <p className="mt-2 text-sm font-medium text-primary">
+        No biggest stories yet.
+      </p>
+      <p className="mt-1 text-xs text-muted">
+        No attributed TV watch time.
+      </p>
+    </div>
+  ) : (
+    <div className="space-y-3 rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
+      <div
+        role="list"
+        aria-label="Your biggest stories by attributed TV watch time"
+        className="space-y-2"
+      >
+        {stats.biggestStories.stories.slice(0, 5).map((story, index) => (
+          <div
+            key={story.mediaId}
+            role="listitem"
+            className="flex items-center gap-3"
+          >
+            <span className="w-6 shrink-0 text-sm font-semibold text-muted">
+              {index + 1}
+            </span>
+
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-elevated text-muted">
+              <Tv aria-hidden="true" size={16} />
+            </span>
+
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-primary">
+                {story.title}
+              </p>
+              <p className="text-xs text-muted">
+                TV · {story.watchCount} watch
+                {story.watchCount === 1 ? "" : "es"} ·{" "}
+                {story.distinctEpisodesWatched} episode
+                {story.distinctEpisodesWatched === 1 ? "" : "s"}
+              </p>
+            </div>
+
+            <span className="w-16 shrink-0 text-right text-xs text-muted">
+              {story.watchTimeMinutes} min
+            </span>
+
+            <span className="w-12 shrink-0 text-right text-xs text-muted">
+              {story.percentage}%
+            </span>
+
+            <span
+              aria-hidden="true"
+              className="h-2 w-20 shrink-0 overflow-hidden rounded-full border border-border bg-surface-elevated"
+            >
+              <span
+                className="block h-full bg-accent/60"
+                style={{ width: `${story.percentage}%` }}
+              />
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-xs text-muted">
+        {Math.min(stats.biggestStories.stories.length, 5)} of{" "}
+        {stats.biggestStories.stories.length} shown ·{" "}
+        {stats.biggestStories.totalWatchTimeMinutes} min total
+      </p>
+    </div>
+  )}
 </SectionShell>
 
 {/* Milestone analytics are not yet supported. */}
