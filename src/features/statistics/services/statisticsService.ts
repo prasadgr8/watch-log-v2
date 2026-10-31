@@ -6,6 +6,10 @@ import {
   watchHistoryRepository,
 } from "../../../database/repositories";
 
+import {
+  calculateMilestones,
+  type MilestonesAnalytics,
+} from "../../../domain/analytics/milestones";
 import { getCurrentStreak } from "../../../domain/analytics/viewingStreak";
 import {
   countMovieEvents,
@@ -654,6 +658,12 @@ export interface StatisticsDashboard {
    * `isAvailable` is false when there are no recorded watch events.
    */
   biggestStories: BiggestStoriesResult;
+  /**
+   * Recorded episode, movie, and current-streak milestones.
+   * Optional for existing pre-load dashboard snapshots; loadStatistics always
+   * supplies the value.
+   */
+  milestones?: MilestonesAnalytics;
 }
 
 /*
@@ -662,7 +672,9 @@ export interface StatisticsDashboard {
  * statistics service remains read-only: it never mutates domain records and
  * never writes to IndexedDB.
  */
-export async function loadStatistics(): Promise<StatisticsDashboard> {
+export async function loadStatistics(): Promise<
+  StatisticsDashboard & { milestones: MilestonesAnalytics }
+> {
   const [media, episodes, watchHistoryEvents] = await Promise.all([
     mediaRepository.getAll(),
     episodeRepository.getAll(),
@@ -689,5 +701,6 @@ export async function loadStatistics(): Promise<StatisticsDashboard> {
     genreCount: countDistinctGenres(watchHistoryEvents, media),
     storyLandscape: buildStoryLandscape(watchHistoryEvents, media, episodes),
     biggestStories: buildBiggestStories(watchHistoryEvents, media, episodes),
+    milestones: calculateMilestones(watchHistoryEvents),
   };
 }

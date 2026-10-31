@@ -768,6 +768,62 @@ describe("loadStatistics", () => {
     expect(stats.recentActivity.firstWatchDate).toBeNull();
     expect(stats.recentActivity.lastWatchDate).toBeNull();
     expect(stats.watchEventCount).toBe(0);
+    expect(stats.milestones).toEqual({
+      episodesWatched: 0,
+      moviesWatched: 0,
+      currentViewingStreak: 0,
+    });
+  });
+
+  it("exposes Milestones counts and excludes contradictory event shapes", async () => {
+    await watchHistoryRepository.add(
+      createWatchHistory({
+        episodeId: 1,
+        mediaId: 10,
+        mediaType: "tv",
+        watchedAt: new Date(2026, 6, 10, 9),
+      }),
+    );
+    await watchHistoryRepository.add(
+      createWatchHistory({
+        episodeId: 2,
+        mediaId: 10,
+        mediaType: "tv",
+        watchedAt: new Date(2026, 6, 11, 9),
+      }),
+    );
+    await watchHistoryRepository.add(
+      createWatchHistory({
+        episodeId: null,
+        mediaId: 20,
+        mediaType: "movie",
+        watchedAt: new Date(2026, 6, 11, 20),
+      }),
+    );
+    await watchHistoryRepository.add(
+      createWatchHistory({
+        episodeId: null,
+        mediaId: 10,
+        mediaType: "tv",
+        watchedAt: new Date(2026, 6, 11, 21),
+      }),
+    );
+    await watchHistoryRepository.add(
+      createWatchHistory({
+        episodeId: 123,
+        mediaId: 20,
+        mediaType: "movie",
+        watchedAt: new Date(2026, 6, 11, 22),
+      }),
+    );
+
+    const stats = await loadStatistics();
+
+    expect(stats.milestones).toEqual({
+      episodesWatched: 2,
+      moviesWatched: 1,
+      currentViewingStreak: 2,
+    });
   });
 
   it("loads every store and derives each statistics section", async () => {

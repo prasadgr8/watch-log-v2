@@ -31,6 +31,11 @@ function createDashboardWithActivity(): StatisticsDashboard {
     recentActivity: calculateRecentActivity([], []),
     watchEventCount: 6,
     currentStreak: 0,
+    milestones: {
+      episodesWatched: 6,
+      moviesWatched: 2,
+      currentViewingStreak: 3,
+    },
     tvEpisodeEventCount: 6,
     movieEventCount: 0,
     uniqueMediaCount: 1,
@@ -93,6 +98,11 @@ function createEmptyDashboard(): StatisticsDashboard {
     recentActivity: calculateRecentActivity([], []),
     watchEventCount: 0,
     currentStreak: 0,
+    milestones: {
+      episodesWatched: 0,
+      moviesWatched: 0,
+      currentViewingStreak: 0,
+    },
     tvEpisodeEventCount: 0,
     movieEventCount: 0,
     uniqueMediaCount: 0,
@@ -369,5 +379,58 @@ describe("StatisticsOverviewCandidate supported insights", () => {
     expect(markup).toContain("Distinct genres across watched titles");
   });
 
+  it("renders recorded Milestones values from the supplied Statistics result", () => {
+    const markup = renderToStaticMarkup(
+      createElement(StatisticsOverviewCandidate, {
+        stats: createDashboardWithActivity(),
+        isLoading: false,
+        error: null,
+      }),
+    );
+    const milestonesStart = markup.indexOf(
+      'id="candidate-recorded-watch-activity"',
+    );
+    const milestonesMarkup = markup.slice(milestonesStart);
+
+    expect(milestonesMarkup).toContain("Recorded Watch Activity");
+    expect(milestonesMarkup).toContain(
+      "Based on your currently recorded watch history.",
+    );
+    expect(milestonesMarkup).toContain("Episodes Watched");
+    expect(milestonesMarkup).toContain("Movies Watched");
+    expect(milestonesMarkup).toContain("Current Viewing Streak");
+    expect(milestonesMarkup).toContain(
+      'text-3xl font-bold leading-none text-primary">6</p>',
+    );
+    expect(milestonesMarkup).toContain(
+      'text-3xl font-bold leading-none text-primary">2</p>',
+    );
+    expect(milestonesMarkup).toContain(
+      'text-3xl font-bold leading-none text-primary">3</p>',
+    );
+  });
+
+  it("renders deterministic zero Milestones values for empty history", () => {
+    const markup = renderToStaticMarkup(
+      createElement(StatisticsOverviewCandidate, {
+        stats: createEmptyDashboard(),
+        isLoading: false,
+        error: null,
+      }),
+    );
+    const milestonesStart = markup.indexOf(
+      'id="candidate-recorded-watch-activity"',
+    );
+    const milestonesMarkup = markup.slice(milestonesStart);
+
+    expect(milestonesMarkup).toContain("Episodes Watched");
+    expect(milestonesMarkup).toContain("Movies Watched");
+    expect(milestonesMarkup).toContain("Current Viewing Streak");
+    expect(
+      milestonesMarkup.match(
+        /text-3xl font-bold leading-none text-primary">0<\/p>/g,
+      ),
+    ).toHaveLength(3);
+  });
 
 });

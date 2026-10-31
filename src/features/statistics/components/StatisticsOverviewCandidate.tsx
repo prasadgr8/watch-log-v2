@@ -10,7 +10,6 @@ import {
   Percent,
   Sparkles,
   Star,
-  Trophy,
   Tv,
 } from "lucide-react";
 
@@ -28,12 +27,12 @@ import type { StatisticsDashboard } from "../services/statisticsService";
  * `stats` arrives fully computed from the Statistics page, exactly like the
  * control. Date placement and intensity normalization are display-only.
  *
- * Step 1 establishes the target visual composition only. Metrics that already
- * exist on the contract render their real values verbatim; metrics that would
- * require new analytics (previous-period comparisons, streaks, allocations,
- * rankings, milestones) render an explicit unavailable state instead of an
- * invented number. No screenshot sample value is hard-coded and no business
- * calculation is introduced here.
+ * The candidate overview provides the target visual composition. Metrics that
+ * already exist on the contract render their real values verbatim; metrics
+ * that would require new analytics (previous-period comparisons, allocations,
+ * rankings) render an explicit unavailable state instead of an invented
+ * number. No screenshot sample value is hard-coded and no business calculation
+ * is introduced here.
  */
 
 interface KpiCardProps {
@@ -72,32 +71,6 @@ function KpiCard({ label, value, hint, icon, tone = "accent" }: KpiCardProps) {
           {icon}
         </span>
       </div>
-    </div>
-  );
-}
-
-function PendingCard({
-  icon,
-  title,
-  description,
-}: {
-  icon: ReactNode;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="flex min-h-36 flex-col rounded-2xl border border-border bg-surface p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <span className="rounded-xl bg-surface-elevated p-2 text-muted">
-          {icon}
-        </span>
-        <span className="rounded-full border border-border bg-surface-elevated px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
-          Pending
-        </span>
-      </div>
-
-      <p className="mt-4 text-sm font-semibold text-primary">{title}</p>
-      <p className="mt-1 text-xs leading-5 text-muted">{description}</p>
     </div>
   );
 }
@@ -150,6 +123,12 @@ export default function StatisticsOverviewCandidate({
   function placeholder(value: number | string): number | string {
     return isDataUnavailable ? "—" : value;
   }
+
+  const milestones = stats.milestones ?? {
+    episodesWatched: 0,
+    moviesWatched: 0,
+    currentViewingStreak: 0,
+  };
 
   const yearDayActivity = stats.yearDayActivity;
   // Peak daily count in the displayed series, used only to scale cell
@@ -845,26 +824,29 @@ export default function StatisticsOverviewCandidate({
   )}
 </SectionShell>
 
-{/* Milestone analytics are not yet supported. */}
 <SectionShell
-  id="candidate-progress"
-  icon={<Trophy size={20} />}
-  title="Your Milestones"
+  id="candidate-recorded-watch-activity"
+  icon={<Activity size={20} aria-hidden="true" />}
+  title="Recorded Watch Activity"
+  note="Based on your currently recorded watch history."
 >
-  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-    {[
-      { label: "Movies", icon: <Film size={20} /> },
-      { label: "Episodes", icon: <ListVideo size={20} /> },
-      { label: "Consistency", icon: <Activity size={20} /> },
-      { label: "Shows", icon: <Tv size={20} /> },
-    ].map((target) => (
-      <PendingCard
-        key={target.label}
-        icon={target.icon}
-        title={target.label}
-        description="Milestone analytics are not available yet."
-      />
-    ))}
+  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <KpiCard
+      label="Episodes Watched"
+      value={placeholder(milestones.episodesWatched)}
+      icon={<ListVideo size={20} aria-hidden="true" />}
+    />
+    <KpiCard
+      label="Movies Watched"
+      value={placeholder(milestones.moviesWatched)}
+      icon={<Film size={20} aria-hidden="true" />}
+    />
+    <KpiCard
+      label="Current Viewing Streak"
+      value={placeholder(milestones.currentViewingStreak)}
+      hint="Consecutive viewing days"
+      icon={<Activity size={20} aria-hidden="true" />}
+    />
   </div>
       </SectionShell>
     </div>
