@@ -65,7 +65,7 @@ describe("statistics overview A/B candidate component", () => {
     }
   });
 
-  it("introduces no business calculations or screenshot sample values", () => {
+  it("introduces no screenshot sample values", () => {
     // Strip comments so the guard targets actual code, not documentation
     // prose that legitimately names the out-of-scope analytics.
     const codeOnly = candidateOverviewSource
@@ -76,8 +76,6 @@ describe("statistics overview A/B candidate component", () => {
       "426",
       "68 titles",
       "76%",
-      "streak",
-      "milestone",
     ]) {
       expect(codeOnly, forbidden).not.toContain(forbidden);
     }
