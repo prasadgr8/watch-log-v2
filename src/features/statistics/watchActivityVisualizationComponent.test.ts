@@ -82,15 +82,11 @@ describe("WatchActivityVisualization contracts", () => {
     expect(visualizationSource).toContain("month.relativeIntensity");
   });
 
-  it("renders actual daily values with accessible text and proportional intensity", () => {
-    expect(visualizationSource).toContain("selectedMonth.days.map((day)");
-    expect(visualizationSource).toContain("day.dayOfMonth");
-    expect(visualizationSource).toContain("day.eventCount");
-    expect(visualizationSource).toContain("day.relativeIntensity");
-    expect(visualizationSource).toContain(
-      "aria-label={`Daily recorded activity",
-    );
-    expect(visualizationSource).toContain("selectedMonth.periodStart.getDay()");
+  it("omits the removed selected-month daily activity section", () => {
+    expect(visualizationSource).not.toContain("Daily Activity");
+    expect(visualizationSource).not.toContain("Daily recorded activity");
+    expect(visualizationSource).not.toContain("selectedMonth.days");
+    expect(visualizationSource).not.toContain("WEEKDAYS");
   });
 
   it("preserves loading, error, and safe empty states", () => {

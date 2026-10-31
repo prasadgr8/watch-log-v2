@@ -1,15 +1,6 @@
 import type { ViewingActivitySummary } from "../../domain/analytics/activity";
 import type { TrailingYearActivity } from "../../domain/analytics/calendarYear";
 
-export interface WatchActivityVisualizationDay {
-  readonly key: string;
-  readonly dayOfMonth: number;
-  readonly periodStart: Date;
-  readonly eventCount: number;
-  /** Event count divided by the busiest day in this month; zero for empty days. */
-  readonly relativeIntensity: number;
-}
-
 export interface WatchActivityVisualizationMonth {
   readonly key: string;
   readonly periodStart: Date;
@@ -17,7 +8,6 @@ export interface WatchActivityVisualizationMonth {
   readonly activeDayCount: number;
   /** Event count divided by the busiest month in the displayed year. */
   readonly relativeIntensity: number;
-  readonly days: readonly WatchActivityVisualizationDay[];
 }
 
 /**
@@ -46,10 +36,9 @@ function getDayKey(date: Date): string {
 }
 
 /**
- * Composes a twelve-month matrix and the daily values available for each
- * month. The source summary covers the supplied recorded history; the monthly
- * and daily visualization follows the trailing-year window supplied by the
- * Statistics service.
+ * Composes a twelve-month matrix from the trailing-year daily activity. The
+ * source summary covers the supplied recorded history; the monthly
+ * visualization follows the window supplied by the Statistics service.
  */
 export function buildWatchActivityVisualizationProjection(
   activity: TrailingYearActivity,
@@ -83,42 +72,14 @@ export function buildWatchActivityVisualizationProjection(
     left.localeCompare(right),
   );
   const rawMonths = orderedMonths.map(([key, month]) => {
-    const daysInMonth = new Date(
-      month.periodStart.getFullYear(),
-      month.periodStart.getMonth() + 1,
-      0,
-    ).getDate();
-    const days = Array.from({ length: daysInMonth }, (_, index) => {
-      const dayOfMonth = index + 1;
-      const periodStart = new Date(
-        month.periodStart.getFullYear(),
-        month.periodStart.getMonth(),
-        dayOfMonth,
-      );
-
-      return {
-        key: getDayKey(periodStart),
-        dayOfMonth,
-        periodStart,
-        eventCount: month.countsByDay.get(getDayKey(periodStart)) ?? 0,
-      };
-    });
-    const eventCount = days.reduce((total, day) => total + day.eventCount, 0);
-    const maxDayCount = days.reduce(
-      (maximum, day) => Math.max(maximum, day.eventCount),
-      0,
-    );
+    const dailyCounts = [...month.countsByDay.values()];
+    const eventCount = dailyCounts.reduce((total, count) => total + count, 0);
 
     return {
       key,
       periodStart: month.periodStart,
       eventCount,
-      activeDayCount: days.filter((day) => day.eventCount > 0).length,
-      maxDayCount,
-      days: days.map((day) => ({
-        ...day,
-        relativeIntensity: maxDayCount > 0 ? day.eventCount / maxDayCount : 0,
-      })),
+      activeDayCount: dailyCounts.filter((count) => count > 0).length,
     };
   });
   const maxMonthCount = rawMonths.reduce(
@@ -130,7 +91,6 @@ export function buildWatchActivityVisualizationProjection(
     periodStart: month.periodStart,
     eventCount: month.eventCount,
     activeDayCount: month.activeDayCount,
-    days: month.days,
     relativeIntensity: maxMonthCount > 0 ? month.eventCount / maxMonthCount : 0,
   }));
   const activeMonths = months.filter((month) => month.eventCount > 0);

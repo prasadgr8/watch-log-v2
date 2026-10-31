@@ -87,41 +87,6 @@ describe("buildWatchActivityVisualizationProjection", () => {
     ]);
   });
 
-  it.each([
-    [2023, 1, 28],
-    [2024, 1, 29],
-    [2024, 3, 30],
-    [2024, 0, 31],
-  ])(
-    "builds all %i-%i daily cells for a month",
-    (year, month, expectedDays) => {
-      const projection = buildWatchActivityVisualizationProjection(
-        createActivity(createMonth(year, month, { 1: 2 })),
-        createSummary(),
-      );
-
-      expect(projection.months[0].days).toHaveLength(expectedDays);
-      expect(projection.months[0].days[0]).toMatchObject({
-        dayOfMonth: 1,
-        eventCount: 2,
-        relativeIntensity: 1,
-      });
-      expect(projection.months[0].days.at(-1)?.dayOfMonth).toBe(expectedDays);
-    },
-  );
-
-  it("scales daily intensity proportionally within each month", () => {
-    const projection = buildWatchActivityVisualizationProjection(
-      createActivity(createMonth(2024, 0, { 1: 2, 2: 4 })),
-      createSummary(),
-    );
-    const days = projection.months[0].days;
-
-    expect(days[0].relativeIntensity).toBe(0.5);
-    expect(days[1].relativeIntensity).toBe(1);
-    expect(days[2].relativeIntensity).toBe(0);
-  });
-
   it("selects the latest active month, or the last month when there is no activity", () => {
     const activity = createActivity([
       ...createMonth(2024, 0, { 2: 1 }),
@@ -170,9 +135,6 @@ describe("buildWatchActivityVisualizationProjection", () => {
     expect(projection.activeMonthCount).toBe(0);
     expect(projection.months[0].eventCount).toBe(0);
     expect(projection.months[0].relativeIntensity).toBe(0);
-    expect(projection.months[0].days.every((day) => day.eventCount === 0)).toBe(
-      true,
-    );
   });
 
   it("is independent of input order and does not mutate supplied activity", () => {
