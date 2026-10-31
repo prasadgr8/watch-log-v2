@@ -11,8 +11,6 @@ interface WatchActivityVisualizationProps {
   error: string | null;
 }
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
 function formatMonth(date: Date, month: "long" | "short" = "long"): string {
   return new Intl.DateTimeFormat(undefined, {
     month,
@@ -25,9 +23,9 @@ function formatPercentage(value: number): string {
 }
 
 /*
- * The monthly matrix and daily view consume the existing trailing-year daily
- * activity projection. Total and source values come from the existing
- * recorded-history summary. Selection is ephemeral component state.
+ * The monthly matrix consumes the existing trailing-year daily activity
+ * projection. Total and source values come from the existing recorded-history
+ * summary. Selection is ephemeral component state.
  */
 export default function WatchActivityVisualization({
   visualization,
@@ -73,9 +71,6 @@ export default function WatchActivityVisualization({
       </div>
     );
   }
-
-  const selectedMonthLabel = formatMonth(selectedMonth.periodStart);
-  const leadingEmptyDays = selectedMonth.periodStart.getDay();
 
   return (
     <div className="space-y-6">
@@ -130,13 +125,13 @@ export default function WatchActivityVisualization({
             Monthly Activity · Last 12 Months
           </h4>
           <p className="mt-1 text-xs text-muted">
-            Select a month to see its daily recorded event counts.
+            Select a month to highlight its recorded activity.
           </p>
         </div>
 
         <div
           role="group"
-          aria-label="Select a month for daily activity"
+          aria-label="Monthly activity by month"
           className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6"
         >
           {visualization.months.map((month) => {
@@ -181,68 +176,6 @@ export default function WatchActivityVisualization({
           })}
         </div>
       </div>
-
-      <section aria-labelledby="selected-month-activity" className="space-y-3">
-        <div>
-          <h4
-            id="selected-month-activity"
-            className="text-sm font-semibold text-primary"
-          >
-            Daily Activity · {selectedMonthLabel}
-          </h4>
-          <p className="mt-1 text-xs text-muted">
-            {selectedMonth.eventCount} recorded events across{" "}
-            {selectedMonth.activeDayCount} active days.
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-border bg-surface p-4">
-          <div aria-hidden="true" className="mb-2 grid grid-cols-7 gap-1">
-            {WEEKDAYS.map((weekday) => (
-              <span
-                key={weekday}
-                className="text-center text-[10px] font-medium text-muted"
-              >
-                {weekday}
-              </span>
-            ))}
-          </div>
-
-          <ol
-            aria-label={`Daily recorded activity for ${selectedMonthLabel}`}
-            className="grid grid-cols-7 gap-1"
-          >
-            {Array.from({ length: leadingEmptyDays }, (_, index) => (
-              <li key={`leading-${index}`} aria-hidden="true" />
-            ))}
-            {selectedMonth.days.map((day) => (
-              <li
-                key={day.key}
-                aria-label={`${formatMonth(day.periodStart)} ${day.dayOfMonth}: ${day.eventCount} recorded events`}
-                className="relative flex aspect-square min-h-8 items-center justify-center overflow-hidden rounded-md border border-border bg-surface-elevated text-xs text-primary"
-              >
-                {day.eventCount > 0 && (
-                  <span
-                    aria-hidden="true"
-                    className="absolute inset-0 bg-accent-hover"
-                    style={{ opacity: day.relativeIntensity }}
-                  />
-                )}
-                <span className="relative z-10 text-center">
-                  {day.dayOfMonth}
-                  <span className="block text-[9px] leading-none">
-                    {day.eventCount}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ol>
-        </div>
-        <p className="text-xs text-muted">
-          Each day shows its recorded event count. Active-day fill is scaled to
-          the busiest day in the selected month.
-        </p>
-      </section>
     </div>
   );
 }

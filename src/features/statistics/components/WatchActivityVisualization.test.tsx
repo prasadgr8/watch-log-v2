@@ -96,7 +96,7 @@ async function renderVisualization(
 }
 
 describe("WatchActivityVisualization", () => {
-  it("renders the actual summary, source ratio, monthly activity, and daily counts", async () => {
+  it("renders the summary strip and monthly activity without daily details", async () => {
     const view = await renderVisualization(
       createActivity([
         ...createMonth(2024, 0, { 3: 2 }),
@@ -116,13 +116,17 @@ describe("WatchActivityVisualization", () => {
     expect(
       view.querySelector('button[aria-label^="February 2024"]'),
     ).not.toBeNull();
-    expect(view.textContent).toContain("Daily Activity · February 2024");
+    expect(view.textContent).toContain("Monthly Activity · Last 12 Months");
     expect(
-      view.querySelectorAll("li[aria-label*='recorded events']"),
-    ).toHaveLength(29);
+      view.querySelector('[aria-label="Monthly activity by month"]'),
+    ).not.toBeNull();
+    expect(view.querySelector("ol[aria-label]")).toBeNull();
+    expect(view.textContent).not.toMatch(
+      /Daily Activity|recorded events across/,
+    );
   });
 
-  it("selects the most recent active month deterministically and updates on click", async () => {
+  it("selects a month in the matrix and updates the selected state", async () => {
     const view = await renderVisualization(
       createActivity([
         ...createMonth(2024, 0, { 1: 1 }),
@@ -139,16 +143,14 @@ describe("WatchActivityVisualization", () => {
     );
 
     expect(march?.getAttribute("aria-pressed")).toBe("true");
-    expect(view.textContent).toContain("Daily Activity · March 2024");
 
     await act(async () => january?.click());
 
     expect(january?.getAttribute("aria-pressed")).toBe("true");
     expect(march?.getAttribute("aria-pressed")).toBe("false");
-    expect(view.textContent).toContain("Daily Activity · January 2024");
   });
 
-  it("renders a safe all-zero month without hiding inactive dates", async () => {
+  it("keeps all-zero months available for selection in the matrix", async () => {
     const view = await renderVisualization(
       createActivity([
         ...createMonth(2023, 0, { 2: 1 }),
@@ -174,9 +176,7 @@ describe("WatchActivityVisualization", () => {
 
     await act(async () => february?.click());
 
-    expect(
-      view.querySelectorAll("li[aria-label*='recorded events']"),
-    ).toHaveLength(28);
-    expect(view.textContent).toContain("Daily Activity · February 2023");
+    expect(february?.getAttribute("aria-pressed")).toBe("true");
+    expect(view.querySelector("ol[aria-label]")).toBeNull();
   });
 });
