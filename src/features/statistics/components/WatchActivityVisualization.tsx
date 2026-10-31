@@ -1,82 +1,48 @@
+import { useState } from "react";
 import { History } from "lucide-react";
 
-import type { AnalyticsPeriod } from "../../../domain/analytics/types";
+import type { ViewingActivitySummary } from "../../../domain/analytics/activity";
 import type { WatchActivityVisualizationProjection } from "../watchActivityVisualization";
 
 interface WatchActivityVisualizationProps {
   visualization: WatchActivityVisualizationProjection;
+  summary: ViewingActivitySummary;
   isLoading: boolean;
+  error: string | null;
+}
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function formatMonth(date: Date, month: "long" | "short" = "long"): string {
+  return new Intl.DateTimeFormat(undefined, {
+    month,
+    year: "numeric",
+  }).format(date);
+}
+
+function formatPercentage(value: number): string {
+  return `${Math.round(value * 100)}%`;
 }
 
 /*
- * Presentation-only view over the A29 Step 1 WatchActivityVisualizationProjection.
- *
- * This component owns no reading and no arithmetic over events: the projection
- * arrives fully computed, and every value is rendered verbatim (with
- * display-only formatting). In particular `relativeHeightPercent` is consumed
- * verbatim — the projection is the sole owner of visualization sizing, so this
- * component performs no division, rounding, or maximum search. It performs no
- * repository, network, clock, or persistence access, holds no page state, and
- * exposes no interaction.
- *
- * Each retained period is one native list item, so zero-activity periods stay
- * visible and the rendered order is the projection's retained order. Every row
- * shows its period and recorded event count as real visible text, which keeps
- * the visualization fully readable with the decorative bar removed. The bar is
- * therefore an aria-hidden, CSS-only enhancement and never the sole carrier of
- * a value.
- *
- * Like the timeline, this component adds no heading of its own: StatisticsPage
- * owns the "Historical Viewing Activity" section heading.
+ * The monthly matrix and daily view consume the existing trailing-year daily
+ * activity projection. Total and source values come from the existing
+ * recorded-history summary. Selection is ephemeral component state.
  */
-
-const PERIOD_PLURALS: Record<AnalyticsPeriod, string> = {
-  day: "days",
-  week: "weeks",
-  month: "months",
-  year: "years",
-};
-
-/*
- * Display label for one retained bar period, derived from `periodStart` only —
- * never the exclusive period end and never calendar arithmetic.
- */
-function formatPeriodLabel(
-  period: AnalyticsPeriod,
-  periodStart: Date,
-): string {
-  switch (period) {
-    case "day":
-      return new Intl.DateTimeFormat(undefined, {
-        dateStyle: "medium",
-      }).format(periodStart);
-    case "week": {
-      const mediumDate = new Intl.DateTimeFormat(undefined, {
-        dateStyle: "medium",
-      }).format(periodStart);
-
-      return "Week of " + mediumDate;
-    }
-    case "month":
-      return new Intl.DateTimeFormat(undefined, {
-        month: "long",
-        year: "numeric",
-      }).format(periodStart);
-    case "year":
-      return new Intl.DateTimeFormat(undefined, {
-        year: "numeric",
-      }).format(periodStart);
-  }
-}
-
-function formatCount(value: number, singular: string): string {
-  return `${value} ${value === 1 ? singular : `${singular}s`}`;
-}
-
 export default function WatchActivityVisualization({
   visualization,
+  summary,
   isLoading,
+  error,
 }: WatchActivityVisualizationProps) {
+  const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
+  const selectedMonth =
+    visualization.months.find((month) => month.key === selectedMonthKey) ??
+    visualization.months.find(
+      (month) => month.key === visualization.defaultSelectedMonthKey,
+    ) ??
+    visualization.months.at(-1);
+
   if (isLoading) {
     return (
       <div className="rounded-xl border border-border bg-surface p-4 text-center text-sm text-muted">
@@ -85,11 +51,22 @@ export default function WatchActivityVisualization({
     );
   }
 
-  if (visualization.bars.length === 0) {
+  if (error !== null) {
+    return (
+      <div
+        role="alert"
+        className="rounded-xl border border-border bg-surface p-4 text-center text-sm text-muted"
+      >
+        Activity visualization is unavailable because statistics could not be
+        loaded.
+      </div>
+    );
+  }
+
+  if (visualization.months.length === 0 || selectedMonth === undefined) {
     return (
       <div className="rounded-xl border border-dashed border-border bg-surface/50 p-8 text-center">
         <History aria-hidden="true" className="mx-auto h-8 w-8 text-muted" />
-
         <p className="mt-3 text-sm text-muted">
           No recorded activity to visualize yet.
         </p>
@@ -97,64 +74,175 @@ export default function WatchActivityVisualization({
     );
   }
 
-  const firstBar = visualization.bars[0];
-  const lastBar = visualization.bars[visualization.bars.length - 1];
-  const firstDisplayedLabel = formatPeriodLabel(
-    firstBar.period,
-    firstBar.periodStart,
-  );
-  const lastDisplayedLabel = formatPeriodLabel(
-    lastBar.period,
-    lastBar.periodStart,
-  );
-  const plural = PERIOD_PLURALS[visualization.period];
-  const isTruncated =
-    visualization.truncated && visualization.omittedBucketCount > 0;
+  const selectedMonthLabel = formatMonth(selectedMonth.periodStart);
+  const leadingEmptyDays = selectedMonth.periodStart.getDay();
 
   return (
-    <div className="space-y-3">
-      {isTruncated && (
-        <p className="text-sm text-muted">
-          Showing the {visualization.bars.length} most recent {plural} of
-          recorded activity ({firstDisplayedLabel} – {lastDisplayedLabel}).{" "}
-          {visualization.omittedBucketCount} earlier {plural} before{" "}
-          {firstDisplayedLabel} are not shown.
-        </p>
-      )}
+    <div className="space-y-6">
+      <div
+        role="group"
+        aria-label="Activity summary"
+        className="grid gap-3 sm:grid-cols-3"
+      >
+        <div className="rounded-xl border border-border bg-surface p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+            Total Events
+          </p>
+          <p className="mt-2 text-2xl font-bold text-primary">
+            {visualization.totalEventCount}
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            In currently recorded history
+          </p>
+        </div>
 
-      <ol aria-label="Recorded activity by period" className="space-y-2">
-        {visualization.bars.map((bar) => (
-          <li
-            key={bar.key}
-            className="rounded-xl border border-border bg-surface p-3"
+        <div className="rounded-xl border border-border bg-surface p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+            Active Months
+          </p>
+          <p className="mt-2 text-2xl font-bold text-primary">
+            {visualization.activeMonthCount}
+          </p>
+          <p className="mt-1 text-xs text-muted">In the last 12 months</p>
+        </div>
+
+        <div className="rounded-xl border border-border bg-surface p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+            Manual / Imported Source Ratio
+          </p>
+          <p className="mt-2 text-sm font-semibold text-primary">
+            Manual {visualization.manualEventCount} (
+            {formatPercentage(visualization.manualPercentage)})
+          </p>
+          <p className="mt-1 text-sm font-semibold text-primary">
+            Imported {visualization.importedEventCount} (
+            {formatPercentage(visualization.importedPercentage)})
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            {summary.totalEventCount} recorded events by source
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <h4 className="text-sm font-semibold text-primary">
+            Monthly Activity · Last 12 Months
+          </h4>
+          <p className="mt-1 text-xs text-muted">
+            Select a month to see its daily recorded event counts.
+          </p>
+        </div>
+
+        <div
+          role="group"
+          aria-label="Select a month for daily activity"
+          className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6"
+        >
+          {visualization.months.map((month) => {
+            const isSelected = month.key === selectedMonth.key;
+            const isActive = month.eventCount > 0;
+
+            return (
+              <button
+                key={month.key}
+                type="button"
+                aria-pressed={isSelected}
+                aria-label={`${formatMonth(month.periodStart)}: ${month.eventCount} recorded events, ${month.activeDayCount} active days`}
+                onClick={() => setSelectedMonthKey(month.key)}
+                className={`min-w-0 rounded-xl border p-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-hover/50 motion-reduce:transition-none ${
+                  isSelected
+                    ? "border-accent-hover bg-accent/10 ring-2 ring-accent-hover/30"
+                    : isActive
+                      ? "border-accent/40 bg-accent/5 hover:bg-accent/10"
+                      : "border-border bg-surface-elevated/50 text-muted hover:bg-surface-hover"
+                }`}
+              >
+                <span className="block truncate text-xs font-semibold">
+                  {formatMonth(month.periodStart, "short")}
+                </span>
+                <span className="mt-1 block text-lg font-bold text-primary">
+                  {month.eventCount}
+                </span>
+                <span className="block text-[11px] text-muted">
+                  {month.activeDayCount} active days
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="mt-2 block h-1.5 overflow-hidden rounded-full bg-surface-elevated"
+                >
+                  <span
+                    className="block h-full rounded-full bg-accent-hover"
+                    style={{ width: `${month.relativeIntensity * 100}%` }}
+                  />
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <section aria-labelledby="selected-month-activity" className="space-y-3">
+        <div>
+          <h4
+            id="selected-month-activity"
+            className="text-sm font-semibold text-primary"
           >
-            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-              <span className="text-sm font-medium text-primary">
-                {formatPeriodLabel(bar.period, bar.periodStart)}
+            Daily Activity · {selectedMonthLabel}
+          </h4>
+          <p className="mt-1 text-xs text-muted">
+            {selectedMonth.eventCount} recorded events across{" "}
+            {selectedMonth.activeDayCount} active days.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-border bg-surface p-4">
+          <div aria-hidden="true" className="mb-2 grid grid-cols-7 gap-1">
+            {WEEKDAYS.map((weekday) => (
+              <span
+                key={weekday}
+                className="text-center text-[10px] font-medium text-muted"
+              >
+                {weekday}
               </span>
+            ))}
+          </div>
 
-              <span className="text-base font-semibold text-accent-text">
-                {formatCount(bar.eventCount, "event")}
-              </span>
-            </div>
-
-            <div
-              aria-hidden="true"
-              className="mt-2 h-2 overflow-hidden rounded-full bg-surface-elevated"
-            >
-              <div
-                className="h-full rounded-full bg-accent-hover transition-[width] motion-reduce:transition-none"
-                style={{ width: `${bar.relativeHeightPercent}%` }}
-              />
-            </div>
-          </li>
-        ))}
-      </ol>
-
-      <p className="text-xs text-muted">
-        Bar width represents recorded event count relative to the highest
-        retained period.
-      </p>
+          <ol
+            aria-label={`Daily recorded activity for ${selectedMonthLabel}`}
+            className="grid grid-cols-7 gap-1"
+          >
+            {Array.from({ length: leadingEmptyDays }, (_, index) => (
+              <li key={`leading-${index}`} aria-hidden="true" />
+            ))}
+            {selectedMonth.days.map((day) => (
+              <li
+                key={day.key}
+                aria-label={`${formatMonth(day.periodStart)} ${day.dayOfMonth}: ${day.eventCount} recorded events`}
+                className="relative flex aspect-square min-h-8 items-center justify-center overflow-hidden rounded-md border border-border bg-surface-elevated text-xs text-primary"
+              >
+                {day.eventCount > 0 && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-0 bg-accent-hover"
+                    style={{ opacity: day.relativeIntensity }}
+                  />
+                )}
+                <span className="relative z-10 text-center">
+                  {day.dayOfMonth}
+                  <span className="block text-[9px] leading-none">
+                    {day.eventCount}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+        <p className="text-xs text-muted">
+          Each day shows its recorded event count. Active-day fill is scaled to
+          the busiest day in the selected month.
+        </p>
+      </section>
     </div>
   );
 }

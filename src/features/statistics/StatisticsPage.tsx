@@ -43,8 +43,18 @@ const initialStatistics: StatisticsDashboard = {
   hourOfDayBuckets: [],
   dayOfWeekBuckets: [],
   yearDayActivity: buildTrailingYearDayActivity([], new Date()),
-  mostActiveMonth: { label: "No activity", eventCount: 0, isTie: false, isAvailable: false },
-  weekendViewing: { weekendEvents: 0, totalEvents: 0, percentage: 0, isAvailable: false },
+  mostActiveMonth: {
+    label: "No activity",
+    eventCount: 0,
+    isTie: false,
+    isAvailable: false,
+  },
+  weekendViewing: {
+    weekendEvents: 0,
+    totalEvents: 0,
+    percentage: 0,
+    isAvailable: false,
+  },
   timeOfDay: {
     buckets: [
       { bucket: "Morning", eventCount: 0, percentage: 0 },
@@ -190,7 +200,10 @@ export default function StatisticsPage() {
             activityPeriod={activityPeriod}
             onActivityPeriodChange={setActivityPeriod}
             activitySection={activitySection}
+            yearDayActivity={stats.yearDayActivity}
             isActivityLoading={isActivityLoading}
+            isStatisticsLoading={isLoading}
+            statisticsError={error}
             activityError={activityError}
           />
         </div>
