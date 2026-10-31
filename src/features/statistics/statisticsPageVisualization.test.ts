@@ -28,11 +28,15 @@ describe("StatisticsPage A29 Step 3 visualization integration", () => {
     );
   });
 
-  it("derives visualization data from the existing activity timeline", () => {
+  it("derives monthly and daily visualization data from the existing year activity", () => {
     expect(watchingActivitySectionSource).toContain(
       "buildWatchActivityVisualizationProjection(",
     );
-    expect(watchingActivitySectionSource).toContain("activitySection.timeline");
+    expect(watchingActivitySectionSource).toContain("yearDayActivity");
+    expect(watchingActivitySectionSource).toContain("activitySection.summary");
+    expect(statisticsPageSource).toContain(
+      "yearDayActivity={stats.yearDayActivity}",
+    );
   });
 
   it("passes the existing activity loading state to the visualization", () => {
@@ -45,7 +49,9 @@ describe("StatisticsPage A29 Step 3 visualization integration", () => {
   });
 
   it("keeps the existing period selector as the only activity period control", () => {
-    expect(watchingActivitySectionSource).toContain("<StatisticsPeriodSelector");
+    expect(watchingActivitySectionSource).toContain(
+      "<StatisticsPeriodSelector",
+    );
     expect(watchingActivitySectionSource).not.toContain(
       "<WatchActivityVisualizationSelector",
     );

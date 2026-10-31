@@ -1,4 +1,5 @@
 import type { AnalyticsPeriod } from "../../../domain/analytics/types";
+import type { TrailingYearActivity } from "../../../domain/analytics/calendarYear";
 
 import { buildWatchActivityVisualizationProjection } from "../watchActivityVisualization";
 import type { WatchActivitySectionWithTrends } from "../services/watchActivityService";
@@ -13,7 +14,10 @@ interface WatchingActivitySectionProps {
   activityPeriod: AnalyticsPeriod;
   onActivityPeriodChange: (period: AnalyticsPeriod) => void;
   activitySection: WatchActivitySectionWithTrends | null;
+  yearDayActivity: TrailingYearActivity;
   isActivityLoading: boolean;
+  isStatisticsLoading: boolean;
+  statisticsError: string | null;
   activityError: string | null;
 }
 
@@ -21,11 +25,9 @@ interface WatchingActivitySectionProps {
  * Presentation-only view of the existing viewing-activity section.
  *
  * This component owns no reading and no arithmetic: `activitySection` arrives
- * fully computed from `watchActivityService.loadWatchActivitySection`, driven
- * by `activityPeriod` on the Statistics page, and every value is rendered
- * verbatim (with display-only formatting in the child views). The historical
- * activity behavior, selector, A29 visualization, trends, timeline, and the
- * loading/error behavior are unchanged from the pre-tab Statistics page.
+ * fully computed from the Statistics and watch-activity services. The
+ * historical summary, selector, trends, timeline, and their loading/error
+ * behavior remain separate from the monthly/daily visualization.
  *
  * Each content block is grouped in a named landmark bound to its own
  * sub-heading (A30 Step 3.1), mirroring the Statistics Overview section
@@ -35,7 +37,10 @@ export default function WatchingActivitySection({
   activityPeriod,
   onActivityPeriodChange,
   activitySection,
+  yearDayActivity,
   isActivityLoading,
+  isStatisticsLoading,
+  statisticsError,
   activityError,
 }: WatchingActivitySectionProps) {
   return (
@@ -102,9 +107,12 @@ export default function WatchingActivitySection({
 
             <WatchActivityVisualization
               visualization={buildWatchActivityVisualizationProjection(
-                activitySection.timeline,
+                yearDayActivity,
+                activitySection.summary,
               )}
-              isLoading={isActivityLoading}
+              summary={activitySection.summary}
+              isLoading={isActivityLoading || isStatisticsLoading}
+              error={statisticsError}
             />
           </section>
 

@@ -1,96 +1,199 @@
 import { describe, expect, it } from "vitest";
 
-import type { WatchActivityTimelineProjection } from "../../domain/analytics/activity";
+import type { ViewingActivitySummary } from "../../domain/analytics/activity";
+import type { TrailingYearActivity } from "../../domain/analytics/calendarYear";
 
-import {
-  buildWatchActivityVisualizationProjection,
-  type WatchActivityVisualizationProjection,
-} from "./watchActivityVisualization";
+import { buildWatchActivityVisualizationProjection } from "./watchActivityVisualization";
 
-function createTimeline(
-  overrides: Partial<WatchActivityTimelineProjection> = {},
-): WatchActivityTimelineProjection {
+function createMonth(
+  year: number,
+  month: number,
+  eventCounts: Readonly<Record<number, number>> = {},
+) {
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  return Array.from({ length: daysInMonth }, (_, index) => {
+    const day = index + 1;
+
+    return {
+      periodStart: new Date(year, month, day),
+      eventCount: eventCounts[day] ?? 0,
+    };
+  });
+}
+
+function createActivity(
+  days: TrailingYearActivity["days"],
+): TrailingYearActivity {
+  return {
+    windowStart: days[0]?.periodStart ?? new Date(2024, 0, 1),
+    windowEnd: days.at(-1)?.periodStart ?? new Date(2024, 0, 1),
+    days,
+  };
+}
+
+function createSummary(
+  overrides: Partial<ViewingActivitySummary> = {},
+): ViewingActivitySummary {
   return {
     period: "month",
-    buckets: [
-      {
-        period: "month", key: "month:20000",
-        periodStart: new Date("2024-01-01T00:00:00"),
-        periodEnd: new Date("2024-02-01T00:00:00"),
-        eventCount: 4, distinctEpisodeCount: 3, activeDayCount: 2,
-        sourceEventCounts: { manual: 4, import: 0 },
-      },
-      {
-        period: "month", key: "month:20031",
-        periodStart: new Date("2024-02-01T00:00:00"),
-        periodEnd: new Date("2024-03-01T00:00:00"),
-        eventCount: 0, distinctEpisodeCount: 0, activeDayCount: 0,
-        sourceEventCounts: { manual: 0, import: 0 },
-      },
-      {
-        period: "month", key: "month:20060",
-        periodStart: new Date("2024-03-01T00:00:00"),
-        periodEnd: new Date("2024-04-01T00:00:00"),
-        eventCount: 8, distinctEpisodeCount: 5, activeDayCount: 4,
-        sourceEventCounts: { manual: 6, import: 2 },
-      },
-    ],
-    naturalBucketCount: 3, omittedBucketCount: 0, truncated: false,
+    totalEventCount: 8,
+    totalDistinctEpisodeCount: 5,
+    activeDayCount: 3,
+    eventsPerActiveDay: 8 / 3,
+    sourceEventCounts: { manual: 6, import: 2 },
     ...overrides,
   };
 }
 
 describe("buildWatchActivityVisualizationProjection", () => {
-  it("projects retained timeline buckets into display bars", () => {
-    const projection = buildWatchActivityVisualizationProjection(createTimeline());
-    expect(projection.period).toBe("month");
-    expect(projection.bars).toHaveLength(3);
-    expect(projection.bars.map((bar) => bar.key)).toEqual(["month:20000", "month:20031", "month:20060"]);
-    expect(projection.bars.map((bar) => bar.eventCount)).toEqual([4, 0, 8]);
-    expect(projection.bars.map((bar) => bar.relativeHeightPercent)).toEqual([50, 0, 100]);
-  });
+  it("projects the recorded total, active months, and manual/import ratio", () => {
+    const activity = createActivity([
+      ...createMonth(2024, 0, { 3: 2 }),
+      ...createMonth(2024, 1, { 8: 4 }),
+    ]);
 
-  it("preserves period metadata and display order", () => {
-    const projection = buildWatchActivityVisualizationProjection(createTimeline());
-    const [first, second, third] = projection.bars;
-    expect(first.period).toBe("month");
-    expect(first.periodStart).toEqual(new Date("2024-01-01T00:00:00"));
-    expect(second.periodStart.getTime()).toBeLessThan(third.periodStart.getTime());
-  });
-
-  it("passes through the timeline presentation-boundary metadata unchanged", () => {
-    const projection = buildWatchActivityVisualizationProjection(createTimeline({ naturalBucketCount: 240, omittedBucketCount: 120, truncated: true }));
-    expect(projection.naturalBucketCount).toBe(240);
-    expect(projection.omittedBucketCount).toBe(120);
-    expect(projection.truncated).toBe(true);
-  });
-
-  it("does not reconstruct a second history window from truncation metadata", () => {
-    const timeline = createTimeline({ naturalBucketCount: 240, omittedBucketCount: 120, truncated: true });
-    const projection = buildWatchActivityVisualizationProjection(timeline);
-    expect(projection.bars).toHaveLength(timeline.buckets.length);
-    expect(projection.bars[0].key).toBe(timeline.buckets[0].key);
-    expect(projection.bars.at(-1)?.key).toBe(timeline.buckets.at(-1)?.key);
-  });
-
-  it("keeps empty history empty without inventing a period or height", () => {
-    const projection = buildWatchActivityVisualizationProjection(createTimeline({ buckets: [], naturalBucketCount: 0, omittedBucketCount: 0, truncated: false }));
-    expect(projection).toEqual<WatchActivityVisualizationProjection>({
-      period: "month", bars: [], naturalBucketCount: 0, omittedBucketCount: 0, truncated: false,
+    expect(
+      buildWatchActivityVisualizationProjection(activity, createSummary()),
+    ).toMatchObject({
+      totalEventCount: 8,
+      activeMonthCount: 2,
+      manualEventCount: 6,
+      importedEventCount: 2,
+      manualPercentage: 0.75,
+      importedPercentage: 0.25,
+      defaultSelectedMonthKey: "2024-02",
     });
   });
 
-  it("keeps every bar at zero when retained buckets all have zero activity", () => {
-    const timeline = createTimeline({ buckets: createTimeline().buckets.map((bucket) => ({ ...bucket, eventCount: 0 })) });
-    const projection = buildWatchActivityVisualizationProjection(timeline);
-    expect(projection.bars.map((bar) => bar.relativeHeightPercent)).toEqual([0, 0, 0]);
+  it("retains inactive months and exposes event volume and active days", () => {
+    const projection = buildWatchActivityVisualizationProjection(
+      createActivity([
+        ...createMonth(2024, 0, { 3: 2 }),
+        ...createMonth(2024, 1),
+        ...createMonth(2024, 2, { 4: 4, 8: 1 }),
+      ]),
+      createSummary(),
+    );
+
+    expect(projection.months.map((month) => month.eventCount)).toEqual([
+      2, 0, 5,
+    ]);
+    expect(projection.months.map((month) => month.activeDayCount)).toEqual([
+      1, 0, 2,
+    ]);
+    expect(projection.months.map((month) => month.relativeIntensity)).toEqual([
+      0.4, 0, 1,
+    ]);
   });
 
-  it("does not mutate the supplied timeline buckets", () => {
-    const timeline = createTimeline();
-    const originalBuckets = timeline.buckets;
-    buildWatchActivityVisualizationProjection(timeline);
-    expect(timeline.buckets).toBe(originalBuckets);
-    expect(timeline.buckets[0].eventCount).toBe(4);
+  it.each([
+    [2023, 1, 28],
+    [2024, 1, 29],
+    [2024, 3, 30],
+    [2024, 0, 31],
+  ])(
+    "builds all %i-%i daily cells for a month",
+    (year, month, expectedDays) => {
+      const projection = buildWatchActivityVisualizationProjection(
+        createActivity(createMonth(year, month, { 1: 2 })),
+        createSummary(),
+      );
+
+      expect(projection.months[0].days).toHaveLength(expectedDays);
+      expect(projection.months[0].days[0]).toMatchObject({
+        dayOfMonth: 1,
+        eventCount: 2,
+        relativeIntensity: 1,
+      });
+      expect(projection.months[0].days.at(-1)?.dayOfMonth).toBe(expectedDays);
+    },
+  );
+
+  it("scales daily intensity proportionally within each month", () => {
+    const projection = buildWatchActivityVisualizationProjection(
+      createActivity(createMonth(2024, 0, { 1: 2, 2: 4 })),
+      createSummary(),
+    );
+    const days = projection.months[0].days;
+
+    expect(days[0].relativeIntensity).toBe(0.5);
+    expect(days[1].relativeIntensity).toBe(1);
+    expect(days[2].relativeIntensity).toBe(0);
+  });
+
+  it("selects the latest active month, or the last month when there is no activity", () => {
+    const activity = createActivity([
+      ...createMonth(2024, 0, { 2: 1 }),
+      ...createMonth(2024, 1),
+      ...createMonth(2024, 2, { 4: 1 }),
+    ]);
+
+    expect(
+      buildWatchActivityVisualizationProjection(activity, createSummary())
+        .defaultSelectedMonthKey,
+    ).toBe("2024-03");
+    expect(
+      buildWatchActivityVisualizationProjection(
+        createActivity([...createMonth(2024, 0), ...createMonth(2024, 1)]),
+        createSummary(),
+      ).defaultSelectedMonthKey,
+    ).toBe("2024-02");
+  });
+
+  it("handles empty and all-zero activity safely", () => {
+    expect(
+      buildWatchActivityVisualizationProjection(
+        createActivity([]),
+        createSummary({
+          totalEventCount: 0,
+          sourceEventCounts: { manual: 0, import: 0 },
+        }),
+      ),
+    ).toMatchObject({
+      totalEventCount: 0,
+      activeMonthCount: 0,
+      manualPercentage: 0,
+      importedPercentage: 0,
+      months: [],
+      defaultSelectedMonthKey: null,
+    });
+
+    const projection = buildWatchActivityVisualizationProjection(
+      createActivity(createMonth(2024, 1)),
+      createSummary({
+        totalEventCount: 0,
+        sourceEventCounts: { manual: 0, import: 0 },
+      }),
+    );
+
+    expect(projection.activeMonthCount).toBe(0);
+    expect(projection.months[0].eventCount).toBe(0);
+    expect(projection.months[0].relativeIntensity).toBe(0);
+    expect(projection.months[0].days.every((day) => day.eventCount === 0)).toBe(
+      true,
+    );
+  });
+
+  it("is independent of input order and does not mutate supplied activity", () => {
+    const days = [
+      ...createMonth(2024, 0, { 1: 2 }),
+      ...createMonth(2024, 1, { 2: 3 }),
+    ];
+    const activity = createActivity(days);
+    const before = structuredClone(activity);
+    const summary = createSummary();
+
+    const projection = buildWatchActivityVisualizationProjection(
+      activity,
+      summary,
+    );
+    const reversedProjection = buildWatchActivityVisualizationProjection(
+      createActivity([...days].reverse()),
+      summary,
+    );
+
+    expect(reversedProjection).toEqual(projection);
+    expect(activity).toEqual(before);
   });
 });
